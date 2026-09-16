@@ -1,0 +1,125 @@
+@media (min-width: 1101px) {
+  .layoutShell {
+    width: 100%;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .contentStage {
+    width: 100%;
+    padding: 18px 18px 26px;
+  }
+
+  .wrap {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .panel {
+    width: 100%;
+  }
+
+  .panelTitle {
+    font-size: clamp(20px, 1.12vw, 28px);
+  }
+
+  .panelHint {
+    font-size: clamp(12px, .62vw, 16px);
+  }
+
+  .tab {
+    font-size: clamp(13px, .68vw, 17px);
+    padding: clamp(10px, .55vw, 14px) 12px;
+  }
+
+  .grid {
+    gap: clamp(10px, .68vw, 16px);
+  }
+
+  .appTile {
+    min-height: clamp(124px, 7.5vw, 158px);
+    grid-template-columns: clamp(84px, 5.8vw, 112px) minmax(0, 1fr);
+    padding: clamp(12px, .9vw, 18px);
+    gap: 5px clamp(12px, .8vw, 18px);
+  }
+
+  .tileIcon {
+    width: clamp(78px, 5.2vw, 104px);
+    height: clamp(78px, 5.2vw, 104px);
+    font-size: clamp(42px, 3vw, 62px);
+  }
+
+  .tileIcon::before {
+    width: clamp(70px, 4.8vw, 96px);
+    height: clamp(62px, 4.2vw, 84px);
+  }
+
+  .tileCopy {
+    padding-right: clamp(34px, 2.2vw, 56px);
+  }
+
+  .tileName {
+    font-size: clamp(18px, 1vw, 25px);
+  }
+
+  .tileDesc {
+    font-size: clamp(12px, .66vw, 16px);
+  }
+
+  .ghostIcon {
+    right: clamp(14px, .8vw, 22px);
+    top: clamp(30px, 2vw, 42px);
+    font-size: clamp(40px, 2.7vw, 58px);
+  }
+
+  .tileAction {
+    min-width: clamp(110px, 7vw, 150px);
+    padding: clamp(6px, .4vw, 9px) clamp(12px, .8vw, 18px);
+    font-size: clamp(11px, .62vw, 15px);
+  }
+
+  .sideNavItem {
+    font-size: clamp(13px, .72vw, 18px);
+    padding: clamp(11px, .7vw, 16px) clamp(9px, .7vw, 15px);
+  }
+
+  .sideNavIcon {
+    width: clamp(23px, 1.5vw, 32px);
+    height: clamp(23px, 1.5vw, 32px);
+    font-size: clamp(18px, 1.2vw, 26px);
+  }
+
+  .sideQuote {
+    font-size: clamp(12px, .68vw, 17px);
+  }
+
+  .showroomText {
+    left: clamp(34px, 4vw, 86px);
+    font-size: clamp(11px, .62vw, 15px);
+  }
+
+  .appHeader {
+    padding-left: clamp(24px, 1.8vw, 42px);
+    padding-right: clamp(28px, 2vw, 46px);
+  }
+
+  .title {
+    font-size: clamp(24px, 1.45vw, 34px);
+  }
+
+  .subtitle {
+    font-size: clamp(13px, .72vw, 17px);
+  }
+
+  .headerSlogan {
+    font-size: clamp(18px, 1vw, 24px);
+  }
+
+  .dateText {
+    font-size: clamp(12px, .66vw, 16px);
+  }
+
+  .roleBadge {
+    font-size: clamp(11px, .6vw, 14px);
+  }
+}
