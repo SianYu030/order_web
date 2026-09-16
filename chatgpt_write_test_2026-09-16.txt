@@ -1,0 +1,5 @@
+ChatGPT GitHub write test
+Repository: SianYu030/order_web
+Date: 2026-09-16
+Local time zone: Asia/Taipei
+Status: write test successful if this file exists in main branch.
