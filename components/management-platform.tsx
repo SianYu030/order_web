@@ -218,7 +218,7 @@ export default function ManagementPlatform() {
         )}
       </div>
 
-      <footer className="footer">大成鋼系統櫃部</footer>
+      <footer className="footer">大成鋼系統櫥櫃部</footer>
     </main>
   );
 }
