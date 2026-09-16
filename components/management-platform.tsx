@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getSidebarItems } from "@/lib/navigation";
 import { canViewRecord, getRoleName, isRoleAllowed, normalizeRole } from "@/lib/roles";
+import { getShowroomGridTemplate } from "@/lib/showroom-layout";
 import { sortSystemItems, type SystemItem } from "@/lib/systems";
 
 type Mode = "fill" | "record";
@@ -170,7 +171,7 @@ export default function ManagementPlatform() {
         </div>
       </header>
 
-      <div className="layoutShell">
+      <div className="layoutShell" style={{ gridTemplateColumns: getShowroomGridTemplate(viewMode) }}>
         <aside className="sideNav" aria-label="作業導覽">
           <nav className="sideNavMenu">
             {sidebarItems.map((item) => {
