@@ -1,23 +1,46 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { canViewRecord, getRoleName, getRoleNote, isRoleAllowed, normalizeRole, type Role } from "@/lib/roles";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { canViewRecord, getRoleName, getRoleNote, isRoleAllowed, normalizeRole } from "@/lib/roles";
 import { sortSystemItems, type SystemItem } from "@/lib/systems";
 
 type Mode = "fill" | "record";
 type ViewMode = "mobile" | "desktop";
 type ApiResponse = { success: boolean; data?: SystemItem[]; message?: string };
 
+const SNAPSHOT_SEPARATOR = "\u0000";
+
 function isMobileDevice(): boolean {
   const ua = navigator.userAgent || "";
   return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || window.matchMedia?.("(max-width: 700px)").matches === true;
 }
 
-function normalizeView(value: string | null): ViewMode {
+function subscribeBrowserState(callback: () => void): () => void {
+  const mediaQuery = window.matchMedia("(max-width: 700px)");
+  window.addEventListener("popstate", callback);
+  window.addEventListener("resize", callback);
+  mediaQuery.addEventListener("change", callback);
+
+  return () => {
+    window.removeEventListener("popstate", callback);
+    window.removeEventListener("resize", callback);
+    mediaQuery.removeEventListener("change", callback);
+  };
+}
+
+function getBrowserSnapshot(): string {
+  return `${window.location.search}${SNAPSHOT_SEPARATOR}${isMobileDevice() ? "mobile" : "desktop"}`;
+}
+
+function getServerSnapshot(): string {
+  return `${SNAPSHOT_SEPARATOR}desktop`;
+}
+
+function normalizeView(value: string | null, fallback: ViewMode): ViewMode {
   const view = String(value ?? "").trim().toLowerCase();
   if (view === "mobile" || view === "phone" || view === "app" || view === "手機" || view.includes("手機")) return "mobile";
   if (view === "desktop" || view === "pc" || view === "computer" || view === "電腦" || view.includes("電腦")) return "desktop";
-  return isMobileDevice() ? "mobile" : "desktop";
+  return fallback;
 }
 
 function cleanName(name: string): string {
@@ -70,20 +93,19 @@ function todayText(): string {
 }
 
 export default function ManagementPlatform() {
-  const [role, setRole] = useState<Role>("staff");
-  const [viewMode, setViewMode] = useState<ViewMode>("desktop");
+  const browserSnapshot = useSyncExternalStore(subscribeBrowserState, getBrowserSnapshot, getServerSnapshot);
+  const [search, detectedView = "desktop"] = browserSnapshot.split(SNAPSHOT_SEPARATOR) as [string, ViewMode];
+  const params = useMemo(() => new URLSearchParams(search), [search]);
+  const role = normalizeRole(params.get("role"));
+  const viewMode = normalizeView(params.get("view"), detectedView);
+
   const [mode, setMode] = useState<Mode>("fill");
   const [systems, setSystems] = useState<SystemItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const effectiveMode: Mode = canViewRecord(role) ? mode : "fill";
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const nextRole = normalizeRole(params.get("role"));
-    setRole(nextRole);
-    setViewMode(normalizeView(params.get("view")));
-    if (!canViewRecord(nextRole)) setMode("fill");
-
     const controller = new AbortController();
     fetch("/api/systems", { signal: controller.signal })
       .then(async (response) => {
@@ -103,11 +125,11 @@ export default function ManagementPlatform() {
   const visibleItems = useMemo(() => {
     const filtered = systems.filter((item) => {
       if (!isRoleAllowed(role, item.name)) return false;
-      if (mode === "record") return canViewRecord(role) && Boolean(item.recordUrl);
+      if (effectiveMode === "record") return canViewRecord(role) && Boolean(item.recordUrl);
       return Boolean(item.formUrl);
     });
     return sortSystemItems(filtered);
-  }, [systems, role, mode]);
+  }, [systems, role, effectiveMode]);
 
   const note = getRoleNote(role);
   const rootClass = `platformRoot ${role} view-${viewMode}`;
@@ -128,23 +150,23 @@ export default function ManagementPlatform() {
       <div className="wrap">
         <section className="panel">
           <div className="panelTitleRow">
-            <div className="panelTitle">{mode === "fill" ? "👇 請選擇要填寫的作業項目" : "📊 請選擇要查看的紀錄"}</div>
-            <div className="panelHint">{mode === "fill" ? "點選下方功能開始填寫" : "點選下方功能查看紀錄 / Google 試算表"}</div>
+            <div className="panelTitle">{effectiveMode === "fill" ? "👇 請選擇要填寫的作業項目" : "📊 請選擇要查看的紀錄"}</div>
+            <div className="panelHint">{effectiveMode === "fill" ? "點選下方功能開始填寫" : "點選下方功能查看紀錄 / Google 試算表"}</div>
           </div>
 
           {canViewRecord(role) && (
             <div className="modeTabs">
-              <button className={`tab ${mode === "fill" ? "active" : ""}`} onClick={() => setMode("fill")}>填寫表單</button>
-              <button className={`tab ${mode === "record" ? "active" : ""}`} onClick={() => setMode("record")}>查看紀錄</button>
+              <button className={`tab ${effectiveMode === "fill" ? "active" : ""}`} onClick={() => setMode("fill")}>填寫表單</button>
+              <button className={`tab ${effectiveMode === "record" ? "active" : ""}`} onClick={() => setMode("record")}>查看紀錄</button>
             </div>
           )}
 
-          <div className={`grid ${mode === "record" ? "recordMode" : ""}`}>
+          <div className={`grid ${effectiveMode === "record" ? "recordMode" : ""}`}>
             {loading && <div className="loading">載入中...</div>}
             {!loading && error && <div className="errorBox"><b>⚠️ 系統讀取失敗</b><br /><br />{error}</div>}
             {!loading && !error && visibleItems.length === 0 && <div className="empty">目前沒有系統資料</div>}
             {!loading && !error && visibleItems.map((item) => {
-              const url = mode === "record" ? item.recordUrl : item.formUrl;
+              const url = effectiveMode === "record" ? item.recordUrl : item.formUrl;
               const danger = item.name.includes("不良");
               return (
                 <a
@@ -157,8 +179,8 @@ export default function ManagementPlatform() {
                 >
                   <div className="tileIcon">{getIcon(item.module, item.name)}</div>
                   <div className="tileName">{cleanName(item.name)}</div>
-                  <div className="tileDesc">{mode === "record" ? "查看紀錄 / Google 試算表" : getShortDesc(item.name)}</div>
-                  <div className="tileAction">{mode === "record" ? "查看紀錄" : danger ? "⚠️ 立即填寫" : "👉 立即填寫"}</div>
+                  <div className="tileDesc">{effectiveMode === "record" ? "查看紀錄 / Google 試算表" : getShortDesc(item.name)}</div>
+                  <div className="tileAction">{effectiveMode === "record" ? "查看紀錄" : danger ? "⚠️ 立即填寫" : "👉 立即填寫"}</div>
                 </a>
               );
             })}
@@ -172,7 +194,7 @@ export default function ManagementPlatform() {
             <div className="sectionTitle">全部功能</div>
             <div className="smallList">
               {systems.length === 0 && !loading ? <div className="empty">目前沒有功能資料</div> : systems.map((item) => {
-                const url = mode === "record" ? item.recordUrl : item.formUrl;
+                const url = effectiveMode === "record" ? item.recordUrl : item.formUrl;
                 return (
                   <a
                     key={`all-${item.id}-${item.name}`}
@@ -185,7 +207,7 @@ export default function ManagementPlatform() {
                     <div className="listIcon">{getIcon(item.module, item.name)}</div>
                     <div className="listMain">
                       <div className="listName">{item.name}</div>
-                      <div className="listMeta">{item.module}｜{item.department}｜{mode === "record" ? "紀錄 / Google試算表" : "填寫表單"}</div>
+                      <div className="listMeta">{item.module}｜{item.department}｜{effectiveMode === "record" ? "紀錄 / Google試算表" : "填寫表單"}</div>
                     </div>
                     <div className="arrow">›</div>
                   </a>
@@ -196,7 +218,7 @@ export default function ManagementPlatform() {
         )}
       </div>
 
-      <footer className="footer">大成鋼系統櫥櫃部</footer>
+      <footer className="footer">大成鋼系統櫃部</footer>
     </main>
   );
 }
