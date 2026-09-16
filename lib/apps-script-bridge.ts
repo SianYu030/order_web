@@ -1,7 +1,7 @@
 import type { SystemItem } from "./systems";
 
 export const APPS_SCRIPT_WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbw4-R3NzwtR_24rraYOdtHLaxd3Y6y3v6MePSlxtpLCt1envWKTt0_2WBIVUjLWYH9YXA/exec";
+  "https://script.google.com/macros/s/AKfycbwCiISmnwpTcsZjgR2Yu2FapMRbxvDt7-pPAFtkqkl9rpfDyK8KgbvV3Y0gf6p4O-d5mQ/exec";
 
 type BridgeResponse = {
   success?: boolean;
