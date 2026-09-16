@@ -2,22 +2,28 @@ import { describe, expect, it } from "vitest";
 import { getSidebarItems } from "../lib/navigation";
 
 describe("getSidebarItems", () => {
-  it("shows record navigation only to roles that can view records", () => {
+  it("matches the showroom sidebar while hiding record navigation from staff", () => {
     expect(getSidebarItems("staff").map((item) => item.id)).toEqual([
       "home",
-      "fill"
+      "fill",
+      "announcement",
+      "help"
     ]);
 
     expect(getSidebarItems("supervisor").map((item) => item.id)).toEqual([
       "home",
       "fill",
-      "record"
+      "record",
+      "announcement",
+      "help"
     ]);
 
     expect(getSidebarItems("admin").map((item) => item.id)).toEqual([
       "home",
       "fill",
-      "record"
+      "record",
+      "announcement",
+      "help"
     ]);
   });
 });
