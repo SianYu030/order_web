@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { getSidebarItems } from "@/lib/navigation";
 import { canViewRecord, getRoleName, getRoleNote, isRoleAllowed, normalizeRole } from "@/lib/roles";
 import { sortSystemItems, type SystemItem } from "@/lib/systems";
 
@@ -72,15 +73,15 @@ function getShortDesc(name: string): string {
 
 function getIcon(moduleName: string, name: string): string {
   if (name.includes("報修")) return "🔧";
-  if (name.includes("首件")) return "🧪";
-  if (name.includes("不良")) return "❌";
+  if (name.includes("首件")) return "✅";
+  if (name.includes("不良")) return "⚠️";
   if (name.includes("五金")) return "🔩";
   if (name.includes("板材")) return "🪵";
-  if (name.includes("封邊")) return "📏";
+  if (name.includes("封邊")) return "🟤";
   if (name.includes("停工")) return "⏱️";
   if (name.includes("廢料")) return "🗑️";
   if (moduleName.includes("倉庫")) return "📦";
-  if (moduleName.includes("品質")) return "🧪";
+  if (moduleName.includes("品質")) return "✅";
   if (moduleName.includes("設備")) return "🔧";
   if (moduleName.includes("生產")) return "⏱️";
   return "📋";
@@ -104,6 +105,7 @@ export default function ManagementPlatform() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const effectiveMode: Mode = canViewRecord(role) ? mode : "fill";
+  const sidebarItems = getSidebarItems(role);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -133,91 +135,130 @@ export default function ManagementPlatform() {
   const note = getRoleNote(role);
   const rootClass = `platformRoot ${role} view-${viewMode}`;
 
+  function handleNavigation(targetMode?: Mode) {
+    if (targetMode) setMode(targetMode);
+    else setMode("fill");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <main className={rootClass}>
       <header className="appHeader">
-        <div className="headerTop">
+        <div className="brandBlock">
+          <div className="brandMark" aria-hidden="true"><span /><span /></div>
           <div className="brand">
-            <div className="title">🏭 大成鋼系統櫥櫃部</div>
+            <div className="title">大成鋼系統櫥櫃部</div>
             <div className="subtitle">E3 / E4 / W8 現場作業平台</div>
           </div>
+        </div>
+        <div className="headerSlogan">創造更好的生活空間<span>SYSTEM CABINET · BETTER LIVING</span></div>
+        <div className="headerMeta">
+          <div className="dateText">{todayText()}</div>
           <div className="roleBadge">{getRoleName(role)}</div>
         </div>
-        <div className="dateText">{todayText()}</div>
       </header>
 
-      <div className="wrap">
-        <section className="panel">
-          <div className="panelTitleRow">
-            <div className="panelTitle">{effectiveMode === "fill" ? "👇 請選擇要填寫的作業項目" : "📊 請選擇要查看的紀錄"}</div>
-            <div className="panelHint">{effectiveMode === "fill" ? "點選下方功能開始填寫" : "點選下方功能查看紀錄 / Google 試算表"}</div>
-          </div>
-
-          {canViewRecord(role) && (
-            <div className="modeTabs">
-              <button className={`tab ${effectiveMode === "fill" ? "active" : ""}`} onClick={() => setMode("fill")}>填寫表單</button>
-              <button className={`tab ${effectiveMode === "record" ? "active" : ""}`} onClick={() => setMode("record")}>查看紀錄</button>
-            </div>
-          )}
-
-          <div className={`grid ${effectiveMode === "record" ? "recordMode" : ""}`}>
-            {loading && <div className="loading">載入中...</div>}
-            {!loading && error && <div className="errorBox"><b>⚠️ 系統讀取失敗</b><br /><br />{error}</div>}
-            {!loading && !error && visibleItems.length === 0 && <div className="empty">目前沒有系統資料</div>}
-            {!loading && !error && visibleItems.map((item) => {
-              const url = effectiveMode === "record" ? item.recordUrl : item.formUrl;
-              const danger = item.name.includes("不良");
+      <div className="layoutShell">
+        <aside className="sideNav" aria-label="作業導覽">
+          <nav className="sideNavMenu">
+            {sidebarItems.map((item) => {
+              const active = item.mode ? item.mode === effectiveMode : false;
               return (
-                <a
-                  key={`${item.id}-${item.name}`}
-                  className={`appTile ${danger ? "dangerTile" : ""}`}
-                  href={url || undefined}
-                  target={url ? "_blank" : undefined}
-                  rel={url ? "noopener noreferrer" : undefined}
-                  aria-disabled={!url}
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`sideNavItem ${active ? "active" : ""}`}
+                  onClick={() => handleNavigation(item.mode)}
                 >
-                  <div className="tileIcon">{getIcon(item.module, item.name)}</div>
-                  <div className="tileName">{cleanName(item.name)}</div>
-                  <div className="tileDesc">{effectiveMode === "record" ? "查看紀錄 / Google 試算表" : getShortDesc(item.name)}</div>
-                  <div className="tileAction">{effectiveMode === "record" ? "查看紀錄" : danger ? "⚠️ 立即填寫" : "👉 立即填寫"}</div>
-                </a>
+                  <span className="sideNavIcon">{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
               );
             })}
+          </nav>
+          <div className="sideQuote">
+            <b>好的櫥櫃</b><br />讓空間更有溫度
+            <span>Good Cabinets<br />Better Living</span>
           </div>
-        </section>
+        </aside>
 
-        {note && <div className="adminNote">{note}</div>}
+        <div className="contentStage">
+          <div className="wrap">
+            <section className="panel">
+              <div className="panelTitleRow">
+                <div className="panelTitle">📋 {effectiveMode === "fill" ? "請選擇要填寫的作業項目" : "請選擇要查看的紀錄"}</div>
+                <div className="panelHint">{effectiveMode === "fill" ? "點選下方功能開始填寫" : "點選下方功能查看紀錄 / Google 試算表"}</div>
+              </div>
 
-        {role === "admin" && (
-          <section className="section">
-            <div className="sectionTitle">全部功能</div>
-            <div className="smallList">
-              {systems.length === 0 && !loading ? <div className="empty">目前沒有功能資料</div> : systems.map((item) => {
-                const url = effectiveMode === "record" ? item.recordUrl : item.formUrl;
-                return (
-                  <a
-                    key={`all-${item.id}-${item.name}`}
-                    className="listItem"
-                    href={url || undefined}
-                    target={url ? "_blank" : undefined}
-                    rel={url ? "noopener noreferrer" : undefined}
-                    aria-disabled={!url}
-                  >
-                    <div className="listIcon">{getIcon(item.module, item.name)}</div>
-                    <div className="listMain">
-                      <div className="listName">{item.name}</div>
-                      <div className="listMeta">{item.module}｜{item.department}｜{effectiveMode === "record" ? "紀錄 / Google試算表" : "填寫表單"}</div>
-                    </div>
-                    <div className="arrow">›</div>
-                  </a>
-                );
-              })}
-            </div>
-          </section>
-        )}
+              {canViewRecord(role) && (
+                <div className="modeTabs">
+                  <button className={`tab ${effectiveMode === "fill" ? "active" : ""}`} onClick={() => setMode("fill")}>✎ 填寫表單</button>
+                  <button className={`tab ${effectiveMode === "record" ? "active" : ""}`} onClick={() => setMode("record")}>▤ 查看紀錄</button>
+                </div>
+              )}
+
+              <div className={`grid ${effectiveMode === "record" ? "recordMode" : ""}`}>
+                {loading && <div className="loading">載入中...</div>}
+                {!loading && error && <div className="errorBox"><b>⚠️ 系統讀取失敗</b><br /><br />{error}</div>}
+                {!loading && !error && visibleItems.length === 0 && <div className="empty">目前沒有系統資料</div>}
+                {!loading && !error && visibleItems.map((item) => {
+                  const url = effectiveMode === "record" ? item.recordUrl : item.formUrl;
+                  const danger = item.name.includes("不良");
+                  return (
+                    <a
+                      key={`${item.id}-${item.name}`}
+                      className={`appTile ${danger ? "dangerTile" : ""}`}
+                      href={url || undefined}
+                      target={url ? "_blank" : undefined}
+                      rel={url ? "noopener noreferrer" : undefined}
+                      aria-disabled={!url}
+                    >
+                      <div className="tileIcon">{getIcon(item.module, item.name)}</div>
+                      <div className="tileCopy">
+                        <div className="tileName">{cleanName(item.name)}</div>
+                        <div className="tileDesc">{effectiveMode === "record" ? "查看紀錄 / Google 試算表" : getShortDesc(item.name)}</div>
+                      </div>
+                      <div className="tileAction">{effectiveMode === "record" ? "▤ 查看紀錄" : danger ? "⚠ 立即填寫" : "▣ 立即填寫"}<span>›</span></div>
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
+
+            {note && <div className="adminNote">{note}</div>}
+
+            {role === "admin" && (
+              <section className="section">
+                <div className="sectionTitle">全部功能</div>
+                <div className="smallList">
+                  {systems.length === 0 && !loading ? <div className="empty">目前沒有功能資料</div> : systems.map((item) => {
+                    const url = effectiveMode === "record" ? item.recordUrl : item.formUrl;
+                    return (
+                      <a
+                        key={`all-${item.id}-${item.name}`}
+                        className="listItem"
+                        href={url || undefined}
+                        target={url ? "_blank" : undefined}
+                        rel={url ? "noopener noreferrer" : undefined}
+                        aria-disabled={!url}
+                      >
+                        <div className="listIcon">{getIcon(item.module, item.name)}</div>
+                        <div className="listMain">
+                          <div className="listName">{item.name}</div>
+                          <div className="listMeta">{item.module}｜{item.department}｜{effectiveMode === "record" ? "紀錄 / Google試算表" : "填寫表單"}</div>
+                        </div>
+                        <div className="arrow">›</div>
+                      </a>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </div>
+
+          <footer className="footer"><b>大成鋼系統櫥櫃部</b><span>空間 · 收納 · 生活</span></footer>
+        </div>
       </div>
-
-      <footer className="footer">大成鋼系統櫥櫃部</footer>
     </main>
   );
 }
