@@ -7,6 +7,8 @@ export type GoogleSheetsConfig = {
   privateKey: string;
 };
 
+type EnvLike = Record<string, string | undefined>;
+
 export class GoogleSheetsConfigError extends Error {
   constructor(message: string) {
     super(message);
@@ -18,7 +20,7 @@ export function normalizePrivateKey(value: string): string {
   return value.replace(/\\n/g, "\n");
 }
 
-export function readGoogleSheetsConfig(env: NodeJS.ProcessEnv = process.env): GoogleSheetsConfig {
+export function readGoogleSheetsConfig(env: EnvLike = process.env): GoogleSheetsConfig {
   const spreadsheetId = String(env.GOOGLE_SHEETS_SPREADSHEET_ID ?? "").trim();
   const email = String(env.GOOGLE_SERVICE_ACCOUNT_EMAIL ?? "").trim();
   const privateKeyRaw = String(env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ?? "").trim();
