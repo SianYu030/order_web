@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
+import "./showroom-ratio.css";
 
 export const metadata: Metadata = {
   title: "大成鋼系統櫥櫃部管理平台",
