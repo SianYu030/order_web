@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { canViewRecord, getRoleName, getRoleNote, isRoleAllowed, normalizeRole } from "@/lib/roles";
 import { sortSystemItems, type SystemItem } from "@/lib/systems";
 
@@ -95,7 +95,7 @@ function todayText(): string {
 export default function ManagementPlatform() {
   const browserSnapshot = useSyncExternalStore(subscribeBrowserState, getBrowserSnapshot, getServerSnapshot);
   const [search, detectedView = "desktop"] = browserSnapshot.split(SNAPSHOT_SEPARATOR) as [string, ViewMode];
-  const params = useMemo(() => new URLSearchParams(search), [search]);
+  const params = new URLSearchParams(search);
   const role = normalizeRole(params.get("role"));
   const viewMode = normalizeView(params.get("view"), detectedView);
 
@@ -122,14 +122,13 @@ export default function ManagementPlatform() {
     return () => controller.abort();
   }, []);
 
-  const visibleItems = useMemo(() => {
-    const filtered = systems.filter((item) => {
+  const visibleItems = sortSystemItems(
+    systems.filter((item) => {
       if (!isRoleAllowed(role, item.name)) return false;
       if (effectiveMode === "record") return canViewRecord(role) && Boolean(item.recordUrl);
       return Boolean(item.formUrl);
-    });
-    return sortSystemItems(filtered);
-  }, [systems, role, effectiveMode]);
+    })
+  );
 
   const note = getRoleNote(role);
   const rootClass = `platformRoot ${role} view-${viewMode}`;
