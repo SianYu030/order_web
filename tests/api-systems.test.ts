@@ -1,23 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../lib/google-sheets", () => {
-  class GoogleSheetsConfigError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = "GoogleSheetsConfigError";
-    }
-  }
-
-  return {
-    GoogleSheetsConfigError,
-    getSystemListFromGoogleSheets: vi.fn()
-  };
-});
+vi.mock("../lib/apps-script-bridge", () => ({
+  fetchSystemListFromAppsScript: vi.fn()
+}));
 
 import { GET } from "../app/api/systems/route";
-import { getSystemListFromGoogleSheets, GoogleSheetsConfigError } from "../lib/google-sheets";
+import { fetchSystemListFromAppsScript } from "../lib/apps-script-bridge";
 
-const mockedGetSystemList = vi.mocked(getSystemListFromGoogleSheets);
+const mockedGetSystemList = vi.mocked(fetchSystemListFromAppsScript);
 
 describe("GET /api/systems", () => {
   beforeEach(() => {
@@ -47,25 +37,14 @@ describe("GET /api/systems", () => {
     });
   });
 
-  it("returns 500 when Google Sheets configuration is missing", async () => {
-    mockedGetSystemList.mockRejectedValue(new GoogleSheetsConfigError("missing"));
-
-    const response = await GET();
-    expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({
-      success: false,
-      message: "系統尚未完成 Google Sheets 連線設定。"
-    });
-  });
-
-  it("returns 502 when Google Sheets cannot be read", async () => {
+  it("returns 502 when the Apps Script bridge cannot be read", async () => {
     mockedGetSystemList.mockRejectedValue(new Error("upstream failed"));
 
     const response = await GET();
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
       success: false,
-      message: "Google Sheets 資料讀取失敗，請稍後再試。"
+      message: "Apps Script 資料橋接失敗，請稍後再試。"
     });
   });
 });
