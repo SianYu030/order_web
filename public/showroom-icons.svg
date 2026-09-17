@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+<defs>
+  <linearGradient id="woodA" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e5bd82"/><stop offset=".55" stop-color="#b67842"/><stop offset="1" stop-color="#7b4727"/></linearGradient>
+  <linearGradient id="woodB" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f0d29f"/><stop offset="1" stop-color="#a76736"/></linearGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2f2f2"/><stop offset=".22" stop-color="#8e8e8e"/><stop offset=".55" stop-color="#d5d5d5"/><stop offset="1" stop-color="#525252"/></linearGradient>
+  <linearGradient id="darkMetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7b7b7b"/><stop offset="1" stop-color="#262626"/></linearGradient>
+  <linearGradient id="red" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ff6a63"/><stop offset=".48" stop-color="#e33834"/><stop offset="1" stop-color="#9d1518"/></linearGradient>
+  <linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8bd27b"/><stop offset="1" stop-color="#2b8f46"/></linearGradient>
+  <filter id="s" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="#51321e" flood-opacity=".25"/></filter>
+  <filter id="s2" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#2b1a10" flood-opacity=".28"/></filter>
+</defs>
+
+<!-- 1 board stack -->
+<g transform="translate(0 0)" filter="url(#s)">
+  <g transform="translate(26 42)"><path d="M25 105l88-31 62 23-89 33z" fill="#704126"/><path d="M25 105v20l61 23v-18z" fill="#a56636"/><path d="M86 130v18l89-34V97z" fill="#774323"/>
+  <path d="M25 76l88-31 62 23-89 33z" fill="url(#woodA)"/><path d="M25 76v20l61 23v-18z" fill="#be7c42"/><path d="M86 101v18l89-34V68z" fill="#8d522a"/>
+  <path d="M25 48l88-31 62 23-89 33z" fill="url(#woodB)"/><path d="M25 48v20l61 23v-18z" fill="#c8874a"/><path d="M86 73v18l89-34V40z" fill="#95572e"/>
+  <path d="M34 45l77-27M48 50l77-27M44 75l77-27M41 103l77-27" stroke="#fff" stroke-opacity=".28"/></g>
+</g>
+
+<!-- 2 nesting boards -->
+<g transform="translate(200 0)" filter="url(#s)"><g transform="translate(27 45)">
+  <path d="M24 104l92-26 59 23-91 28z" fill="#6a3f25"/><path d="M84 129v16l91-29v-15z" fill="#784627"/>
+  <path d="M31 71l93-27 53 22-91 29z" fill="#d7aa70"/><path d="M86 95v17l91-30V66z" fill="#8e542d"/>
+  <path d="M22 39l91-25 62 24-93 27z" fill="#efd4a7"/><path d="M82 65v17l93-29V38z" fill="#ae6d39"/>
+  <path d="M31 39l79-21M40 45l78-21" stroke="#fff" stroke-opacity=".35"/>
+  <path d="M135 20v55M135 20h39M174 20v42" stroke="#c99a63" stroke-width="4" stroke-dasharray="6 5" fill="none" opacity=".7"/></g></g>
+
+<!-- 3 crossed tools -->
+<g transform="translate(400 0)" filter="url(#s2)"><g transform="translate(34 29)">
+  <g transform="rotate(-42 83 90)"><rect x="74" y="25" width="18" height="125" rx="9" fill="url(#darkMetal)"/><rect x="73" y="127" width="20" height="45" rx="8" fill="url(#woodA)"/><circle cx="83" cy="32" r="17" fill="none" stroke="url(#metal)" stroke-width="12"/></g>
+  <g transform="rotate(38 93 89)"><rect x="85" y="30" width="16" height="133" rx="8" fill="url(#metal)"/><path d="M78 26h30l-5-21H83z" fill="url(#metal)"/><rect x="83" y="139" width="20" height="42" rx="8" fill="#ad6b39"/></g></g></g>
+
+<!-- 4 waste bin with wood -->
+<g transform="translate(600 0)" filter="url(#s2)"><g transform="translate(50 35)">
+  <path d="M34 47h67l-9 111H44z" fill="#4d4d4d"/><path d="M45 53h46l-6 95H51z" fill="#6b6b6b"/><rect x="27" y="35" width="80" height="18" rx="6" fill="#333"/>
+  <path d="M45 40l10-61 13 3-8 62z" fill="url(#woodB)" transform="rotate(-9 52 31)"/><path d="M65 42l15-70 14 4-16 68z" fill="#c17d43" transform="rotate(12 73 27)"/><path d="M82 42l25-56 12 6-25 56z" fill="#9b5e32" transform="rotate(18 95 21)"/></g></g>
+
+<!-- 5 clipboard -->
+<g transform="translate(0 200)" filter="url(#s2)"><g transform="translate(45 22)">
+  <rect x="26" y="18" width="112" height="147" rx="9" fill="#a96836"/><rect x="38" y="30" width="88" height="122" rx="5" fill="#f8f4ea"/><rect x="59" y="5" width="46" height="30" rx="8" fill="url(#metal)"/><rect x="69" y="0" width="26" height="11" rx="5" fill="#555"/>
+  <path d="M58 92l19 19 38-48" fill="none" stroke="url(#green)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/></g></g>
+
+<!-- 6 warning triangle -->
+<g transform="translate(200 200)" filter="url(#s2)"><g transform="translate(30 24)">
+  <path d="M78 10L151 139a18 18 0 0 1-16 27H23a18 18 0 0 1-16-27L78 10z" fill="url(#red)" stroke="#8b1517" stroke-width="5"/>
+  <path d="M79 35l51 101H29z" fill="#fff2ec" stroke="#ffb0a8" stroke-width="3"/>
+  <rect x="70" y="68" width="18" height="48" rx="9" fill="#b51e20"/><circle cx="79" cy="130" r="10" fill="#b51e20"/></g></g>
+
+<!-- 7 hardware hinges -->
+<g transform="translate(400 200)" filter="url(#s2)"><g transform="translate(22 54)">
+  <g fill="url(#metal)" stroke="#5d5d5d" stroke-width="2"><path d="M24 23h66v36H24z"/><path d="M90 15h57v52H90z"/><circle cx="44" cy="41" r="8"/><circle cx="121" cy="41" r="11"/><rect x="68" y="11" width="28" height="60" rx="5"/></g>
+  <g transform="translate(18 62) rotate(16 82 32)" fill="url(#metal)" stroke="#5d5d5d" stroke-width="2"><path d="M24 23h66v36H24z"/><path d="M90 15h57v52H90z"/><circle cx="44" cy="41" r="8"/><circle cx="121" cy="41" r="11"/><rect x="68" y="11" width="28" height="60" rx="5"/></g></g></g>
+
+<!-- 8 edgeband roll -->
+<g transform="translate(600 200)" filter="url(#s)"><g transform="translate(30 42)">
+  <ellipse cx="79" cy="60" rx="66" ry="48" fill="url(#woodB)"/><ellipse cx="79" cy="60" rx="35" ry="24" fill="#6d4328"/><ellipse cx="79" cy="60" rx="21" ry="14" fill="#d8b47f"/>
+  <path d="M17 61c2 62 42 86 92 79 28-4 43-25 43-43v-37c0 24-29 48-73 48S17 86 17 61z" fill="#b7753d"/>
+  <path d="M107 108v65l48-21v-75c-13 17-27 26-48 31z" fill="url(#woodA)"/>
+  <path d="M28 42c38-23 94-23 116 4M24 55c42-21 94-18 121 3" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="3"/></g></g>
+</svg>

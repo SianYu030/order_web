@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+  <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f1e7da"/><stop offset="1" stop-color="#dfc8ad"/></linearGradient>
+  <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#6a3f22"/><stop offset=".45" stop-color="#9a6740"/><stop offset="1" stop-color="#5a321b"/></linearGradient>
+  <linearGradient id="wood2" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b77c4b"/><stop offset="1" stop-color="#82502e"/></linearGradient>
+  <linearGradient id="stone" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e7dac9"/><stop offset="1" stop-color="#cdb89f"/></linearGradient>
+  <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d8c4ad"/><stop offset="1" stop-color="#c4a98a"/></linearGradient>
+  <pattern id="grain" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="url(#wood)"/><path d="M0 8h40M0 24h40" stroke="#fff" stroke-opacity=".035"/><path d="M8 0v40M31 0v40" stroke="#2d160b" stroke-opacity=".07"/></pattern>
+  <pattern id="slats" width="28" height="28" patternUnits="userSpaceOnUse"><rect width="16" height="28" fill="#724324"/><rect x="16" width="6" height="28" fill="#b57a49"/><rect x="22" width="6" height="28" fill="#4d2916"/></pattern>
+  <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#3d2416" flood-opacity=".25"/></filter>
+  <filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="14"/></filter>
+</defs>
+<rect width="1600" height="900" fill="url(#wall)"/>
+<rect y="705" width="1600" height="195" fill="url(#floor)"/>
+<path d="M0 765L1600 733M0 818L1600 785M310 900l85-195M590 900l43-195M1000 900l-16-195M1360 900l-64-195" stroke="#8c6c50" stroke-opacity=".18"/>
+
+<!-- left showroom -->
+<rect x="0" y="0" width="232" height="900" fill="url(#grain)"/>
+<rect x="205" y="0" width="27" height="900" fill="#472411" opacity=".72"/>
+<rect x="18" y="560" width="180" height="16" rx="3" fill="#eee4d8" filter="url(#shadow)"/>
+<rect x="0" y="576" width="200" height="230" fill="url(#wood2)"/>
+<path d="M0 606h200M0 652h200M0 698h200M0 744h200" stroke="#5e351c" stroke-opacity=".17"/>
+<rect x="24" y="520" width="56" height="38" rx="4" fill="#c7b099"/>
+<rect x="34" y="492" width="35" height="40" rx="3" fill="#a88d70"/>
+<g transform="translate(115 560)"><rect x="-25" y="-8" width="52" height="44" rx="8" fill="#b8a089"/><path d="M0-70C-36-74-51-49-43-31-18-28-7-40 0-54M5-63C41-72 55-45 43-27 20-26 9-39 5-53M-7-43C-47-40-52-11-34 1-13-6-6-20-7-36M10-41C45-38 50-10 32 2 14-4 9-21 10-35" fill="#4f6f32"/><path d="M0-52v47" stroke="#44552c" stroke-width="5"/></g>
+<text x="24" y="842" fill="#f0d8bd" font-family="serif" font-size="16" font-style="italic">From Material to Home</text>
+
+<!-- center calm wall -->
+<rect x="232" y="0" width="1040" height="705" fill="#f6efe6" opacity=".78"/>
+<g opacity=".16" stroke="#b99e83"><path d="M250 0v705M278 0v705M306 0v705M334 0v705M362 0v705M390 0v705"/><path d="M1180 0v705M1208 0v705M1236 0v705"/></g>
+
+<!-- right showroom -->
+<rect x="1272" y="0" width="96" height="900" fill="url(#slats)"/>
+<rect x="1368" y="0" width="232" height="900" fill="#d9c0a1"/>
+<rect x="1478" y="0" width="26" height="900" fill="#a97649"/>
+<rect x="1504" y="0" width="96" height="900" fill="#e1c6a2" opacity=".7"/>
+<rect x="1370" y="0" width="108" height="512" fill="url(#stone)"/>
+<text x="1396" y="155" fill="#806650" font-family="Arial" font-size="14" letter-spacing="3">SYSTEM</text><text x="1396" y="181" fill="#806650" font-family="Arial" font-size="14" letter-spacing="3">FURNITURE</text><text x="1396" y="207" fill="#806650" font-family="Arial" font-size="14" letter-spacing="3">FOR</text><text x="1396" y="233" fill="#806650" font-family="Arial" font-size="14" letter-spacing="3">A BETTER</text><text x="1396" y="259" fill="#806650" font-family="Arial" font-size="14" letter-spacing="3">TOMORROW</text>
+<rect x="1398" y="283" width="31" height="2" fill="#9d846c"/>
+<!-- pendant -->
+<line x1="1540" y1="0" x2="1540" y2="94" stroke="#49301f" stroke-width="3"/><path d="M1518 92h44l-6 50c-4 28-28 28-32 0z" fill="#2f251e"/><ellipse cx="1540" cy="145" rx="15" ry="9" fill="#ffd79a" opacity=".75"/>
+<!-- shelf -->
+<rect x="1488" y="220" width="112" height="12" rx="3" fill="#6d452b"/><rect x="1488" y="302" width="112" height="12" rx="3" fill="#6d452b"/><rect x="1488" y="384" width="112" height="12" rx="3" fill="#6d452b"/>
+<rect x="1513" y="174" width="30" height="46" rx="8" fill="#a79580"/><rect x="1536" y="257" width="28" height="43" rx="8" fill="#d8c7b3"/>
+<g transform="translate(1554 360)"><rect x="-10" y="5" width="23" height="28" rx="6" fill="#b5a189"/><path d="M0-35C-26-38-32-17-22-6-8-7-2-17 0-29M3-31C27-34 34-14 22-4 9-6 4-16 3-25" fill="#55733a"/></g>
+<!-- counter -->
+<path d="M1318 559H1600v32H1304z" fill="#f4eee7" filter="url(#shadow)"/><path d="M1328 590H1600v310H1302z" fill="url(#wood2)"/><path d="M1348 590v310M1398 590v310M1448 590v310M1498 590v310M1548 590v310" stroke="#7b4e2d" stroke-opacity=".18"/>
+<text x="1372" y="675" fill="#4d3323" font-family="Arial" font-size="19" letter-spacing="5">空間 · 收納 · 生活</text>
+<!-- plant on counter -->
+<g transform="translate(1355 555)"><rect x="-24" y="-6" width="50" height="45" rx="8" fill="#c0aa92"/><path d="M0-90C-45-94-57-62-43-42-18-41-7-59 0-78M8-80C45-90 62-56 46-36 21-37 10-56 8-70M-8-59C-48-57-56-27-37-11-16-18-8-35-8-51M13-55C48-52 54-24 35-9 16-14 11-34 13-48" fill="#4c7135"/><path d="M2-76v70" stroke="#43562f" stroke-width="5"/></g>
+</svg>

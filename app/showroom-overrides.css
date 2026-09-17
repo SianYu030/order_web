@@ -1,0 +1,128 @@
+/* Visual overrides that move the live site closer to the approved cabinet-showroom reference. */
+.platformRoot{
+  width:100%;
+  max-width:none;
+  margin:0;
+  background:#c8aa88;
+}
+
+.appHeader{
+  width:100%;
+  max-width:none;
+  margin:0;
+  background:
+    linear-gradient(180deg,rgba(43,24,12,.08),rgba(36,19,9,.2)),
+    repeating-linear-gradient(92deg,#6f4325 0 54px,#7b4d2d 54px 108px,#654020 108px 158px,#7f5130 158px 214px);
+}
+
+.layoutShell{
+  width:100%;
+  max-width:none !important;
+  margin:0 !important;
+  background-image:url('/showroom-bg.svg');
+  background-size:cover;
+  background-position:center top;
+  background-repeat:no-repeat;
+  box-shadow:none;
+}
+
+.sideNav{
+  background:linear-gradient(180deg,rgba(73,41,21,.84),rgba(68,37,19,.78));
+  backdrop-filter:blur(1px);
+}
+.sideNav::after{background:linear-gradient(180deg,transparent,rgba(36,19,9,.32));}
+
+.contentStage{
+  background:linear-gradient(90deg,rgba(255,253,248,.88),rgba(255,253,248,.72));
+  padding:22px 20px 34px;
+}
+.contentStage::before{opacity:.25;}
+.view-desktop .wrap,.wrap{
+  width:min(100%,1040px) !important;
+}
+.panel{
+  padding:18px;
+  border-radius:22px;
+  background:linear-gradient(180deg,rgba(255,253,248,.98),rgba(251,245,236,.98));
+  box-shadow:0 18px 42px rgba(73,43,24,.16),inset 0 1px rgba(255,255,255,.92);
+}
+.panelTitle{font-size:21px;}
+.panelHint{font-size:12px;}
+.modeTabs{margin-bottom:14px;border-radius:13px;padding:4px;}
+.tab{padding:11px 10px;font-size:13px;border-radius:10px;}
+.grid{gap:12px;}
+.appTile{
+  min-height:148px;
+  grid-template-columns:126px minmax(0,1fr);
+  grid-template-areas:"icon copy" "icon action";
+  gap:6px 16px;
+  padding:16px 18px;
+  border-radius:16px;
+  background:linear-gradient(145deg,#fffefb 0,#f8efe4 100%);
+  box-shadow:0 7px 18px rgba(87,53,30,.1),inset 0 1px rgba(255,255,255,.9);
+}
+.tileIcon{
+  width:116px;
+  height:116px;
+  background-image:url('/showroom-icons.svg');
+  background-size:400% 200%;
+  background-repeat:no-repeat;
+  background-color:transparent;
+  border-radius:18px;
+  filter:drop-shadow(0 8px 8px rgba(73,43,24,.2));
+  color:transparent;
+  font-size:0;
+}
+.tileIcon::before{display:none;}
+.tileIcon[data-icon="board-cut"]{background-position:0% 0%;}
+.tileIcon[data-icon="board-nesting"]{background-position:33.333% 0%;}
+.tileIcon[data-icon="repair"]{background-position:66.666% 0%;}
+.tileIcon[data-icon="waste"]{background-position:100% 0%;}
+.tileIcon[data-icon="first-piece"]{background-position:0% 100%;}
+.tileIcon[data-icon="rework"]{background-position:33.333% 100%;}
+.tileIcon[data-icon="hardware"]{background-position:66.666% 100%;}
+.tileIcon[data-icon="edgeband"]{background-position:100% 100%;}
+.tileIcon[data-icon="fallback"]{
+  background-image:none;
+  color:inherit;
+  font-size:42px;
+}
+.tileCopy{padding-right:46px;}
+.tileName{font-size:21px;line-height:1.22;}
+.tileDesc{font-size:13px;margin-top:5px;}
+.tileAction{min-width:132px;padding:8px 16px;font-size:12px;}
+.ghostIcon{right:18px;top:48px;font-size:46px;opacity:.25;}
+.dangerTile{background:linear-gradient(145deg,#fffaf8 0,#ffe7e1 100%);}
+.dangerTile .tileIcon{filter:drop-shadow(0 8px 10px rgba(169,40,38,.22));}
+
+.showroomDecor{
+  background:transparent !important;
+  border-left:0;
+}
+.showroomDecor>*{display:none !important;}
+
+@media (min-width:1600px){
+  .appTile{min-height:160px;grid-template-columns:136px minmax(0,1fr);}
+  .tileIcon{width:126px;height:126px;}
+  .tileName{font-size:22px;}
+  .tileDesc{font-size:13px;}
+}
+
+@media (max-width:1180px){
+  .layoutShell{background-position:left top;}
+  .contentStage{background:rgba(255,252,247,.9);}
+  .wrap{width:min(100%,860px)!important;}
+  .appTile{grid-template-columns:104px minmax(0,1fr);min-height:136px;}
+  .tileIcon{width:96px;height:96px;}
+}
+
+@media (max-width:760px){
+  .layoutShell{background-image:none;}
+  .contentStage{background:linear-gradient(180deg,#f4eadf,#efe1d1);}
+  .appTile{grid-template-columns:88px minmax(0,1fr);min-height:122px;padding:12px;}
+  .tileIcon{width:82px;height:82px;}
+  .tileName{font-size:17px;}
+  .tileDesc{font-size:12px;}
+  .tileAction{min-width:108px;padding:6px 12px;font-size:10px;}
+  .ghostIcon{font-size:34px;top:34px;}
+}

@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { getSidebarItems } from "@/lib/navigation";
 import { canViewRecord, getRoleName, isRoleAllowed, normalizeRole } from "@/lib/roles";
 import { getShowroomGridTemplate } from "@/lib/showroom-layout";
+import { getShowroomIconKey } from "@/lib/showroom-icons";
 import { sortSystemItems, type SystemItem } from "@/lib/systems";
 
 type Mode = "fill" | "record";
@@ -219,6 +220,7 @@ export default function ManagementPlatform() {
                 {!loading && !error && visibleItems.map((item) => {
                   const url = effectiveMode === "record" ? item.recordUrl : item.formUrl;
                   const danger = item.name.includes("不良");
+                  const iconKey = getShowroomIconKey(item.name);
                   return (
                     <a
                       key={`${item.id}-${item.name}`}
@@ -228,7 +230,7 @@ export default function ManagementPlatform() {
                       rel={url ? "noopener noreferrer" : undefined}
                       aria-disabled={!url}
                     >
-                      <div className="tileIcon">{getIcon(item.module, item.name)}</div>
+                      <div className="tileIcon" data-icon={iconKey} aria-hidden="true">{iconKey === "fallback" ? getIcon(item.module, item.name) : ""}</div>
                       <div className="tileCopy">
                         <div className="tileName">{cleanName(item.name)}</div>
                         <div className="tileDesc">{effectiveMode === "record" ? "查看紀錄 / Google 試算表" : getShortDesc(item.name)}</div>
