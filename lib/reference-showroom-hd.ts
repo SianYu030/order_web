@@ -12,13 +12,13 @@ export type PercentRect = {
   height: number;
 };
 
-export const HD_SHOWROOM_ASSET_PATH = "/reference-showroom-hd.webp";
-
 const HD_SHOWROOM_IMAGE_BASE64 = [chunk00, chunk01, chunk02, chunk03, chunk04, chunk05].join("");
 
 export function getHdShowroomImageSrc(): string {
   return `data:image/webp;base64,${HD_SHOWROOM_IMAGE_BASE64}`;
 }
+
+export const HD_SHOWROOM_ASSET_PATH = getHdShowroomImageSrc();
 
 export const HD_SHOWROOM_FILL_TAB: PercentRect = {
   left: 19.4,
