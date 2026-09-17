@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -32,6 +33,7 @@ function subscribeBrowserState(callback: () => void): () => void {
   window.addEventListener("popstate", callback);
   window.addEventListener("resize", callback);
   mediaQuery.addEventListener("change", callback);
+
   return () => {
     window.removeEventListener("popstate", callback);
     window.removeEventListener("resize", callback);
@@ -144,9 +146,28 @@ export default function ManagementPlatform() {
       .filter((entry): entry is { item: SystemItem; slot: number } => entry.slot !== null);
 
     return (
-      <main className={`hdShowroomRoot ${role}`}>
+      <main className={`hdShowroomRoot ${role} mode-${effectiveMode}`}>
         <section className="hdShowroomCanvas" aria-label="大成鋼系統櫥櫃部作業平台桌機版">
-          <img className="hdShowroomImage" src={HD_SHOWROOM_ASSET_PATH} alt="大成鋼系統櫥櫃部作業平台" />
+          <img
+            className="hdShowroomImage"
+            src={HD_SHOWROOM_ASSET_PATH}
+            width="1200"
+            height="960"
+            alt="大成鋼系統櫥櫃部作業平台"
+            draggable={false}
+          />
+
+          {effectiveMode === "record" && (
+            <>
+              <div className="hdFillTabMutedCover" style={rectStyle(HD_SHOWROOM_FILL_TAB)} />
+              <div className="hdRecordCover hdRecordTabCover" style={rectStyle(HD_SHOWROOM_RECORD_TAB)}>▤　查看紀錄</div>
+              {slotItems.map(({ item, slot }) => {
+                const rect = HD_SHOWROOM_CARD_RECTS[slot];
+                if (!rect) return null;
+                return <div key={`cover-${item.id}-${slot}`} className="hdRecordCover hdRecordButtonCover" style={rectStyle(rect)}>▤ 查看紀錄　›</div>;
+              })}
+            </>
+          )}
 
           <button
             type="button"
