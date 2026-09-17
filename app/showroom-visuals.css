@@ -1,0 +1,76 @@
+.platformRoot{background:linear-gradient(90deg,#b99570 0 7%,#d9c2a8 7% 93%,#b99570 93% 100%)}
+
+.sideNav{background:
+linear-gradient(180deg,rgba(64,35,17,.08),rgba(37,20,10,.25)),
+repeating-linear-gradient(92deg,#6b4023 0 34px,#7e5030 34px 70px,#62391f 70px 108px)!important;
+box-shadow:inset -8px 0 18px rgba(42,22,10,.18),8px 0 22px rgba(54,31,16,.16)!important;
+overflow:hidden}
+.sideNav::before{content:"";position:absolute;inset:0;background:
+linear-gradient(90deg,rgba(255,255,255,.035),transparent 28%,rgba(255,255,255,.025) 60%,transparent),
+repeating-linear-gradient(0deg,transparent 0 31px,rgba(255,255,255,.018) 31px 32px);pointer-events:none}
+.sideNavMenu,.sideQuote,.sidePlant,.sideScript{position:relative;z-index:3}
+.showroomShelf{position:absolute;left:10px;right:10px;height:84px;z-index:1;opacity:.9;border-top:1px solid rgba(242,214,183,.16)}
+.showroomShelfTop{top:420px}.showroomShelfBottom{bottom:38px}
+.showroomShelf::before{content:"";position:absolute;left:7px;right:7px;bottom:5px;height:11px;border-radius:2px;background:linear-gradient(180deg,#c28a55,#7e4e2d);box-shadow:0 5px 8px rgba(28,15,7,.3)}
+.showroomShelf span{position:absolute;bottom:16px;width:15px;background:linear-gradient(90deg,#b18462,#e0c3a2 50%,#8a6043);border-radius:1px}
+.showroomShelf span:nth-child(1){left:18px;height:35px}.showroomShelf span:nth-child(2){left:36px;height:45px}.showroomShelf span:nth-child(3){left:56px;height:28px}
+.showroomShelfBottom span:nth-child(1){left:20px;height:42px}.showroomShelfBottom span:nth-child(2){left:42px;height:30px}
+
+.contentStage{background:
+linear-gradient(90deg,rgba(255,255,255,.7),rgba(249,244,236,.93)),
+repeating-linear-gradient(90deg,rgba(120,80,45,.035) 0 1px,transparent 1px 8px)!important;
+padding-top:22px!important}
+.panel{box-shadow:0 18px 42px rgba(72,43,24,.16),inset 0 1px rgba(255,255,255,.9)!important}
+
+.appTile{min-height:154px!important;grid-template-columns:132px minmax(0,1fr)!important;padding:16px 18px!important;background:linear-gradient(145deg,#fffefb,#f8eee2)!important;border-color:#ddccb8!important;box-shadow:0 6px 18px rgba(94,57,31,.1),inset 0 1px rgba(255,255,255,.92)!important}
+.appTile:hover{transform:translateY(-3px)!important;box-shadow:0 14px 28px rgba(78,45,25,.17),inset 0 1px rgba(255,255,255,.95)!important}
+.tileIcon{width:122px!important;height:105px!important;background:transparent!important;border:0!important;box-shadow:none!important;font-size:0!important;filter:none!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.tileIcon::before{display:none!important}
+.showroomSvg{display:block;width:116px;height:96px;overflow:visible}
+.tileName{font-size:21px!important;line-height:1.18!important}
+.tileDesc{font-size:13px!important;margin-top:6px!important}
+.tileAction{margin-top:8px!important;min-width:126px!important;padding:7px 14px!important;font-size:11px!important}
+.ghostIcon{right:18px!important;top:46px!important;font-size:46px!important;opacity:.24!important}
+.dangerTile{background:linear-gradient(145deg,#fff8f5,#ffe7e2)!important;border-color:#efaaa4!important}
+.dangerTile .tileIcon{filter:drop-shadow(0 5px 8px rgba(165,35,35,.16))!important}
+.recordMode .appTile{background:linear-gradient(145deg,#fcfdfe,#edf2f5)!important}
+
+.showroomDecor{background:
+linear-gradient(90deg,#895735 0 6%,#c49a6f 6% 16%,#dcc5a7 16% 70%,#b98556 70% 78%,#e2ccb0 78% 100%)!important;
+box-shadow:inset 7px 0 18px rgba(58,34,18,.13)}
+.slatWall{width:74px!important;background:repeating-linear-gradient(90deg,#66391e 0 9px,#a86f43 9px 15px,#5b321a 15px 26px)!important;box-shadow:8px 0 20px rgba(62,34,17,.22)!important}
+.showroomDecor::before{content:"";position:absolute;right:0;top:0;width:37%;height:48%;background:linear-gradient(180deg,#6c4025,#4f2b17);box-shadow:inset 9px 0 18px rgba(0,0,0,.18)}
+.showroomDecor::after{content:"";position:absolute;right:7px;top:28px;width:29%;height:38%;border:1px solid rgba(241,216,184,.18);box-shadow:inset 0 -42px 45px rgba(0,0,0,.2)}
+.displayNiche{position:absolute;right:6px;top:82px;width:29%;height:31%;z-index:2;border-left:1px solid rgba(240,215,184,.15)}
+.displayNiche span{position:absolute;left:8px;right:8px;height:6px;background:#c69565;box-shadow:0 5px 8px rgba(25,14,7,.25)}
+.displayNiche span:nth-child(1){top:30%}.displayNiche span:nth-child(2){top:60%}.displayNiche span:nth-child(3){top:88%}
+.displayNiche span::after{content:"";position:absolute;right:14px;bottom:6px;width:19px;height:26px;background:linear-gradient(180deg,#e8ddcd,#a99d8d);border-radius:2px 2px 6px 6px}
+.showroomText{z-index:3!important;color:#765e4c!important;font-size:11px!important}
+.lamp{z-index:5!important;right:20px!important}
+.counterTop{z-index:4!important;left:26px!important;right:-16px!important;bottom:244px!important;height:38px!important;background:linear-gradient(180deg,#fffaf4,#d8cabc)!important;box-shadow:0 9px 20px rgba(62,37,20,.22)!important}
+.counterFace{z-index:3!important;left:52px!important;height:244px!important;background:linear-gradient(90deg,#b27b4c,#d2a876 54%,#a56d42)!important}
+.counterFace::after{content:"";position:absolute;left:0;right:0;bottom:0;height:14px;background:linear-gradient(180deg,#e6bc7f,#ba7d48);box-shadow:0 -5px 14px rgba(255,212,145,.28)}
+.showroomPlant{z-index:6!important;left:15%!important;bottom:250px!important;transform:scale(1.25)}
+
+@media(min-width:1400px){
+  .appTile{min-height:166px!important;grid-template-columns:142px minmax(0,1fr)!important}
+  .tileIcon{width:132px!important;height:112px!important}
+  .showroomSvg{width:126px;height:104px}
+  .tileName{font-size:22px!important}
+}
+
+@media(max-width:900px){
+  .appTile{grid-template-columns:104px minmax(0,1fr)!important;min-height:138px!important}
+  .tileIcon{width:98px!important;height:92px!important}
+  .showroomSvg{width:94px;height:82px}
+  .tileName{font-size:18px!important}
+}
+
+@media(max-width:700px){
+  .showroomShelf,.displayNiche{display:none!important}
+  .appTile{grid-template-columns:96px minmax(0,1fr)!important;min-height:132px!important;padding:13px!important}
+  .tileIcon{width:90px!important;height:84px!important}
+  .showroomSvg{width:86px;height:76px}
+  .tileName{font-size:17px!important}
+  .ghostIcon{font-size:34px!important;right:10px!important;top:34px!important}
+}
