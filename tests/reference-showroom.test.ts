@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { getReferenceSlot } from "../lib/reference-showroom";
 
@@ -11,5 +12,11 @@ describe("getReferenceSlot", () => {
     expect(getReferenceSlot("不良品重工")).toBe(5);
     expect(getReferenceSlot("現場五金領料")).toBe(6);
     expect(getReferenceSlot("每日封邊條領用")).toBe(7);
+  });
+
+  it("loads the desktop reference image from a real static asset instead of an inline data URI", () => {
+    const css = readFileSync("app/reference-showroom.css", "utf8");
+    expect(css).toContain('url("/showroom-reference.webp")');
+    expect(css).not.toContain("data:image/");
   });
 });
