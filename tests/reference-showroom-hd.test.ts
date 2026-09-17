@@ -9,8 +9,9 @@ import {
 } from "../lib/reference-showroom-hd";
 
 describe("high-resolution showroom desktop layout", () => {
-  it("uses the generated high-resolution showroom asset", () => {
-    expect(HD_SHOWROOM_ASSET_PATH).toBe("/reference-showroom-hd.webp");
+  it("uses the bundled high-resolution showroom asset directly in the desktop image", () => {
+    expect(HD_SHOWROOM_ASSET_PATH.startsWith("data:image/webp;base64,")).toBe(true);
+    expect(HD_SHOWROOM_ASSET_PATH).toBe(getHdShowroomImageSrc());
   });
 
   it("embeds the showroom artwork directly in the desktop bundle", () => {
