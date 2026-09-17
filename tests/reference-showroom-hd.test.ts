@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GET as getHdShowroomImage } from "../app/reference-showroom-hd.webp/route";
 import {
   HD_SHOWROOM_ASSET_PATH,
   HD_SHOWROOM_CARD_RECTS,
@@ -10,6 +11,14 @@ import {
 describe("high-resolution showroom desktop layout", () => {
   it("uses the generated high-resolution showroom asset", () => {
     expect(HD_SHOWROOM_ASSET_PATH).toBe("/reference-showroom-hd.webp");
+  });
+
+  it("serves the showroom artwork as a WebP image", async () => {
+    const response = await getHdShowroomImage();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/webp");
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    expect(bytes.byteLength).toBeGreaterThan(50000);
   });
 
   it("maps the eight primary systems to the eight visual card slots", () => {
