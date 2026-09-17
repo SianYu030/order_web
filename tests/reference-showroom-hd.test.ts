@@ -9,18 +9,17 @@ import {
 } from "../lib/reference-showroom-hd";
 
 describe("high-resolution showroom desktop layout", () => {
-  it("embeds a complete WebP instead of a truncated image payload", () => {
-    expect(HD_SHOWROOM_ASSET_PATH).toBe(getHdShowroomImageSrc());
-    expect(HD_SHOWROOM_ASSET_PATH.startsWith("data:image/webp;base64,")).toBe(true);
+  it("keeps a complete WebP payload but serves it through a same-origin endpoint", () => {
+    expect(HD_SHOWROOM_ASSET_PATH).toBe("/api/showroom-image");
 
-    const base64 = HD_SHOWROOM_ASSET_PATH.slice("data:image/webp;base64,".length);
+    const source = getHdShowroomImageSrc();
+    expect(source.startsWith("data:image/webp;base64,")).toBe(true);
+    const base64 = source.slice("data:image/webp;base64,".length);
     const bytes = Buffer.from(base64, "base64");
 
     expect(bytes.subarray(0, 4).toString("ascii")).toBe("RIFF");
     expect(bytes.subarray(8, 12).toString("ascii")).toBe("WEBP");
-
-    const declaredRiffSize = bytes.readUInt32LE(4) + 8;
-    expect(bytes.length).toBe(declaredRiffSize);
+    expect(bytes.length).toBe(bytes.readUInt32LE(4) + 8);
     expect(bytes.length).toBeGreaterThan(100000);
   });
 
