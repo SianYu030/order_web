@@ -4,7 +4,9 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { getSidebarItems } from "@/lib/navigation";
 import { canViewRecord, getRoleName, isRoleAllowed, normalizeRole } from "@/lib/roles";
 import { getShowroomGridTemplate } from "@/lib/showroom-layout";
+import { getShowroomVisualKey } from "@/lib/showroom-visuals";
 import { sortSystemItems, type SystemItem } from "@/lib/systems";
+import { ShowroomIcon } from "@/components/showroom-icon";
 
 type Mode = "fill" | "record";
 type ViewMode = "mobile" | "desktop";
@@ -70,22 +72,6 @@ function getShortDesc(name: string): string {
   if (name.includes("停工")) return "停工紀錄";
   if (name.includes("廢料")) return "廠內廢料紀錄";
   return "開始填寫";
-}
-
-function getIcon(moduleName: string, name: string): string {
-  if (name.includes("報修")) return "🔧";
-  if (name.includes("首件")) return "✅";
-  if (name.includes("不良")) return "⚠️";
-  if (name.includes("五金")) return "🔩";
-  if (name.includes("板材")) return "🪵";
-  if (name.includes("封邊")) return "🟤";
-  if (name.includes("停工")) return "⏱️";
-  if (name.includes("廢料")) return "🗑️";
-  if (moduleName.includes("倉庫")) return "📦";
-  if (moduleName.includes("品質")) return "✅";
-  if (moduleName.includes("設備")) return "🔧";
-  if (moduleName.includes("生產")) return "⏱️";
-  return "📋";
 }
 
 function getGhostIcon(name: string): string {
@@ -173,6 +159,7 @@ export default function ManagementPlatform() {
 
       <div className="layoutShell" style={{ gridTemplateColumns: getShowroomGridTemplate(viewMode) }}>
         <aside className="sideNav" aria-label="作業導覽">
+          <div className="showroomShelf showroomShelfTop" aria-hidden="true"><span /><span /><span /></div>
           <nav className="sideNavMenu">
             {sidebarItems.map((item) => {
               const active = item.id === "record" ? effectiveMode === "record" : item.id === "home" ? effectiveMode === "fill" : false;
@@ -194,6 +181,7 @@ export default function ManagementPlatform() {
             <span>Good Cabinets<br />Better Living</span>
           </div>
           <div className="sidePlant" aria-hidden="true"><span /><span /><span /></div>
+          <div className="showroomShelf showroomShelfBottom" aria-hidden="true"><span /><span /></div>
           <div className="sideScript" aria-hidden="true">From<br />Material to Home</div>
         </aside>
 
@@ -228,7 +216,7 @@ export default function ManagementPlatform() {
                       rel={url ? "noopener noreferrer" : undefined}
                       aria-disabled={!url}
                     >
-                      <div className="tileIcon">{getIcon(item.module, item.name)}</div>
+                      <div className="tileIcon"><ShowroomIcon type={getShowroomVisualKey(item.name)} /></div>
                       <div className="tileCopy">
                         <div className="tileName">{cleanName(item.name)}</div>
                         <div className="tileDesc">{effectiveMode === "record" ? "查看紀錄 / Google 試算表" : getShortDesc(item.name)}</div>
@@ -247,6 +235,7 @@ export default function ManagementPlatform() {
           <div className="slatWall" />
           <div className="showroomText">SYSTEM<br />FURNITURE<br />FOR<br />A BETTER<br />TOMORROW<span /></div>
           <div className="lamp"><span /></div>
+          <div className="displayNiche"><span /><span /><span /></div>
           <div className="counterTop" />
           <div className="counterFace"><span>空間 · 收納 · 生活</span><i /><b /></div>
           <div className="showroomPlant"><i /><i /><i /><i /></div>
