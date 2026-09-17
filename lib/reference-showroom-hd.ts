@@ -37,7 +37,9 @@ export function getHdShowroomImageSrc(): string {
   return `data:image/webp;base64,${HD_SHOWROOM_IMAGE_BASE64}`;
 }
 
-export const HD_SHOWROOM_ASSET_PATH = getHdShowroomImageSrc();
+// Keep the browser-facing image on the same origin. Netlify/browser security can
+// reject a large data: image even though the embedded WebP payload itself is valid.
+export const HD_SHOWROOM_ASSET_PATH = "/api/showroom-image";
 
 export const HD_SHOWROOM_FILL_TAB: PercentRect = {
   left: 19.4,
