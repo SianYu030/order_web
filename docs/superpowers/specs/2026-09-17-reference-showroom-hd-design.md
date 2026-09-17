@@ -25,4 +25,5 @@ Rebuild the desktop management-platform home screen so it visually matches the a
 
 ## Asset
 - Web-optimized reference artwork: `/reference-showroom-hd.webp`.
+- Repository asset size: 1200×960 WebP, preserving the approved 5:4 showroom composition.
 - Keep the original generated PNG outside the repository; only commit the optimized WebP used by the site.
