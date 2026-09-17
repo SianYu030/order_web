@@ -1,21 +1,27 @@
-import { existsSync, statSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   HD_SHOWROOM_ASSET_PATH,
   HD_SHOWROOM_CARD_RECTS,
   HD_SHOWROOM_FILL_TAB,
   HD_SHOWROOM_RECORD_TAB,
+  getHdShowroomImageSrc,
   getHdShowroomSlot
 } from "../lib/reference-showroom-hd";
 
 describe("high-resolution showroom desktop layout", () => {
-  it("uses a real static WebP asset instead of a generated route or data URI", () => {
-    expect(HD_SHOWROOM_ASSET_PATH).toBe("/showroom-v2.webp");
+  it("embeds a complete WebP instead of a truncated image payload", () => {
+    expect(HD_SHOWROOM_ASSET_PATH).toBe(getHdShowroomImageSrc());
+    expect(HD_SHOWROOM_ASSET_PATH.startsWith("data:image/webp;base64,")).toBe(true);
 
-    const assetPath = join(process.cwd(), "public", "showroom-v2.webp");
-    expect(existsSync(assetPath)).toBe(true);
-    expect(statSync(assetPath).size).toBeGreaterThan(50000);
+    const base64 = HD_SHOWROOM_ASSET_PATH.slice("data:image/webp;base64,".length);
+    const bytes = Buffer.from(base64, "base64");
+
+    expect(bytes.subarray(0, 4).toString("ascii")).toBe("RIFF");
+    expect(bytes.subarray(8, 12).toString("ascii")).toBe("WEBP");
+
+    const declaredRiffSize = bytes.readUInt32LE(4) + 8;
+    expect(bytes.length).toBe(declaredRiffSize);
+    expect(bytes.length).toBeGreaterThan(100000);
   });
 
   it("maps the eight primary systems to the eight visual card slots", () => {
