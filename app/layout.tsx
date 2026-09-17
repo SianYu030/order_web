@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import "./showroom-ratio.css";
 import "./showroom-visuals.css";
+import "./reference-showroom.css";
 
 export const metadata: Metadata = {
   title: "大成鋼系統櫥櫃部管理平台",
