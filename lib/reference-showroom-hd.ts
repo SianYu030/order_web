@@ -1,9 +1,15 @@
 import chunk00 from "./reference-showroom-image/chunk-00";
+import chunk00b from "./reference-showroom-image/chunk-00b";
 import chunk01 from "./reference-showroom-image/chunk-01";
 import chunk02 from "./reference-showroom-image/chunk-02";
 import chunk03 from "./reference-showroom-image/chunk-03";
-import chunk04 from "./reference-showroom-image/chunk-04";
+import chunk04a from "./reference-showroom-image/chunk-04a";
+import chunk04b from "./reference-showroom-image/chunk-04b";
 import chunk05 from "./reference-showroom-image/chunk-05";
+import chunk06a from "./reference-showroom-image/chunk-06a";
+import chunk06b from "./reference-showroom-image/chunk-06b";
+import chunk07a from "./reference-showroom-image/chunk-07a";
+import chunk07b from "./reference-showroom-image/chunk-07b";
 
 export type PercentRect = {
   left: number;
@@ -12,7 +18,20 @@ export type PercentRect = {
   height: number;
 };
 
-const HD_SHOWROOM_IMAGE_BASE64 = [chunk00, chunk01, chunk02, chunk03, chunk04, chunk05].join("");
+const HD_SHOWROOM_IMAGE_BASE64 = [
+  chunk00,
+  chunk00b,
+  chunk01,
+  chunk02,
+  chunk03,
+  chunk04a,
+  chunk04b,
+  chunk05,
+  chunk06a,
+  chunk06b,
+  chunk07a,
+  chunk07b
+].join("");
 
 export function getHdShowroomImageSrc(): string {
   return `data:image/webp;base64,${HD_SHOWROOM_IMAGE_BASE64}`;
