@@ -1,19 +1,12 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { ShowroomIcon } from "@/components/showroom-icon";
 import { getSidebarItems } from "@/lib/navigation";
-import {
-  getReferenceSlot,
-  REFERENCE_CARD_RECTS,
-  REFERENCE_FILL_TAB,
-  REFERENCE_RECORD_TAB,
-  type ReferenceRect
-} from "@/lib/reference-showroom";
 import { canViewRecord, getRoleName, isRoleAllowed, normalizeRole } from "@/lib/roles";
 import { getShowroomGridTemplate } from "@/lib/showroom-layout";
 import { getShowroomVisualKey } from "@/lib/showroom-visuals";
 import { sortSystemItems, type SystemItem } from "@/lib/systems";
+import { ShowroomIcon } from "@/components/showroom-icon";
 
 type Mode = "fill" | "record";
 type ViewMode = "mobile" | "desktop";
@@ -99,15 +92,6 @@ function todayText(): string {
   return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} 星期${days[d.getDay()]}`;
 }
 
-function rectStyle(rect: ReferenceRect) {
-  return {
-    left: `${rect.left}%`,
-    top: `${rect.top}%`,
-    width: `${rect.width}%`,
-    height: `${rect.height}%`
-  };
-}
-
 export default function ManagementPlatform() {
   const browserSnapshot = useSyncExternalStore(subscribeBrowserState, getBrowserSnapshot, getServerSnapshot);
   const [search, detectedView = "desktop"] = browserSnapshot.split(SNAPSHOT_SEPARATOR) as [string, ViewMode];
@@ -147,61 +131,12 @@ export default function ManagementPlatform() {
     })
   );
 
-  const referenceItems = systems
-    .map((item) => ({ item, slot: getReferenceSlot(item.name) }))
-    .filter((entry): entry is { item: SystemItem; slot: number } => entry.slot !== null);
-
   const rootClass = `platformRoot ${role} view-${viewMode}`;
 
   function handleNavigation(id: string, targetMode?: Mode) {
     if (targetMode) setMode(targetMode);
     if (id === "home") setMode("fill");
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  if (viewMode === "desktop" && role === "admin") {
-    return (
-      <main className="referenceShowroomRoot">
-        <div className="referenceShowroomCanvas" aria-label="大成鋼系統櫥櫃部管理平台">
-          <button
-            type="button"
-            className={`referenceTab ${effectiveMode === "fill" ? "active" : ""}`}
-            style={rectStyle(REFERENCE_FILL_TAB)}
-            onClick={() => setMode("fill")}
-          >
-            ✎　填寫表單
-          </button>
-          <button
-            type="button"
-            className={`referenceTab ${effectiveMode === "record" ? "active" : ""}`}
-            style={rectStyle(REFERENCE_RECORD_TAB)}
-            onClick={() => setMode("record")}
-          >
-            ▤　查看紀錄
-          </button>
-
-          {!loading && !error && referenceItems.map(({ item, slot }) => {
-            const url = effectiveMode === "record" ? item.recordUrl : item.formUrl;
-            if (!url || !REFERENCE_CARD_RECTS[slot]) return null;
-            return (
-              <a
-                key={`reference-${item.id}-${item.name}`}
-                className="referenceCardHotspot"
-                style={rectStyle(REFERENCE_CARD_RECTS[slot])}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`${effectiveMode === "record" ? "查看紀錄" : "填寫表單"}：${item.name}`}
-                title={item.name}
-              />
-            );
-          })}
-
-          {loading && <div className="referenceStatus">資料載入中…</div>}
-          {!loading && error && <div className="referenceStatus error">{error}</div>}
-        </div>
-      </main>
-    );
   }
 
   return (
