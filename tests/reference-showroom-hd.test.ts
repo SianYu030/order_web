@@ -5,7 +5,7 @@ import {
   HD_SHOWROOM_FILL_TAB,
   HD_SHOWROOM_RECORD_TAB,
   getHdShowroomSlot
-} from "@/lib/reference-showroom-hd";
+} from "../lib/reference-showroom-hd";
 
 describe("high-resolution showroom desktop layout", () => {
   it("uses the generated high-resolution showroom asset", () => {
