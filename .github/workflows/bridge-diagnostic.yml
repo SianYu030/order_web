@@ -9,7 +9,7 @@ jobs:
   diagnose:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe Apps Script bridge
+      - name: Probe Apps Script bridge directly
         shell: bash
         run: |
           set -euo pipefail
@@ -32,5 +32,34 @@ jobs:
             console.log('JSON_OK=false');
             console.log(`LOOKS_LIKE_HTML=${/^\s*</.test(text)}`);
             process.exit(3);
+          }
+          NODE
+
+      - name: Probe deployed Netlify API
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://deploy-preview-3--order-web-sianyu.netlify.app/api/systems'
+          echo 'Waiting for the preview alias to settle...'
+          sleep 45
+          curl -sS -L --max-time 30 -o /tmp/netlify-api-response.txt \
+            -w 'NETLIFY_HTTP_STATUS=%{http_code}\nNETLIFY_CONTENT_TYPE=%{content_type}\nNETLIFY_EFFECTIVE_URL=%{url_effective}\n' \
+            "$URL"
+          node <<'NODE'
+          const fs = require('fs');
+          const text = fs.readFileSync('/tmp/netlify-api-response.txt', 'utf8');
+          console.log(`NETLIFY_BODY_BYTES=${Buffer.byteLength(text)}`);
+          try {
+            const body = JSON.parse(text);
+            console.log('NETLIFY_JSON_OK=true');
+            console.log(`NETLIFY_SUCCESS_FIELD=${body.success === true}`);
+            console.log(`NETLIFY_DATA_IS_ARRAY=${Array.isArray(body.data)}`);
+            console.log(`NETLIFY_DATA_COUNT=${Array.isArray(body.data) ? body.data.length : -1}`);
+            console.log(`NETLIFY_MESSAGE_PRESENT=${typeof body.message === 'string'}`);
+            if (body.success !== true || !Array.isArray(body.data)) process.exit(4);
+          } catch (error) {
+            console.log('NETLIFY_JSON_OK=false');
+            console.log(`NETLIFY_LOOKS_LIKE_HTML=${/^\s*</.test(text)}`);
+            process.exit(5);
           }
           NODE
