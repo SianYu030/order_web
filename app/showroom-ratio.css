@@ -1,0 +1,222 @@
+@media (min-width: 1101px) {
+  html,
+  body {
+    background: #c6ad91;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+  }
+
+  .platformRoot {
+    width: min(100vw, calc(100vh * 1.347));
+    min-width: 0;
+    margin: 0 auto;
+    overflow: hidden;
+    box-shadow: 0 0 42px rgba(48, 27, 14, .28);
+  }
+
+  .appHeader {
+    height: 10.83vh;
+    min-height: 88px;
+    max-height: 98px;
+    padding: 0 2.8% 0 2.1%;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 2%;
+  }
+
+  .layoutShell {
+    width: 100%;
+    max-width: none !important;
+    min-height: calc(100vh - 10.83vh);
+    margin: 0 !important;
+    grid-template-columns: 13.5% 69% 17.5%;
+  }
+
+  .sideNav {
+    min-height: calc(100vh - 10.83vh);
+    padding: 2.2vh 1.05vw 2.8vh;
+  }
+
+  .sideNavMenu {
+    gap: 1.05vh;
+  }
+
+  .sideNavItem {
+    font-size: clamp(13px, 1.42vh, 17px);
+    padding: 1.3vh .65vw;
+    gap: .6vw;
+  }
+
+  .sideNavIcon {
+    width: 2.8vh;
+    height: 2.8vh;
+    font-size: clamp(17px, 2vh, 23px);
+  }
+
+  .sideQuote {
+    margin-top: 6.8vh;
+    padding-top: 2vh;
+    font-size: clamp(11px, 1.32vh, 15px);
+  }
+
+  .sideQuote b {
+    font-size: clamp(13px, 1.55vh, 17px);
+  }
+
+  .contentStage {
+    width: 100%;
+    padding: 1.95vh 1.45% 2.3vh;
+  }
+
+  .wrap {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .panel {
+    width: 100%;
+    padding: 1.45vh 1.25%;
+    border-radius: 2.3vh;
+  }
+
+  .panelTitleRow {
+    margin-bottom: 1.35vh;
+  }
+
+  .panelTitle {
+    font-size: clamp(19px, 2.35vh, 25px);
+  }
+
+  .panelHint {
+    font-size: clamp(11px, 1.36vh, 14px);
+  }
+
+  .modeTabs {
+    margin-bottom: 1.2vh;
+    padding: .35vh;
+    border-radius: 1.15vh;
+  }
+
+  .tab {
+    font-size: clamp(12px, 1.45vh, 15px);
+    padding: 1.05vh .8vw;
+  }
+
+  .grid {
+    gap: 1.15vh .85vw;
+  }
+
+  .appTile {
+    min-height: 14.2vh;
+    max-height: 15.1vh;
+    grid-template-columns: 10.2vh minmax(0, 1fr);
+    padding: 1.25vh .9vw;
+    gap: .45vh .8vw;
+    border-radius: 1.55vh;
+  }
+
+  .tileIcon {
+    width: 9.4vh;
+    height: 9.4vh;
+    font-size: clamp(38px, 5.4vh, 54px);
+  }
+
+  .tileIcon::before {
+    width: 8.4vh;
+    height: 7.4vh;
+  }
+
+  .tileCopy {
+    padding-right: 2.4vw;
+  }
+
+  .tileName {
+    font-size: clamp(17px, 2.22vh, 22px);
+    line-height: 1.2;
+  }
+
+  .tileDesc {
+    margin-top: .45vh;
+    font-size: clamp(10px, 1.36vh, 14px);
+  }
+
+  .ghostIcon {
+    right: 1.05vw;
+    top: 4.4vh;
+    font-size: clamp(34px, 4.9vh, 49px);
+  }
+
+  .tileAction {
+    min-width: 11.6vh;
+    padding: .62vh .78vw;
+    font-size: clamp(9px, 1.2vh, 12px);
+  }
+
+  .showroomDecor {
+    min-height: calc(100vh - 10.83vh);
+  }
+
+  .slatWall {
+    width: 4.6vw;
+    max-width: 66px;
+  }
+
+  .showroomText {
+    left: 37%;
+    top: 8.7vh;
+    font-size: clamp(10px, 1.3vh, 13px);
+  }
+
+  .counterTop {
+    bottom: 27.3vh;
+    height: 3.8vh;
+  }
+
+  .counterFace {
+    height: 27.3vh;
+  }
+
+  .showroomPlant {
+    bottom: 28.4vh;
+  }
+
+  .brandMark {
+    width: 5.6vh;
+    height: 6.4vh;
+  }
+
+  .brandMark span:first-child {
+    height: 4.6vh;
+  }
+
+  .brandMark span:last-child {
+    height: 3.5vh;
+  }
+
+  .title {
+    font-size: clamp(23px, 3.25vh, 31px);
+  }
+
+  .subtitle {
+    font-size: clamp(12px, 1.55vh, 15px);
+  }
+
+  .headerSlogan {
+    font-size: clamp(17px, 2.2vh, 22px);
+  }
+
+  .dateText {
+    font-size: clamp(11px, 1.35vh, 13px);
+  }
+
+  .headerLine {
+    font-size: clamp(9px, 1.08vh, 11px);
+  }
+
+  .roleBadge {
+    font-size: clamp(10px, 1.18vh, 12px);
+  }
+}
