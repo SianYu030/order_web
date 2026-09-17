@@ -9,7 +9,7 @@ import {
 
 describe("high-resolution showroom desktop layout", () => {
   it("uses the generated high-resolution showroom asset", () => {
-    expect(HD_SHOWROOM_ASSET_PATH).toBe("/reference-showroom-hd.png");
+    expect(HD_SHOWROOM_ASSET_PATH).toBe("/reference-showroom-hd.webp");
   });
 
   it("maps the eight primary systems to the eight visual card slots", () => {
