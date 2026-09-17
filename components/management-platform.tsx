@@ -1,11 +1,20 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { getSidebarItems } from "@/lib/navigation";
 import { canViewRecord, getRoleName, isRoleAllowed, normalizeRole } from "@/lib/roles";
+import {
+  HD_SHOWROOM_ASSET_PATH,
+  HD_SHOWROOM_CARD_RECTS,
+  HD_SHOWROOM_FILL_TAB,
+  HD_SHOWROOM_RECORD_TAB,
+  getHdShowroomSlot,
+  rectStyle
+} from "@/lib/reference-showroom-hd";
+import { sortSystemItems, type SystemItem } from "@/lib/systems";
+import { getSidebarItems } from "@/lib/navigation";
 import { getShowroomGridTemplate } from "@/lib/showroom-layout";
 import { getShowroomVisualKey } from "@/lib/showroom-visuals";
-import { sortSystemItems, type SystemItem } from "@/lib/systems";
 import { ShowroomIcon } from "@/components/showroom-icon";
 
 type Mode = "fill" | "record";
@@ -130,6 +139,78 @@ export default function ManagementPlatform() {
       return Boolean(item.formUrl);
     })
   );
+
+  if (viewMode === "desktop") {
+    const slotItems = visibleItems
+      .map((item) => ({ item, slot: getHdShowroomSlot(item.name) }))
+      .filter((entry): entry is { item: SystemItem; slot: number } => entry.slot !== null);
+
+    return (
+      <main className={`hdShowroomRoot ${role} mode-${effectiveMode}`}>
+        <section className="hdShowroomCanvas" aria-label="大成鋼系統櫥櫃部作業平台桌機版">
+          <img
+            className="hdShowroomImage"
+            src={HD_SHOWROOM_ASSET_PATH}
+            width="1200"
+            height="960"
+            alt="大成鋼系統櫥櫃部作業平台"
+            draggable={false}
+          />
+
+          {effectiveMode === "record" && (
+            <>
+              <div className="hdFillTabMutedCover" style={rectStyle(HD_SHOWROOM_FILL_TAB)} />
+              <div className="hdRecordCover hdRecordTabCover" style={rectStyle(HD_SHOWROOM_RECORD_TAB)}>▤　查看紀錄</div>
+              {slotItems.map(({ item, slot }) => {
+                const rect = HD_SHOWROOM_CARD_RECTS[slot];
+                if (!rect) return null;
+                return <div key={`cover-${item.id}-${slot}`} className="hdRecordCover hdRecordButtonCover" style={rectStyle(rect)}>▤ 查看紀錄　›</div>;
+              })}
+            </>
+          )}
+
+          <button
+            type="button"
+            className={`hdHotspot hdTabHotspot ${effectiveMode === "fill" ? "isActive" : ""}`}
+            style={rectStyle(HD_SHOWROOM_FILL_TAB)}
+            aria-label="填寫表單"
+            onClick={() => setMode("fill")}
+          />
+
+          {canViewRecord(role) && (
+            <button
+              type="button"
+              className={`hdHotspot hdTabHotspot ${effectiveMode === "record" ? "isActive" : ""}`}
+              style={rectStyle(HD_SHOWROOM_RECORD_TAB)}
+              aria-label="查看紀錄"
+              onClick={() => setMode("record")}
+            />
+          )}
+
+          {!loading && !error && slotItems.map(({ item, slot }) => {
+            const url = effectiveMode === "record" ? item.recordUrl : item.formUrl;
+            const rect = HD_SHOWROOM_CARD_RECTS[slot];
+            if (!rect) return null;
+            return (
+              <a
+                key={`${item.id}-${item.name}-${effectiveMode}`}
+                className="hdHotspot hdCardHotspot"
+                style={rectStyle(rect)}
+                href={url || undefined}
+                target={url ? "_blank" : undefined}
+                rel={url ? "noopener noreferrer" : undefined}
+                aria-label={`${effectiveMode === "record" ? "查看" : "填寫"}${item.name}`}
+                aria-disabled={!url}
+              />
+            );
+          })}
+
+          {loading && <div className="hdStatusOverlay">資料載入中…</div>}
+          {!loading && error && <div className="hdStatusOverlay hdStatusError">⚠️ {error}</div>}
+        </section>
+      </main>
+    );
+  }
 
   const rootClass = `platformRoot ${role} view-${viewMode}`;
 

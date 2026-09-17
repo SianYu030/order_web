@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - migration/nextjs-google-sheets
+      - design/reference-showroom-hd
   pull_request:
     branches:
       - main
