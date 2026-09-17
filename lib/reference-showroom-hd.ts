@@ -1,3 +1,10 @@
+import chunk00 from "./reference-showroom-image/chunk-00";
+import chunk01 from "./reference-showroom-image/chunk-01";
+import chunk02 from "./reference-showroom-image/chunk-02";
+import chunk03 from "./reference-showroom-image/chunk-03";
+import chunk04 from "./reference-showroom-image/chunk-04";
+import chunk05 from "./reference-showroom-image/chunk-05";
+
 export type PercentRect = {
   left: number;
   top: number;
@@ -6,6 +13,12 @@ export type PercentRect = {
 };
 
 export const HD_SHOWROOM_ASSET_PATH = "/reference-showroom-hd.webp";
+
+const HD_SHOWROOM_IMAGE_BASE64 = [chunk00, chunk01, chunk02, chunk03, chunk04, chunk05].join("");
+
+export function getHdShowroomImageSrc(): string {
+  return `data:image/webp;base64,${HD_SHOWROOM_IMAGE_BASE64}`;
+}
 
 export const HD_SHOWROOM_FILL_TAB: PercentRect = {
   left: 19.4,
