@@ -1,23 +1,21 @@
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   HD_SHOWROOM_ASSET_PATH,
   HD_SHOWROOM_CARD_RECTS,
   HD_SHOWROOM_FILL_TAB,
   HD_SHOWROOM_RECORD_TAB,
-  getHdShowroomImageSrc,
   getHdShowroomSlot
 } from "../lib/reference-showroom-hd";
 
 describe("high-resolution showroom desktop layout", () => {
-  it("uses the bundled high-resolution showroom asset directly in the desktop image", () => {
-    expect(HD_SHOWROOM_ASSET_PATH.startsWith("data:image/webp;base64,")).toBe(true);
-    expect(HD_SHOWROOM_ASSET_PATH).toBe(getHdShowroomImageSrc());
-  });
+  it("uses a real static WebP asset instead of a generated route or data URI", () => {
+    expect(HD_SHOWROOM_ASSET_PATH).toBe("/showroom-v2.webp");
 
-  it("embeds the showroom artwork directly in the desktop bundle", () => {
-    const src = getHdShowroomImageSrc();
-    expect(src.startsWith("data:image/webp;base64,")).toBe(true);
-    expect(src.length).toBeGreaterThan(50000);
+    const assetPath = join(process.cwd(), "public", "showroom-v2.webp");
+    expect(existsSync(assetPath)).toBe(true);
+    expect(statSync(assetPath).size).toBeGreaterThan(50000);
   });
 
   it("maps the eight primary systems to the eight visual card slots", () => {
