@@ -25,6 +25,10 @@
   <h2>Storage and sharing</h2>
   <p>OAuth credentials used by the private workflow are stored securely as repository secrets and are not intentionally exposed in public source code. The application does not sell personal information and does not share authorized YouTube account data with advertisers or unrelated third parties.</p>
 
+  <h2>Data retention and deletion</h2>
+  <p>AI Shorts Bot is a private single-user workflow. It does not maintain a public user database. OAuth authorization data is stored only as needed to keep the owner's authorized upload workflow operating. Upload response metadata such as a video ID or privacy status may appear temporarily in GitHub Actions logs or artifacts; generated workflow artifacts are configured for short retention (currently up to 3 days).</p>
+  <p>The owner can delete stored workflow secrets or generated artifacts at any time and can revoke the application's Google account access from Google's account security permissions page. Revoking access prevents further authorized YouTube API access. Because there are no third-party user accounts, there is no separate end-user account database to delete.</p>
+
   <h2>Revoking access</h2>
   <p>The owner can revoke the application's Google account access at any time from Google's account security permissions page.</p>
 
