@@ -6,8 +6,6 @@ on:
     paths:
       - "ai-shorts-bot/story.json"
       - ".github/workflows/ai-shorts-bot.yml"
-  schedule:
-    - cron: "30 21 * * *"
 
 permissions:
   contents: read
