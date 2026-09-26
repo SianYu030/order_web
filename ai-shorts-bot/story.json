@@ -1,7 +1,7 @@
 {
-  "story_id": "20260926-test",
-  "title": "The Dog Who Waited Through the Rain",
-  "description": "A short original animal story used to test the automated Shorts pipeline.",
+  "story_id": "20260926-test2",
+  "title": "The Dog Who Stayed Until Sunrise",
+  "description": "Second end-to-end test of the automated Shorts pipeline.",
   "hashtags": [
     "#shorts",
     "#animalstory",
