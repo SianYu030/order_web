@@ -2,6 +2,10 @@ name: AI Shorts Bot
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "ai-shorts-bot/story.json"
+      - ".github/workflows/ai-shorts-bot.yml"
   schedule:
     - cron: "30 21 * * *"
 
