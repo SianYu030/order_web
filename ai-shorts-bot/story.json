@@ -1,7 +1,7 @@
 {
-  "story_id": "20260926-v2test",
-  "title": "He Waited in the Rain for a Reason",
-  "description": "AI Shorts v2 private visual-quality test with safer captions, improved characters, cinematic lighting, and gentle camera motion.",
+  "story_id": "20260926-v3test",
+  "title": "He Waited Every Night",
+  "description": "AI Shorts v3 private test with cleaner safe-zone captions and reduced UI overlap.",
   "hashtags": [
     "#shorts",
     "#animalstory",
@@ -15,7 +15,7 @@
   "scenes": [
     {
       "background": "rain",
-      "caption": "A stray dog waited in the rain every night.",
+      "caption": "He waited in the rain every night.",
       "actors": [
         {
           "type": "dog",
@@ -28,7 +28,7 @@
     },
     {
       "background": "street",
-      "caption": "Then he heard a tiny cry under a bench.",
+      "caption": "Then he heard a tiny cry nearby.",
       "actors": [
         {
           "type": "dog",
@@ -48,7 +48,7 @@
     },
     {
       "background": "rain",
-      "caption": "He stayed beside the kitten until morning.",
+      "caption": "He stayed beside the kitten until dawn.",
       "actors": [
         {
           "type": "dog",
@@ -68,7 +68,7 @@
     },
     {
       "background": "park",
-      "caption": "A woman finally noticed them together.",
+      "caption": "Someone finally noticed them.",
       "actors": [
         {
           "type": "dog",
@@ -88,7 +88,7 @@
     },
     {
       "background": "home",
-      "caption": "She brought both of them home.",
+      "caption": "She brought them both home.",
       "actors": [
         {
           "type": "dog",
@@ -108,7 +108,7 @@
     },
     {
       "background": "sunset",
-      "caption": "Some families find each other by accident. ❤️",
+      "caption": "Sometimes family finds you. ❤️",
       "actors": [
         {
           "type": "dog",
