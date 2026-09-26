@@ -1,7 +1,7 @@
 {
-  "story_id": "20260926-test5",
-  "title": "The Little Dog Who Waited by the Door",
-  "description": "Fifth end-to-end test of the automated Shorts pipeline.",
+  "story_id": "20260926-test6",
+  "title": "The Dog Who Found Home Before Dawn",
+  "description": "Sixth end-to-end test after enabling YouTube Data API v3.",
   "hashtags": [
     "#shorts",
     "#animalstory",
