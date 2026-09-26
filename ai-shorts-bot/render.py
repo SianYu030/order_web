@@ -190,6 +190,95 @@ def cat(d,x,y,s,e):
         d.line((cx+int(28*s),cy+int(26*s+yy),cx+int(75*s),cy+int(19*s+yy)),fill=(95,99,106),width=max(1,int(2*s)))
     face(d,cx,cy,r,e)
 
+def rabbit(d,x,y,s,e):
+    cx,cy=int(W*x),int(H*y);r=int(64*s)
+    draw_shadow(d,cx,cy+int(170*s),int(82*s),int(18*s))
+    body=(205,205,212); edge=(90,92,100); inner=(235,180,190)
+    d.ellipse((cx-int(66*s),cy+int(45*s),cx+int(66*s),cy+int(165*s)),fill=body,outline=edge,width=max(3,int(4*s)))
+    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=body,outline=edge,width=max(3,int(4*s)))
+    d.ellipse((cx-int(45*s),cy-r-int(92*s),cx-int(8*s),cy-r+int(10*s)),fill=body,outline=edge,width=max(3,int(4*s)))
+    d.ellipse((cx+int(8*s),cy-r-int(92*s),cx+int(45*s),cy-r+int(10*s)),fill=body,outline=edge,width=max(3,int(4*s)))
+    d.ellipse((cx-int(34*s),cy-r-int(78*s),cx-int(18*s),cy-r-int(5*s)),fill=inner)
+    d.ellipse((cx+int(18*s),cy-r-int(78*s),cx+int(34*s),cy-r-int(5*s)),fill=inner)
+    d.ellipse((cx-int(12*s),cy+int(12*s),cx+int(12*s),cy+int(28*s)),fill=(110,78,84))
+    face(d,cx,cy,r,e)
+
+def fox(d,x,y,s,e):
+    cx,cy=int(W*x),int(H*y);r=int(72*s)
+    draw_shadow(d,cx,cy+int(180*s),int(95*s),int(19*s))
+    orange=(214,112,50); dark=(85,53,42); cream=(244,225,194)
+    d.polygon([(cx+int(45*s),cy+int(90*s)),(cx+int(150*s),cy+int(125*s)),(cx+int(92*s),cy+int(160*s))],fill=orange)
+    d.ellipse((cx-int(74*s),cy+int(44*s),cx+int(74*s),cy+int(180*s)),fill=orange,outline=dark,width=max(3,int(4*s)))
+    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=orange,outline=dark,width=max(3,int(4*s)))
+    d.polygon([(cx-r+6,cy-r+20),(cx-int(48*s),cy-r-int(58*s)),(cx-int(10*s),cy-r+8)],fill=orange,outline=dark)
+    d.polygon([(cx+r-6,cy-r+20),(cx+int(48*s),cy-r-int(58*s)),(cx+int(10*s),cy-r+8)],fill=orange,outline=dark)
+    d.polygon([(cx-int(40*s),cy+int(6*s)),(cx,cy+int(50*s)),(cx+int(40*s),cy+int(6*s))],fill=cream)
+    d.ellipse((cx-int(13*s),cy+int(18*s),cx+int(13*s),cy+int(34*s)),fill=dark)
+    face(d,cx,cy,r,e)
+
+def bear(d,x,y,s,e):
+    cx,cy=int(W*x),int(H*y);r=int(74*s)
+    draw_shadow(d,cx,cy+int(185*s),int(105*s),int(20*s))
+    fur=(142,96,63); edge=(72,48,34); muzzle=(205,173,140)
+    d.ellipse((cx-int(82*s),cy+int(42*s),cx+int(82*s),cy+int(188*s)),fill=fur,outline=edge,width=max(3,int(4*s)))
+    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=fur,outline=edge,width=max(3,int(4*s)))
+    d.ellipse((cx-r-int(18*s),cy-r-int(12*s),cx-r+int(22*s),cy-r+int(28*s)),fill=fur,outline=edge,width=max(2,int(3*s)))
+    d.ellipse((cx+r-int(22*s),cy-r-int(12*s),cx+r+int(18*s),cy-r+int(28*s)),fill=fur,outline=edge,width=max(2,int(3*s)))
+    d.ellipse((cx-int(38*s),cy+int(4*s),cx+int(38*s),cy+int(48*s)),fill=muzzle)
+    d.ellipse((cx-int(14*s),cy+int(12*s),cx+int(14*s),cy+int(30*s)),fill=edge)
+    face(d,cx,cy,r,e)
+
+def penguin(d,x,y,s,e):
+    cx,cy=int(W*x),int(H*y);r=int(60*s)
+    draw_shadow(d,cx,cy+int(175*s),int(82*s),int(18*s))
+    black=(36,42,52); white=(235,238,242); beak=(232,154,58)
+    d.ellipse((cx-int(66*s),cy+int(30*s),cx+int(66*s),cy+int(172*s)),fill=black)
+    d.ellipse((cx-int(44*s),cy+int(50*s),cx+int(44*s),cy+int(154*s)),fill=white)
+    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=black)
+    d.ellipse((cx-int(42*s),cy-int(18*s),cx+int(42*s),cy+int(45*s)),fill=white)
+    d.polygon([(cx,cy+int(16*s)),(cx-int(12*s),cy+int(30*s)),(cx+int(12*s),cy+int(30*s))],fill=beak)
+    face(d,cx,cy,r,e)
+
+def deer(d,x,y,s,e):
+    cx,cy=int(W*x),int(H*y);r=int(64*s)
+    draw_shadow(d,cx,cy+int(180*s),int(90*s),int(18*s))
+    fur=(184,126,76); edge=(95,63,42); cream=(232,204,165)
+    d.ellipse((cx-int(70*s),cy+int(42*s),cx+int(70*s),cy+int(176*s)),fill=fur,outline=edge,width=max(3,int(4*s)))
+    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=fur,outline=edge,width=max(3,int(4*s)))
+    d.polygon([(cx-r+8,cy-r+15),(cx-r-int(30*s),cy-int(15*s)),(cx-int(32*s),cy+int(5*s))],fill=fur)
+    d.polygon([(cx+r-8,cy-r+15),(cx+r+int(30*s),cy-int(15*s)),(cx+int(32*s),cy+int(5*s))],fill=fur)
+    d.ellipse((cx-int(34*s),cy+int(5*s),cx+int(34*s),cy+int(42*s)),fill=cream)
+    d.ellipse((cx-int(12*s),cy+int(12*s),cx+int(12*s),cy+int(28*s)),fill=edge)
+    face(d,cx,cy,r,e)
+
+def raccoon(d,x,y,s,e):
+    cx,cy=int(W*x),int(H*y);r=int(66*s)
+    draw_shadow(d,cx,cy+int(175*s),int(90*s),int(18*s))
+    fur=(130,136,145); dark=(55,60,68); light=(190,194,200)
+    d.arc((cx+int(35*s),cy+int(75*s),cx+int(145*s),cy+int(170*s)),210,355,fill=dark,width=max(5,int(16*s)))
+    d.ellipse((cx-int(70*s),cy+int(40*s),cx+int(70*s),cy+int(170*s)),fill=fur,outline=dark,width=max(3,int(4*s)))
+    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=fur,outline=dark,width=max(3,int(4*s)))
+    d.ellipse((cx-int(48*s),cy-int(12*s),cx+int(48*s),cy+int(26*s)),fill=dark)
+    d.ellipse((cx-int(34*s),cy+int(4*s),cx+int(34*s),cy+int(40*s)),fill=light)
+    d.ellipse((cx-int(12*s),cy+int(12*s),cx+int(12*s),cy+int(28*s)),fill=dark)
+    face(d,cx,cy,r,e)
+
+def draw_actor(d,a):
+    kind=str(a.get("type","dog")).lower()
+    fn={
+        "dog":dog,
+        "cat":cat,
+        "rabbit":rabbit,
+        "fox":fox,
+        "bear":bear,
+        "penguin":penguin,
+        "deer":deer,
+        "raccoon":raccoon
+    }.get(kind,dog)
+    ax=min(float(a.get("x",.5)),0.68)
+    ay=min(float(a.get("y",.62)),0.69)
+    fn(d,ax,ay,float(a.get("scale",1)),a.get("emotion","calm"))
+
 def rounded_panel(img,box,alpha=165,radius=28):
     ov=Image.new("RGBA",(W,H),(0,0,0,0))
     d=ImageDraw.Draw(ov)
@@ -202,11 +291,7 @@ def scene_image(scene,idx,title):
 
     # Keep actors inside the visual-safe region and away from the right-side Shorts controls.
     for a in scene.get("actors",[]):
-        ax=min(float(a.get("x",.5)),0.68)
-        ay=min(float(a.get("y",.62)),0.69)
-        (dog if a.get("type")=="dog" else cat)(
-            d,ax,ay,float(a.get("scale",1)),a.get("emotion","calm")
-        )
+        draw_actor(d,a)
 
     # v3: no large title card inside the video. The YouTube title already appears below the Short.
     # This keeps the top area clear of back/search/menu controls.
