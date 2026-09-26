@@ -1,0 +1,130 @@
+{
+  "story_id": "sample-001",
+  "title": "The Dog Who Wouldn't Leave",
+  "description": "An original 30-second animal micro-story created for the AI Shorts Bot.",
+  "hashtags": [
+    "#shorts",
+    "#animalstory",
+    "#dog",
+    "#cat",
+    "#story"
+  ],
+  "category_id": "15",
+  "made_for_kids": false,
+  "synthetic_media": false,
+  "scenes": [
+    {
+      "background": "rain",
+      "caption": "A stray dog waited in the rain every night.",
+      "actors": [
+        {
+          "type": "dog",
+          "x": 0.48,
+          "y": 0.64,
+          "scale": 1,
+          "emotion": "sad"
+        }
+      ]
+    },
+    {
+      "background": "street",
+      "caption": "Then he heard a tiny cry under a bench.",
+      "actors": [
+        {
+          "type": "dog",
+          "x": 0.34,
+          "y": 0.64,
+          "scale": 0.95,
+          "emotion": "surprised"
+        },
+        {
+          "type": "cat",
+          "x": 0.7,
+          "y": 0.7,
+          "scale": 0.62,
+          "emotion": "sad"
+        }
+      ]
+    },
+    {
+      "background": "rain",
+      "caption": "He stayed beside the kitten until morning.",
+      "actors": [
+        {
+          "type": "dog",
+          "x": 0.4,
+          "y": 0.65,
+          "scale": 0.95,
+          "emotion": "calm"
+        },
+        {
+          "type": "cat",
+          "x": 0.64,
+          "y": 0.7,
+          "scale": 0.62,
+          "emotion": "calm"
+        }
+      ]
+    },
+    {
+      "background": "park",
+      "caption": "A woman finally noticed them together.",
+      "actors": [
+        {
+          "type": "dog",
+          "x": 0.35,
+          "y": 0.66,
+          "scale": 0.9,
+          "emotion": "hopeful"
+        },
+        {
+          "type": "cat",
+          "x": 0.6,
+          "y": 0.7,
+          "scale": 0.58,
+          "emotion": "hopeful"
+        }
+      ]
+    },
+    {
+      "background": "home",
+      "caption": "She brought both of them home.",
+      "actors": [
+        {
+          "type": "dog",
+          "x": 0.36,
+          "y": 0.67,
+          "scale": 0.95,
+          "emotion": "happy"
+        },
+        {
+          "type": "cat",
+          "x": 0.64,
+          "y": 0.7,
+          "scale": 0.62,
+          "emotion": "happy"
+        }
+      ]
+    },
+    {
+      "background": "sunset",
+      "caption": "Some families find each other by accident. ❤️",
+      "actors": [
+        {
+          "type": "dog",
+          "x": 0.38,
+          "y": 0.66,
+          "scale": 0.95,
+          "emotion": "happy"
+        },
+        {
+          "type": "cat",
+          "x": 0.63,
+          "y": 0.7,
+          "scale": 0.62,
+          "emotion": "happy"
+        }
+      ]
+    }
+  ]
+}
