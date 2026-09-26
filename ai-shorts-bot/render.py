@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 W,H=720,1280
 FPS=24
-TOTAL=30.0
+DEFAULT_TOTAL=18.0
 ROOT=Path(__file__).resolve().parent
 STORY=ROOT/"story.json"
 OUT=ROOT/"output.mp4"
@@ -285,7 +285,7 @@ def rounded_panel(img,box,alpha=165,radius=28):
     d.rounded_rectangle(box,radius=radius,fill=(10,14,22,alpha))
     return Image.alpha_composite(img.convert("RGBA"),ov).convert("RGB")
 
-def scene_image(scene,idx,title):
+def scene_image(scene,idx,title,total_scenes):
     img=bg(scene.get("background","park"),idx*7919+17)
     d=ImageDraw.Draw(img,"RGBA")
 
@@ -327,12 +327,7 @@ def scene_image(scene,idx,title):
         stroke_fill=(0,0,0,120)
     )
 
-    # Very subtle scene counter in a safe corner; avoids the bottom metadata/UI zone.
-    sf=font(22,True)
-    counter=f"{idx+1}/6"
-    d.rounded_rectangle((50,760,108,796),radius=12,fill=(0,0,0,70))
-    d.text((79,778),counter,font=sf,fill=(255,255,255,190),anchor="mm")
-
+    # No scene counter in v4/v5; keeps the frame cleaner for Shorts.
     return vignette(img)
 
 def synth(path,duration):
@@ -354,14 +349,18 @@ def render(story):
     if len(scenes)<2:
         raise SystemExit("Need at least 2 scenes")
     SCENE_DIR.mkdir(exist_ok=True)
-    per=TOTAL/len(scenes)
+
+    # Let each daily trend-selected format choose its own length.
+    total=float(story.get("duration_seconds", DEFAULT_TOTAL))
+    total=max(8.0,min(24.0,total))
+    per=total/len(scenes)
     pngs=[]
     for i,s in enumerate(scenes):
         p=SCENE_DIR/f"{i:02d}.png"
-        scene_image(s,i,story.get("title","Animal Story")).save(p,quality=96)
+        scene_image(s,i,story.get("title","Animal Story"),len(scenes)).save(p,quality=96)
         pngs.append(p)
 
-    synth(AUDIO,TOTAL)
+    synth(AUDIO,total)
     cmd=["ffmpeg","-y"]
     for p in pngs:
         cmd += ["-loop","1","-t",f"{per:.3f}","-i",str(p)]
@@ -395,7 +394,9 @@ def render(story):
         "hashtags":story.get("hashtags",[]),
         "category_id":story.get("category_id","15"),
         "made_for_kids":bool(story.get("made_for_kids",False)),
-        "synthetic_media":bool(story.get("synthetic_media",False))
+        "synthetic_media":bool(story.get("synthetic_media",False)),
+        "format":story.get("format","emotion_twist"),
+        "duration_seconds":total
     },ensure_ascii=False,indent=2),encoding="utf-8")
     print(f"Rendered {OUT}")
 
