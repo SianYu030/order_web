@@ -1,127 +1,75 @@
 {
-  "story_id": "20260926-v3test",
-  "title": "He Waited Every Night",
-  "description": "AI Shorts v3 private test with cleaner safe-zone captions and reduced UI overlap.",
+  "story_id": "20260927-raccoonreveal",
+  "title": "He Hid One Tiny Thing… Then Everyone Understood",
+  "description": "A tiny raccoon keeps returning to the same spot at night. The reason is smaller—and sweeter—than anyone expects. An original suspense-to-reveal animal micro-story.",
   "hashtags": [
     "#shorts",
+    "#raccoon",
     "#animalstory",
-    "#dog",
-    "#cat",
-    "#story"
+    "#wholesome",
+    "#plotwist"
   ],
   "category_id": "15",
   "made_for_kids": false,
   "synthetic_media": false,
+  "content_format": "suspense_reveal",
+  "duration_seconds": 12,
   "scenes": [
     {
-      "background": "rain",
-      "caption": "He waited in the rain every night.",
+      "background": "night",
+      "caption": "Why does he come back every night?",
       "actors": [
         {
-          "type": "dog",
-          "x": 0.48,
-          "y": 0.64,
-          "scale": 1,
-          "emotion": "sad"
+          "type": "raccoon",
+          "x": 0.5,
+          "y": 0.66,
+          "scale": 0.88,
+          "emotion": "calm"
         }
       ]
     },
     {
       "background": "street",
-      "caption": "Then he heard a tiny cry nearby.",
+      "caption": "He always checks the same box.",
       "actors": [
         {
-          "type": "dog",
-          "x": 0.34,
-          "y": 0.64,
-          "scale": 0.95,
-          "emotion": "surprised"
-        },
-        {
-          "type": "cat",
-          "x": 0.7,
-          "y": 0.7,
-          "scale": 0.62,
-          "emotion": "sad"
+          "type": "raccoon",
+          "x": 0.43,
+          "y": 0.65,
+          "scale": 0.92,
+          "emotion": "hopeful"
         }
       ]
     },
     {
-      "background": "rain",
-      "caption": "He stayed beside the kitten until dawn.",
+      "background": "night",
+      "caption": "Then… something moved inside.",
       "actors": [
         {
-          "type": "dog",
+          "type": "raccoon",
           "x": 0.4,
           "y": 0.65,
-          "scale": 0.95,
-          "emotion": "calm"
-        },
-        {
-          "type": "cat",
-          "x": 0.64,
-          "y": 0.7,
-          "scale": 0.62,
-          "emotion": "calm"
-        }
-      ]
-    },
-    {
-      "background": "park",
-      "caption": "Someone finally noticed them.",
-      "actors": [
-        {
-          "type": "dog",
-          "x": 0.35,
-          "y": 0.66,
-          "scale": 0.9,
-          "emotion": "hopeful"
-        },
-        {
-          "type": "cat",
-          "x": 0.6,
-          "y": 0.7,
-          "scale": 0.58,
-          "emotion": "hopeful"
+          "scale": 0.92,
+          "emotion": "surprised"
         }
       ]
     },
     {
       "background": "home",
-      "caption": "She brought them both home.",
+      "caption": "He was protecting his little family.",
       "actors": [
         {
-          "type": "dog",
+          "type": "raccoon",
           "x": 0.36,
           "y": 0.67,
-          "scale": 0.95,
+          "scale": 0.9,
           "emotion": "happy"
         },
         {
-          "type": "cat",
-          "x": 0.64,
-          "y": 0.7,
-          "scale": 0.62,
-          "emotion": "happy"
-        }
-      ]
-    },
-    {
-      "background": "sunset",
-      "caption": "Sometimes family finds you. ❤️",
-      "actors": [
-        {
-          "type": "dog",
-          "x": 0.38,
-          "y": 0.66,
-          "scale": 0.95,
-          "emotion": "happy"
-        },
-        {
-          "type": "cat",
-          "x": 0.63,
-          "y": 0.7,
-          "scale": 0.62,
+          "type": "raccoon",
+          "x": 0.62,
+          "y": 0.72,
+          "scale": 0.55,
           "emotion": "happy"
         }
       ]
