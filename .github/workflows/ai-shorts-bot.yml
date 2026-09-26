@@ -1,0 +1,54 @@
+name: AI Shorts Bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 21 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  render-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      YOUTUBE_PRIVACY: private
+      YOUTUBE_OAUTH_JSON: ${{ secrets.YOUTUBE_OAUTH_JSON }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-cjk
+
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install pillow google-api-python-client google-auth google-auth-httplib2
+
+      - name: Render Short
+        run: python ai-shorts-bot/render.py
+
+      - name: Upload to YouTube when authorized
+        if: ${{ env.YOUTUBE_OAUTH_JSON != '' }}
+        run: python ai-shorts-bot/upload.py
+
+      - name: Keep rendered video for 3 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-short-${{ github.run_number }}
+          path: |
+            ai-shorts-bot/output.mp4
+            ai-shorts-bot/metadata.json
+            ai-shorts-bot/last_upload.json
+          if-no-files-found: ignore
+          retention-days: 3
