@@ -1,40 +1,35 @@
 # AI Shorts Bot
 
-Zero-extra-cost prototype for a nightly YouTube Shorts pipeline.
+Single-user creator automation for producing original YouTube Shorts and uploading them to the operator's own authorized channel.
 
 ## What it does
 
-1. ChatGPT automation prepares an original `story.json`.
-2. GitHub Actions renders a 30-second vertical MP4 using Python + FFmpeg.
-3. If the repository secret `YOUTUBE_OAUTH_JSON` exists, it uploads the MP4 to YouTube.
-4. The workflow stores the rendered video as a short-lived artifact for debugging.
+1. A scheduled ChatGPT automation reviews current Shorts trends and the operator's available channel analytics.
+2. It creates an original `story.json` with a format, duration, hook, scenes, and characters.
+3. GitHub Actions renders a vertical MP4 using Python, Pillow, and FFmpeg.
+4. The upload client uses the YouTube Data API v3 `videos.insert` endpoint with OAuth 2.0 scope `youtube.upload`.
+5. Rendered output and upload metadata are kept only as short-lived GitHub Actions artifacts for debugging.
 
-The renderer uses programmatically drawn original cartoon scenes and original synthesized background audio, so it does not download or reuse other creators' videos.
+The renderer uses programmatically generated original scenes and synthesized background audio. The project does not download or re-upload other creators' videos and is not designed to automate or inflate engagement.
 
-## One secret only
+## Privacy and Terms
 
-Create a GitHub Actions secret named:
+- [Privacy Policy](./PRIVACY.md)
+- [Terms of Service](./TERMS.md)
+- [YouTube API Audit Draft](./AUDIT_FORM_DRAFT.md)
 
-`YOUTUBE_OAUTH_JSON`
+## Credentials
 
-with this JSON structure:
+The uploader reads one GitHub Actions secret named `YOUTUBE_OAUTH_JSON`.
 
-```json
-{
-  "client_id": "YOUR_GOOGLE_OAUTH_CLIENT_ID",
-  "client_secret": "YOUR_GOOGLE_OAUTH_CLIENT_SECRET",
-  "refresh_token": "YOUR_YOUTUBE_REFRESH_TOKEN"
-}
-```
+Credentials must never be committed to this public repository.
 
-Never commit these credentials to this public repository.
+## YouTube API verification status
 
-## Important YouTube limitation
+The workflow currently defaults to `YOUTUBE_PRIVACY: private`.
 
-New unverified YouTube Data API projects can upload through the API, but YouTube restricts those uploads to **private** until the API project passes YouTube's compliance audit. The workflow therefore defaults to private uploads.
+YouTube documents that videos uploaded through `videos.insert` by unverified API projects created after July 28, 2020 are restricted to private viewing mode until the API project passes a compliance audit. After the project passes the audit, the workflow can be changed to public uploads.
 
-After the project is audited, change `YOUTUBE_PRIVACY` in the workflow from `private` to `public`.
+## Trigger
 
-## Schedule
-
-The GitHub workflow runs at 21:30 UTC, which is 05:30 in Taiwan (UTC+8).
+The GitHub workflow is triggered when `ai-shorts-bot/story.json` changes, or manually with `workflow_dispatch`. The separate GitHub cron schedule was removed to avoid duplicate daily uploads.
