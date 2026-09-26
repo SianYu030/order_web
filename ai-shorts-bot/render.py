@@ -199,43 +199,55 @@ def rounded_panel(img,box,alpha=165,radius=28):
 def scene_image(scene,idx,title):
     img=bg(scene.get("background","park"),idx*7919+17)
     d=ImageDraw.Draw(img,"RGBA")
+
+    # Keep actors inside the visual-safe region and away from the right-side Shorts controls.
     for a in scene.get("actors",[]):
+        ax=min(float(a.get("x",.5)),0.68)
+        ay=min(float(a.get("y",.62)),0.69)
         (dog if a.get("type")=="dog" else cat)(
-            d,float(a.get("x",.5)),float(a.get("y",.62)),
-            float(a.get("scale",1)),a.get("emotion","calm")
+            d,ax,ay,float(a.get("scale",1)),a.get("emotion","calm")
         )
 
-    # First-scene hook: high enough to avoid top app chrome
-    if idx==0:
-        hook=wrap_text(title,font(42,True),560,2)
-        bb=d.multiline_textbbox((0,0),hook,font=font(42,True),spacing=6,align="center")
-        th=bb[3]-bb[1]
-        img=rounded_panel(img,(62,104,W-62,104+th+42),150,24)
-        d=ImageDraw.Draw(img,"RGBA")
-        d.multiline_text((W//2,124),hook,font=font(42,True),fill=(255,255,255,255),
-                         anchor="ma",align="center",spacing=6,stroke_width=2,stroke_fill=(0,0,0,130))
+    # v3: no large title card inside the video. The YouTube title already appears below the Short.
+    # This keeps the top area clear of back/search/menu controls.
 
-    # Caption safe zone: intentionally above Shorts title/buttons
-    caption=wrap_text(scene.get("caption",""),font(40,True),520,2)
-    cf=font(40,True)
-    bb=d.multiline_textbbox((0,0),caption,font=cf,spacing=8,align="center")
+    # Caption safe-zone:
+    # left-side card, above the characters, leaving the entire right column free for Shorts buttons.
+    caption=wrap_text(scene.get("caption",""),font(34,True),430,2)
+    cf=font(34,True)
+    bb=d.multiline_textbbox((0,0),caption,font=cf,spacing=7,align="left")
     th=bb[3]-bb[1]
-    center_y=875
-    y1=int(center_y-th/2-30); y2=int(center_y+th/2+30)
-    img=rounded_panel(img,(70,y1,W-70,y2),178,26)
+
+    x1,x2=48,548
+    center_y=560
+    y1=int(center_y-th/2-24)
+    y2=int(center_y+th/2+24)
+
+    ov=Image.new("RGBA",(W,H),(0,0,0,0))
+    od=ImageDraw.Draw(ov)
+    od.rounded_rectangle((x1,y1,x2,y2),radius=24,fill=(8,12,20,148))
+    od.rounded_rectangle((x1+12,y1+14,x1+18,y2-14),radius=3,fill=(255,255,255,180))
+    img=Image.alpha_composite(img.convert("RGBA"),ov).convert("RGB")
+
     d=ImageDraw.Draw(img,"RGBA")
-    d.multiline_text((W//2,center_y),caption,font=cf,fill=(255,255,255,255),
-                     anchor="mm",align="center",spacing=8,stroke_width=2,stroke_fill=(0,0,0,150))
+    d.multiline_text(
+        (x1+34,center_y),
+        caption,
+        font=cf,
+        fill=(255,255,255,255),
+        anchor="lm",
+        align="left",
+        spacing=7,
+        stroke_width=2,
+        stroke_fill=(0,0,0,120)
+    )
 
-    # small progress dots, away from YouTube controls
-    dots_y=1040
-    for n in range(6):
-        rr=5 if n!=idx else 8
-        fill=(255,255,255,120) if n!=idx else (255,255,255,230)
-        x=W//2+(n-2.5)*26
-        d.ellipse((x-rr,dots_y-rr,x+rr,dots_y+rr),fill=fill)
+    # Very subtle scene counter in a safe corner; avoids the bottom metadata/UI zone.
+    sf=font(22,True)
+    counter=f"{idx+1}/6"
+    d.rounded_rectangle((50,760,108,796),radius=12,fill=(0,0,0,70))
+    d.text((79,778),counter,font=sf,fill=(255,255,255,190),anchor="mm")
 
-    # subtle vignette last
     return vignette(img)
 
 def synth(path,duration):
