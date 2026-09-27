@@ -5,6 +5,8 @@ on:
   push:
     paths:
       - "ai-shorts-bot/story.json"
+      - "ai-shorts-bot/render.py"
+      - "ai-shorts-bot/upload.py"
       - ".github/workflows/ai-shorts-bot.yml"
 
 permissions:
@@ -13,10 +15,12 @@ permissions:
 jobs:
   render-and-upload:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       YOUTUBE_PRIVACY: private
       YOUTUBE_OAUTH_JSON: ${{ secrets.YOUTUBE_OAUTH_JSON }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_SPACE: alexcheng0072/wan27-free-video-generator
 
     steps:
       - name: Checkout
@@ -30,21 +34,22 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg fonts-noto-cjk
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
 
       - name: Install Python packages
         run: |
           python -m pip install --upgrade pip
-          pip install pillow google-api-python-client google-auth google-auth-httplib2
+          pip install gradio_client google-api-python-client google-auth google-auth-httplib2
 
-      - name: Render Short
+      - name: Render dynamic AI Short
         run: python ai-shorts-bot/render.py
 
-      - name: Upload to YouTube when authorized
-        if: ${{ env.YOUTUBE_OAUTH_JSON != '' }}
+      - name: Upload to YouTube when authorized and render passed
+        if: ${{ env.YOUTUBE_OAUTH_JSON != '' && hashFiles('ai-shorts-bot/READY_TO_UPLOAD') != '' }}
         run: python ai-shorts-bot/upload.py
 
       - name: Keep rendered video for 3 days
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ai-short-${{ github.run_number }}
