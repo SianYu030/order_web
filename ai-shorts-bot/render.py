@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
-import json
-import math
-import os
-import random
-import shutil
-import subprocess
-import wave
+import json, math, os, random, shutil, subprocess, wave
 from pathlib import Path
-
 from gradio_client import Client
 
 ROOT = Path(__file__).resolve().parent
@@ -18,10 +11,7 @@ AUDIO = ROOT / "_audio.wav"
 CLIP_DIR = ROOT / "_clips"
 READY = ROOT / "READY_TO_UPLOAD"
 
-HF_SPACE = os.environ.get(
-    "HF_SPACE",
-    "alexcheng0072/wan27-free-video-generator",
-)
+HF_SPACE = os.environ.get("HF_SPACE", "alexcheng0072/wan27-free-video-generator")
 HF_TOKEN = os.environ.get("HF_TOKEN", "").strip()
 
 ACTORS = {
@@ -36,22 +26,13 @@ ACTORS = {
 }
 
 BACKGROUNDS = {
-    "rain": "a rainy city lane at night, wet pavement reflections, visible falling rain",
-    "street": "a cinematic quiet neighborhood street with depth and practical lights",
-    "park": "a lush city park with natural depth, trees and soft daylight",
-    "home": "a warm cozy home interior with practical lamps and believable detail",
-    "sunset": "an outdoor setting during golden sunset with dramatic warm backlight",
-    "night": "a moonlit outdoor night scene with cinematic practical lighting",
+    "rain": "rainy city lane at night with wet reflections",
+    "street": "cinematic quiet neighborhood street with depth",
+    "park": "lush city park with trees and natural daylight",
+    "home": "warm cozy home interior with practical lamps",
+    "sunset": "outdoor golden sunset with dramatic warm backlight",
+    "night": "moonlit outdoor night scene with cinematic lighting",
 }
-
-CAMERAS = [
-    "handheld tracking shot rushing toward the subject",
-    "low-angle follow shot with a quick push-in",
-    "close tracking shot, slight camera shake, rack focus",
-    "fast dolly-in followed by an emotional close-up",
-    "side tracking shot with parallax and a quick reaction close-up",
-    "tight cinematic close-up that resolves into a wider reveal",
-]
 
 
 def run(cmd):
@@ -61,22 +42,23 @@ def run(cmd):
 def actor_description(actor):
     kind = str(actor.get("type", "dog")).lower()
     base = ACTORS.get(kind, ACTORS["dog"])
-    emotion = str(actor.get("emotion", "calm")).lower()
+    emotion = str(actor.get("emotion", "surprised")).lower()
     return f"{base}, visibly {emotion}"
 
 
-def build_prompt(scene, index, total):
-    actors = scene.get("actors") or [{"type": "dog", "emotion": "surprised"}]
-    actor_text = "; ".join(actor_description(a) for a in actors[:3])
-    bg = BACKGROUNDS.get(str(scene.get("background", "park")).lower(), BACKGROUNDS["park"])
-    beat = str(scene.get("caption", "")).strip()
-    camera = CAMERAS[index % len(CAMERAS)]
-
+def build_one_shot_prompt(story):
+    scenes = story.get("scenes") or []
+    first = scenes[0]
+    actors = first.get("actors") or [{"type": "dog", "emotion": "surprised"}]
+    actor_text = "; ".join(actor_description(a) for a in actors[:2])
+    bg = BACKGROUNDS.get(str(first.get("background", "park")).lower(), BACKGROUNDS["park"])
+    beats = [str(s.get("caption", "")).strip() for s in scenes[:3] if str(s.get("caption", "")).strip()]
+    beat_text = " then ".join(beats)
     prompt = (
-        f"Vertical 9:16 cinematic video. {bg}. "
-        f"{actor_text}. Story beat: {beat}. "
-        f"Characters physically act with clear movement and facial reaction, never posing still. "
-        f"{camera}. Realistic lighting, dynamic motion, visual storytelling. "
+        f"Vertical 9:16 cinematic 2-second video, {bg}. {actor_text}. "
+        f"One continuous fast visual action: {beat_text}. "
+        f"Strong body motion and facial reaction, immediate action in first frame, handheld push-in, "
+        f"clear subject, realistic lighting, dynamic movement, loop-friendly ending. "
         f"No text, subtitles, logo or watermark."
     )
     return prompt[:580]
@@ -84,162 +66,114 @@ def build_prompt(scene, index, total):
 
 def extract_video_path(result):
     value = result[0] if isinstance(result, (tuple, list)) else result
-
     if isinstance(value, str):
         return Path(value)
-
     if isinstance(value, dict):
         for key in ("path", "video", "name"):
-            candidate = value.get(key)
-            if isinstance(candidate, str):
-                return Path(candidate)
-            if isinstance(candidate, dict) and isinstance(candidate.get("path"), str):
-                return Path(candidate["path"])
+            v = value.get(key)
+            if isinstance(v, str):
+                return Path(v)
+            if isinstance(v, dict) and isinstance(v.get("path"), str):
+                return Path(v["path"])
+    raise RuntimeError(f"Unsupported video result: {type(value)!r}")
 
-    raise RuntimeError(f"Unsupported video result type: {type(value)!r}")
 
-
-def generate_clip(client, scene, index, total, seconds):
-    prompt = build_prompt(scene, index, total)
-    print(f"Generating AI clip {index + 1}/{total} ({seconds}s)...")
-    result = client.predict(
-        None,
-        prompt,
-        "480x832",
-        int(seconds),
-        api_name="/generate_video",
-    )
+def generate_one_clip(client, story):
+    prompt = build_one_shot_prompt(story)
+    print("Generating one AI motion clip for anonymous $0 mode...")
+    result = client.predict(None, prompt, "480x832", 2, api_name="/generate_video")
     src = extract_video_path(result)
     if not src.exists():
         raise RuntimeError(f"Generated clip not found: {src}")
-
-    dst = CLIP_DIR / f"raw_{index:02d}.mp4"
+    dst = CLIP_DIR / "raw.mp4"
     shutil.copy2(src, dst)
     return dst
 
 
-def escape_drawtext_path(path):
-    return str(path).replace("\\", "\\\\").replace(":", "\\:")
+def ffmpeg_text_path(path):
+    return str(path.resolve()).replace("\\", "\\\\").replace(":", "\\:")
 
 
-def stylize_clip(src, caption, index):
-    text_file = CLIP_DIR / f"caption_{index:02d}.txt"
-    text_file.write_text(str(caption).strip(), encoding="utf-8")
-    dst = CLIP_DIR / f"edit_{index:02d}.mp4"
+def write_caption_files(story):
+    scenes = story.get("scenes") or []
+    captions = [str(s.get("caption", "")).strip() for s in scenes[:3]]
+    while len(captions) < 3:
+        captions.append(captions[-1] if captions else "")
+    files = []
+    for i, cap in enumerate(captions):
+        p = CLIP_DIR / f"caption_{i}.txt"
+        p.write_text(cap, encoding="utf-8")
+        files.append(p)
+    return files
 
-    draw = (
-        "drawtext="
-        f"textfile='{escape_drawtext_path(text_file)}':"
-        "font='DejaVu Sans':"
-        "fontcolor=white:fontsize=58:"
-        "borderw=5:bordercolor=black@0.85:"
-        "line_spacing=10:"
-        "x=(w-text_w)/2:"
-        "y=h*0.76"
-    )
 
+def remix_to_short(src, story):
+    caps = write_caption_files(story)
+    silent = CLIP_DIR / "silent.mp4"
+
+    # 2s original -> 2s close replay -> 2s reverse loop.
     vf = (
-        "scale=1080:1920:force_original_aspect_ratio=increase,"
-        "crop=1080:1920,"
-        f"{draw},"
-        "format=yuv420p"
+        "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
+        "crop=1080:1920,trim=start=0:end=2,setpts=PTS-STARTPTS[v0];"
+        "[0:v]scale=1240:2204:force_original_aspect_ratio=increase,"
+        "crop=1080:1920,trim=start=0.25:end=1.75,setpts=1.333333*(PTS-STARTPTS)[v1];"
+        "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
+        "crop=1080:1920,trim=start=0:end=2,reverse,setpts=PTS-STARTPTS[v2];"
+        "[v0][v1][v2]concat=n=3:v=1:a=0[base];"
+        f"[base]"
+        f"drawtext=textfile='{ffmpeg_text_path(caps[0])}':font='DejaVu Sans':fontcolor=white:fontsize=62:"
+        "borderw=6:bordercolor=black@0.85:x=(w-text_w)/2:y=h*0.76:enable='between(t,0,1.95)',"
+        f"drawtext=textfile='{ffmpeg_text_path(caps[1])}':font='DejaVu Sans':fontcolor=white:fontsize=62:"
+        "borderw=6:bordercolor=black@0.85:x=(w-text_w)/2:y=h*0.76:enable='between(t,2,3.95)',"
+        f"drawtext=textfile='{ffmpeg_text_path(caps[2])}':font='DejaVu Sans':fontcolor=white:fontsize=62:"
+        "borderw=6:bordercolor=black@0.85:x=(w-text_w)/2:y=h*0.76:enable='between(t,4,5.95)',"
+        "format=yuv420p[v]"
     )
 
     run([
         "ffmpeg", "-y", "-i", str(src),
-        "-vf", vf,
-        "-an",
-        "-r", "30",
+        "-filter_complex", vf,
+        "-map", "[v]", "-an", "-r", "30",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-        "-movflags", "+faststart",
-        str(dst),
-    ])
-    return dst
-
-
-def concat_clips(clips):
-    list_file = CLIP_DIR / "concat.txt"
-    list_file.write_text(
-        "".join(f"file '{p.resolve()}'\n" for p in clips),
-        encoding="utf-8",
-    )
-    silent = CLIP_DIR / "silent.mp4"
-    run([
-        "ffmpeg", "-y",
-        "-f", "concat", "-safe", "0", "-i", str(list_file),
-        "-c", "copy",
-        str(silent),
+        "-movflags", "+faststart", str(silent)
     ])
     return silent
 
 
-def duration_of(path):
-    out = subprocess.check_output([
-        "ffprobe", "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1",
-        str(path),
-    ], text=True).strip()
-    return max(0.1, float(out))
-
-
-def synth_audio(path, duration, scene_count):
+def synth_audio(path, duration=6.0):
     sr = 44100
-    rng = random.Random(20260927)
-    transitions = [
-        duration * i / max(1, scene_count)
-        for i in range(1, scene_count)
-    ]
-
+    rng = random.Random(927)
+    hits = (0.0, 2.0, 4.0)
     with wave.open(str(path), "w") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)
         wf.setframerate(sr)
-
         frames = bytearray()
         for i in range(int(duration * sr)):
             t = i / sr
-
-            # Minimal cinematic pulse bed.
-            pulse = 0.018 * math.sin(2 * math.pi * 110 * t)
-            pulse += 0.010 * math.sin(2 * math.pi * 164.81 * t)
-            pulse *= 0.55 + 0.45 * (0.5 + 0.5 * math.sin(2 * math.pi * 1.8 * t))
-
-            # Short transition impacts generated locally; no copyrighted audio.
-            impact = 0.0
-            for mark in transitions:
+            v = 0.014 * math.sin(2 * math.pi * 110 * t)
+            v += 0.008 * math.sin(2 * math.pi * 165 * t)
+            for mark in hits:
                 dt = t - mark
-                if 0 <= dt < 0.16:
-                    env = math.exp(-18 * dt)
-                    impact += env * (
-                        0.06 * math.sin(2 * math.pi * (240 - 900 * dt) * dt)
-                        + 0.025 * (rng.random() * 2 - 1)
-                    )
-
-            # Tiny opening hook hit.
-            if t < 0.12:
-                pulse += 0.06 * math.exp(-24 * t) * math.sin(2 * math.pi * 330 * t)
-
-            v = max(-0.95, min(0.95, pulse + impact))
+                if 0 <= dt < 0.18:
+                    env = math.exp(-19 * dt)
+                    v += env * (0.055 * math.sin(2 * math.pi * (310 - 700 * dt) * dt))
+                    v += env * 0.018 * (rng.random() * 2 - 1)
+            v = max(-0.9, min(0.9, v))
             frames += int(v * 32767).to_bytes(2, "little", signed=True)
-
         wf.writeframes(frames)
 
 
-def mux_audio(video, audio):
+def mux(video):
     run([
-        "ffmpeg", "-y",
-        "-i", str(video), "-i", str(audio),
+        "ffmpeg", "-y", "-i", str(video), "-i", str(AUDIO),
         "-map", "0:v:0", "-map", "1:a:0",
-        "-c:v", "copy",
-        "-c:a", "aac", "-b:a", "160k",
-        "-shortest",
-        "-movflags", "+faststart",
-        str(OUT),
+        "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+        "-shortest", "-movflags", "+faststart", str(OUT)
     ])
 
 
-def write_metadata(story, actual_duration):
+def write_metadata(story):
     META.write_text(json.dumps({
         "story_id": story.get("story_id", "unknown"),
         "title": str(story.get("title", "AI Short"))[:100],
@@ -248,10 +182,10 @@ def write_metadata(story, actual_duration):
         "category_id": str(story.get("category_id", "15")),
         "made_for_kids": bool(story.get("made_for_kids", False)),
         "synthetic_media": bool(story.get("synthetic_media", False)),
-        "content_format": story.get("content_format", "suspense_reveal"),
-        "duration_seconds": round(actual_duration, 2),
-        "render_engine": "hf_zerogpu_wan_t2v",
-        "hf_space": HF_SPACE,
+        "content_format": story.get("content_format", "oddly_satisfying_story"),
+        "duration_seconds": 6,
+        "render_engine": "hf_zerogpu_one_clip_remix",
+        "hf_space": HF_SPACE
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -261,46 +195,25 @@ def main():
 
     story = json.loads(STORY.read_text(encoding="utf-8"))
     scenes = story.get("scenes") or []
-    if not 3 <= len(scenes) <= 6:
-        raise SystemExit("story.json must contain 3-6 scenes")
-
-    # Fully hands-off $0 mode:
-    # Hugging Face currently gives unauthenticated ZeroGPU visitors about 2 minutes/day.
-    # To stay inside that budget, anonymous runs use only the first 3 scenes at 2 seconds each.
-    # If HF_TOKEN is added later, the signed-in free quota is larger and 3-6 scenes can be used.
-    anonymous_mode = not HF_TOKEN
-    if anonymous_mode:
-        scenes = scenes[:3]
-        clip_seconds = 2
-    else:
-        target = float(story.get("duration_seconds", 10))
-        clip_seconds = max(2, min(3, round(target / len(scenes))))
+    if len(scenes) < 3:
+        raise SystemExit("story.json must contain at least 3 scenes")
 
     if CLIP_DIR.exists():
         shutil.rmtree(CLIP_DIR)
     CLIP_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"Using free ZeroGPU Space: {HF_SPACE}")
-    print(f"Mode: {'anonymous $0' if anonymous_mode else 'signed-in free quota'}")
-    print(f"Scenes: {len(scenes)} | AI seconds per scene: {clip_seconds}")
+    print(f"Mode: {'anonymous $0 / one AI generation' if not HF_TOKEN else 'signed-in free quota'}")
     client = Client(HF_SPACE, token=HF_TOKEN or None)
 
-    raw = []
-    for i, scene in enumerate(scenes):
-        raw.append(generate_clip(client, scene, i, len(scenes), clip_seconds))
-
-    edited = []
-    for i, (src, scene) in enumerate(zip(raw, scenes)):
-        edited.append(stylize_clip(src, scene.get("caption", ""), i))
-
-    silent = concat_clips(edited)
-    total = duration_of(silent)
-    synth_audio(AUDIO, total, len(scenes))
-    mux_audio(silent, AUDIO)
-    write_metadata(story, total)
+    raw = generate_one_clip(client, story)
+    silent = remix_to_short(raw, story)
+    synth_audio(AUDIO, 6.0)
+    mux(silent)
+    write_metadata(story)
 
     READY.write_text("ok\n", encoding="utf-8")
-    print(f"Rendered dynamic AI Short: {OUT} ({total:.1f}s)")
+    print(f"Rendered dynamic AI Short: {OUT} (6s)")
 
 
 if __name__ == "__main__":
