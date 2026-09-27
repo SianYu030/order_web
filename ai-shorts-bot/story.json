@@ -1,78 +1,16 @@
 {
-  "story_id": "20260927-raccoonreveal",
-  "title": "He Hid One Tiny Thing… Then Everyone Understood",
-  "description": "A tiny raccoon keeps returning to the same spot at night. The reason is smaller—and sweeter—than anyone expects. An original suspense-to-reveal animal micro-story.",
-  "hashtags": [
-    "#shorts",
-    "#raccoon",
-    "#animalstory",
-    "#wholesome",
-    "#plotwist"
-  ],
+  "story_id": "20260928-catloop",
+  "title": "The Cat Fell for It",
+  "description": "An original fast visual cat comedy loop.",
+  "hashtags": ["#shorts", "#cat", "#funnyanimals", "#comedy"],
   "category_id": "15",
   "made_for_kids": false,
   "synthetic_media": false,
-  "content_format": "suspense_reveal",
-  "duration_seconds": 12,
+  "content_format": "relatable_comedy",
+  "duration_seconds": 6,
   "scenes": [
-    {
-      "background": "night",
-      "caption": "Why does he come back every night?",
-      "actors": [
-        {
-          "type": "raccoon",
-          "x": 0.5,
-          "y": 0.66,
-          "scale": 0.88,
-          "emotion": "calm"
-        }
-      ]
-    },
-    {
-      "background": "street",
-      "caption": "He always checks the same box.",
-      "actors": [
-        {
-          "type": "raccoon",
-          "x": 0.43,
-          "y": 0.65,
-          "scale": 0.92,
-          "emotion": "hopeful"
-        }
-      ]
-    },
-    {
-      "background": "night",
-      "caption": "Then… something moved inside.",
-      "actors": [
-        {
-          "type": "raccoon",
-          "x": 0.4,
-          "y": 0.65,
-          "scale": 0.92,
-          "emotion": "surprised"
-        }
-      ]
-    },
-    {
-      "background": "home",
-      "caption": "He was protecting his little family.",
-      "actors": [
-        {
-          "type": "raccoon",
-          "x": 0.36,
-          "y": 0.67,
-          "scale": 0.9,
-          "emotion": "happy"
-        },
-        {
-          "type": "raccoon",
-          "x": 0.62,
-          "y": 0.72,
-          "scale": 0.55,
-          "emotion": "happy"
-        }
-      ]
-    }
+    {"background":"home","caption":"HE SAW A TREAT","actors":[{"type":"cat","x":0.5,"y":0.66,"scale":0.92,"emotion":"surprised"}]},
+    {"background":"home","caption":"WATCH THE PAWS","actors":[{"type":"cat","x":0.5,"y":0.66,"scale":1.02,"emotion":"surprised"}]},
+    {"background":"home","caption":"IT WAS A TOY","actors":[{"type":"cat","x":0.5,"y":0.66,"scale":0.96,"emotion":"calm"}]}
   ]
 }
