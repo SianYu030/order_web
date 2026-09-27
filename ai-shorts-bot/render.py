@@ -72,16 +72,14 @@ def build_prompt(scene, index, total):
     beat = str(scene.get("caption", "")).strip()
     camera = CAMERAS[index % len(CAMERAS)]
 
-    return (
-        f"Vertical 9:16 cinematic short-form video. {bg}. "
-        f"Main subject: {actor_text}. "
-        f"Story beat: {beat}. "
-        f"The characters must physically ACT out the story beat with clear body movement and facial reaction; "
-        f"do not pose or stand still. {camera}. "
-        f"Strong foreground/background separation, realistic lighting, detailed environment, dynamic motion, "
-        f"clear visual storytelling that works without narration. "
-        f"Shot {index + 1} of {total}. No written text, no subtitles, no logo, no watermark."
+    prompt = (
+        f"Vertical 9:16 cinematic video. {bg}. "
+        f"{actor_text}. Story beat: {beat}. "
+        f"Characters physically act with clear movement and facial reaction, never posing still. "
+        f"{camera}. Realistic lighting, dynamic motion, visual storytelling. "
+        f"No text, subtitles, logo or watermark."
     )
+    return prompt[:580]
 
 
 def extract_video_path(result):
