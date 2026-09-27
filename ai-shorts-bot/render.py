@@ -1,404 +1,305 @@
 #!/usr/bin/env python3
-import json, math, os, random, subprocess, wave
+import json
+import math
+import os
+import random
+import shutil
+import subprocess
+import wave
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-W,H=720,1280
-FPS=24
-DEFAULT_TOTAL=18.0
-ROOT=Path(__file__).resolve().parent
-STORY=ROOT/"story.json"
-OUT=ROOT/"output.mp4"
-AUDIO=ROOT/"_audio.wav"
-META=ROOT/"metadata.json"
-SCENE_DIR=ROOT/"_scenes"
+from gradio_client import Client
 
-FONT_CANDIDATES=[
-"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]
-FONT_BOLD_CANDIDATES=[
-"/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-"/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
-"/usr/share/truetype/dejavu/DejaVuSans-Bold.ttf"]
+ROOT = Path(__file__).resolve().parent
+STORY = ROOT / "story.json"
+OUT = ROOT / "output.mp4"
+META = ROOT / "metadata.json"
+AUDIO = ROOT / "_audio.wav"
+CLIP_DIR = ROOT / "_clips"
+READY = ROOT / "READY_TO_UPLOAD"
 
-def font(size,bold=False):
-    for p in (FONT_BOLD_CANDIDATES if bold else FONT_CANDIDATES):
-        if os.path.exists(p):
-            return ImageFont.truetype(p,size=size)
-    return ImageFont.load_default()
+HF_SPACE = os.environ.get(
+    "HF_SPACE",
+    "alexcheng0072/wan27-free-video-generator",
+)
+HF_TOKEN = os.environ.get("HF_TOKEN", "").strip()
 
-def text_width(d,txt,fnt):
-    bb=d.textbbox((0,0),txt,font=fnt)
-    return bb[2]-bb[0]
+ACTORS = {
+    "dog": "a lovable small golden-brown dog with expressive dark eyes and natural fur",
+    "cat": "a charming silver-gray cat with expressive green eyes and realistic soft fur",
+    "rabbit": "a small white-gray rabbit with long ears and expressive dark eyes",
+    "fox": "a young red fox with a cream chest, bright amber eyes and a fluffy tail",
+    "bear": "a small brown bear with warm expressive eyes and realistic soft fur",
+    "penguin": "a small black-and-white penguin with expressive eyes and natural feathers",
+    "deer": "a young brown deer with gentle dark eyes and delicate natural fur",
+    "raccoon": "a small silver-gray raccoon with a black face mask, ringed tail and expressive amber eyes",
+}
 
-def wrap_text(text,fnt,max_width,max_lines=2):
-    words=str(text).strip().split()
-    if not words:return ""
-    d=ImageDraw.Draw(Image.new("RGB",(10,10)))
-    lines=[];cur=words[0]
-    for w in words[1:]:
-        t=cur+" "+w
-        if text_width(d,t,fnt)<=max_width:
-            cur=t
-        else:
-            lines.append(cur);cur=w
-    lines.append(cur)
-    if len(lines)>max_lines:
-        keep=lines[:max_lines]
-        while text_width(d,keep[-1]+"…",fnt)>max_width and len(keep[-1])>2:
-            keep[-1]=keep[-1][:-1]
-        keep[-1]=keep[-1].rstrip()+"…"
-        lines=keep
-    return "\n".join(lines)
+BACKGROUNDS = {
+    "rain": "a rainy city lane at night, wet pavement reflections, visible falling rain",
+    "street": "a cinematic quiet neighborhood street with depth and practical lights",
+    "park": "a lush city park with natural depth, trees and soft daylight",
+    "home": "a warm cozy home interior with practical lamps and believable detail",
+    "sunset": "an outdoor setting during golden sunset with dramatic warm backlight",
+    "night": "a moonlit outdoor night scene with cinematic practical lighting",
+}
 
-def gradient(top,bottom):
-    img=Image.new("RGB",(W,H));d=ImageDraw.Draw(img)
-    steps=96
-    for i in range(steps):
-        y0=int(H*i/steps);y1=int(H*(i+1)/steps)+1;t=i/(steps-1)
-        c=tuple(int(top[j]*(1-t)+bottom[j]*t) for j in range(3))
-        d.rectangle((0,y0,W,y1),fill=c)
-    return img
+CAMERAS = [
+    "handheld tracking shot rushing toward the subject",
+    "low-angle follow shot with a quick push-in",
+    "close tracking shot, slight camera shake, rack focus",
+    "fast dolly-in followed by an emotional close-up",
+    "side tracking shot with parallax and a quick reaction close-up",
+    "tight cinematic close-up that resolves into a wider reveal",
+]
 
-def vignette(img):
-    mask=Image.new("L",(W,H),0)
-    md=ImageDraw.Draw(mask)
-    md.ellipse((-160,-120,W+160,H+160),fill=210)
-    mask=mask.filter(ImageFilter.GaussianBlur(110))
-    shade=Image.new("RGB",(W,H),(0,0,0))
-    return Image.composite(img,shade,mask)
 
-def glow(img,xy,r,color,alpha=80):
-    ov=Image.new("RGBA",(W,H),(0,0,0,0))
-    d=ImageDraw.Draw(ov)
-    cx,cy=xy
-    for k in range(6,0,-1):
-        rr=int(r*k/6)
-        a=int(alpha*(1-k/7)/2)
-        d.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill=(*color,a))
-    ov=ov.filter(ImageFilter.GaussianBlur(max(8,r//6)))
-    return Image.alpha_composite(img.convert("RGBA"),ov).convert("RGB")
+def run(cmd):
+    subprocess.run(cmd, check=True)
 
-def bg(kind,seed):
-    rng=random.Random(seed)
-    pal={"rain":((28,37,58),(76,92,120)),"street":((64,76,96),(176,184,194)),
-         "park":((117,181,226),(213,242,224)),"home":((225,205,180),(250,239,220)),
-         "sunset":((255,164,104),(92,72,148)),"night":((15,22,45),(45,55,88))}
-    img=gradient(*pal.get(kind,pal["park"]));d=ImageDraw.Draw(img)
 
-    # soft horizon / cinematic depth
-    if kind in ("park","sunset"):
-        d.rectangle((0,int(H*.62),W,H),fill=(66,126,76))
-        for tx,scale in [(95,.9),(600,1.05)]:
-            trunk=int(28*scale); crown=int(76*scale)
-            d.rectangle((tx-trunk//2,int(H*.43),tx+trunk//2,int(H*.70)),fill=(102,74,52))
-            d.ellipse((tx-crown,int(H*.31),tx+crown,int(H*.50)),fill=(64,130,72))
-        if kind=="sunset":
-            img=glow(img,(570,235),130,(255,204,120),100)
-    elif kind=="home":
-        d.rectangle((0,int(H*.64),W,H),fill=(163,122,92))
-        d.rounded_rectangle((40,125,315,455),radius=20,fill=(148,197,228),outline=(246,246,246),width=10)
-        d.line((177,125,177,455),fill=(246,246,246),width=8)
-        d.line((40,290,315,290),fill=(246,246,246),width=8)
-        d.rounded_rectangle((450,160,665,535),radius=20,fill=(170,118,74))
-        d.ellipse((585,340,605,360),fill=(237,202,110))
-        img=glow(img,(190,225),120,(255,238,185),65)
-    elif kind=="street":
-        d.rectangle((0,int(H*.64),W,H),fill=(63,66,73))
-        d.rounded_rectangle((75,560,370,705),radius=20,fill=(88,62,45))
-        for x in range(80,W,150):
-            d.rectangle((x,740,x+70,750),fill=(205,193,150))
-    elif kind=="rain":
-        d.rectangle((0,int(H*.66),W,H),fill=(55,61,72))
-        for _ in range(115):
-            x=rng.randint(-20,W+20);y=rng.randint(0,H);ln=rng.randint(18,34)
-            d.line((x,y,x-8,y+ln),fill=(178,205,230),width=2)
-        img=glow(img,(125,220),110,(170,205,255),45)
-    elif kind=="night":
-        d.rectangle((0,int(H*.69),W,H),fill=(39,49,55))
-        for _ in range(60):
-            x=rng.randint(0,W);y=rng.randint(0,int(H*.55));r=rng.choice([1,1,2,3])
-            d.ellipse((x-r,y-r,x+r,y+r),fill=(240,240,211))
-        img=glow(img,(560,180),120,(218,226,255),75)
+def actor_description(actor):
+    kind = str(actor.get("type", "dog")).lower()
+    base = ACTORS.get(kind, ACTORS["dog"])
+    emotion = str(actor.get("emotion", "calm")).lower()
+    return f"{base}, visibly {emotion}"
 
-    # floor shadow gradient
-    ov=Image.new("RGBA",(W,H),(0,0,0,0));od=ImageDraw.Draw(ov)
-    od.rectangle((0,int(H*.74),W,H),fill=(0,0,0,28))
-    img=Image.alpha_composite(img.convert("RGBA"),ov).convert("RGB")
-    return img
 
-def draw_shadow(d,cx,cy,rx,ry):
-    d.ellipse((cx-rx,cy-ry,cx+rx,cy+ry),fill=(0,0,0,45))
+def build_prompt(scene, index, total):
+    actors = scene.get("actors") or [{"type": "dog", "emotion": "surprised"}]
+    actor_text = "; ".join(actor_description(a) for a in actors[:3])
+    bg = BACKGROUNDS.get(str(scene.get("background", "park")).lower(), BACKGROUNDS["park"])
+    beat = str(scene.get("caption", "")).strip()
+    camera = CAMERAS[index % len(CAMERAS)]
 
-def face(d,cx,cy,r,emotion):
-    ey=cy-int(r*.10)
-    eye_dx=int(r*.34)
-    er=max(4,int(r*.075))
-    for ex in (cx-eye_dx,cx+eye_dx):
-        d.ellipse((ex-er,ey-er,ex+er,ey+er),fill=(28,28,30))
-        d.ellipse((ex-er//2,ey-er//2,ex,ey),fill=(255,255,255))
-    if emotion=="sad":
-        d.arc((cx-int(r*.34),cy+int(r*.08),cx+int(r*.34),cy+int(r*.44)),200,340,fill=(48,40,38),width=max(3,int(r*.045)))
-    elif emotion=="surprised":
-        rr=max(6,int(r*.12))
-        d.ellipse((cx-rr,cy+int(r*.18)-rr,cx+rr,cy+int(r*.18)+rr),outline=(48,40,38),width=max(3,int(r*.045)))
-    elif emotion=="hopeful":
-        d.arc((cx-int(r*.28),cy+int(r*.02),cx+int(r*.28),cy+int(r*.32)),20,160,fill=(48,40,38),width=max(3,int(r*.04)))
-    else:
-        d.arc((cx-int(r*.34),cy,cx+int(r*.34),cy+int(r*.36)),15,165,fill=(48,40,38),width=max(3,int(r*.045)))
-
-def dog(d,x,y,s,e):
-    cx,cy=int(W*x),int(H*y);r=int(79*s)
-    draw_shadow(d,cx,cy+int(190*s),int(105*s),int(22*s))
-    # tail
-    d.arc((cx+int(42*s),cy+int(72*s),cx+int(150*s),cy+int(180*s)),220,355,fill=(120,82,51),width=max(4,int(15*s)))
-    # body + chest
-    d.ellipse((cx-int(82*s),cy+int(46*s),cx+int(82*s),cy+int(192*s)),fill=(194,137,81),outline=(91,62,43),width=max(3,int(5*s)))
-    d.ellipse((cx-int(43*s),cy+int(65*s),cx+int(43*s),cy+int(165*s)),fill=(235,198,146))
-    # paws
-    d.rounded_rectangle((cx-int(62*s),cy+int(154*s),cx-int(22*s),cy+int(210*s)),radius=max(6,int(10*s)),fill=(180,121,72))
-    d.rounded_rectangle((cx+int(22*s),cy+int(154*s),cx+int(62*s),cy+int(210*s)),radius=max(6,int(10*s)),fill=(180,121,72))
-    # head/ears
-    d.polygon([(cx-r+8,cy-r+20),(cx-r-int(52*s),cy-int(30*s)),(cx-int(39*s),cy+int(18*s))],fill=(139,89,54))
-    d.polygon([(cx+r-8,cy-r+20),(cx+r+int(52*s),cy-int(30*s)),(cx+int(39*s),cy+int(18*s))],fill=(139,89,54))
-    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(220,166,104),outline=(91,62,43),width=max(3,int(5*s)))
-    # muzzle
-    d.ellipse((cx-int(36*s),cy+int(5*s),cx+int(36*s),cy+int(50*s)),fill=(239,205,159))
-    d.ellipse((cx-int(18*s),cy+int(8*s),cx+int(18*s),cy+int(32*s)),fill=(48,39,34))
-    face(d,cx,cy,r,e)
-    # collar
-    d.arc((cx-int(62*s),cy+int(47*s),cx+int(62*s),cy+int(90*s)),5,175,fill=(56,104,175),width=max(4,int(8*s)))
-
-def cat(d,x,y,s,e):
-    cx,cy=int(W*x),int(H*y);r=int(68*s)
-    draw_shadow(d,cx,cy+int(168*s),int(88*s),int(18*s))
-    # tail
-    d.arc((cx+int(28*s),cy+int(55*s),cx+int(145*s),cy+int(180*s)),210,350,fill=(99,105,116),width=max(4,int(13*s)))
-    d.ellipse((cx-int(68*s),cy+int(38*s),cx+int(68*s),cy+int(164*s)),fill=(145,151,161),outline=(64,69,78),width=max(3,int(4*s)))
-    d.rounded_rectangle((cx-int(50*s),cy+int(140*s),cx-int(18*s),cy+int(190*s)),radius=max(5,int(8*s)),fill=(132,138,148))
-    d.rounded_rectangle((cx+int(18*s),cy+int(140*s),cx+int(50*s),cy+int(190*s)),radius=max(5,int(8*s)),fill=(132,138,148))
-    d.polygon([(cx-r+10,cy-r+20),(cx-int(45*s),cy-r-int(54*s)),(cx-int(10*s),cy-r+10)],fill=(150,156,166))
-    d.polygon([(cx+r-10,cy-r+20),(cx+int(45*s),cy-r-int(54*s)),(cx+int(10*s),cy-r+10)],fill=(150,156,166))
-    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=(174,180,189),outline=(64,69,78),width=max(3,int(4*s)))
-    # cheek/muzzle
-    d.ellipse((cx-int(34*s),cy+int(5*s),cx+int(34*s),cy+int(42*s)),fill=(202,206,212))
-    d.polygon([(cx,cy+int(12*s)),(cx-int(12*s),cy+int(25*s)),(cx+int(12*s),cy+int(25*s))],fill=(91,72,78))
-    # whiskers
-    for yy in (-3,9):
-        d.line((cx-int(28*s),cy+int(26*s+yy),cx-int(75*s),cy+int(19*s+yy)),fill=(95,99,106),width=max(1,int(2*s)))
-        d.line((cx+int(28*s),cy+int(26*s+yy),cx+int(75*s),cy+int(19*s+yy)),fill=(95,99,106),width=max(1,int(2*s)))
-    face(d,cx,cy,r,e)
-
-def rabbit(d,x,y,s,e):
-    cx,cy=int(W*x),int(H*y);r=int(64*s)
-    draw_shadow(d,cx,cy+int(170*s),int(82*s),int(18*s))
-    body=(205,205,212); edge=(90,92,100); inner=(235,180,190)
-    d.ellipse((cx-int(66*s),cy+int(45*s),cx+int(66*s),cy+int(165*s)),fill=body,outline=edge,width=max(3,int(4*s)))
-    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=body,outline=edge,width=max(3,int(4*s)))
-    d.ellipse((cx-int(45*s),cy-r-int(92*s),cx-int(8*s),cy-r+int(10*s)),fill=body,outline=edge,width=max(3,int(4*s)))
-    d.ellipse((cx+int(8*s),cy-r-int(92*s),cx+int(45*s),cy-r+int(10*s)),fill=body,outline=edge,width=max(3,int(4*s)))
-    d.ellipse((cx-int(34*s),cy-r-int(78*s),cx-int(18*s),cy-r-int(5*s)),fill=inner)
-    d.ellipse((cx+int(18*s),cy-r-int(78*s),cx+int(34*s),cy-r-int(5*s)),fill=inner)
-    d.ellipse((cx-int(12*s),cy+int(12*s),cx+int(12*s),cy+int(28*s)),fill=(110,78,84))
-    face(d,cx,cy,r,e)
-
-def fox(d,x,y,s,e):
-    cx,cy=int(W*x),int(H*y);r=int(72*s)
-    draw_shadow(d,cx,cy+int(180*s),int(95*s),int(19*s))
-    orange=(214,112,50); dark=(85,53,42); cream=(244,225,194)
-    d.polygon([(cx+int(45*s),cy+int(90*s)),(cx+int(150*s),cy+int(125*s)),(cx+int(92*s),cy+int(160*s))],fill=orange)
-    d.ellipse((cx-int(74*s),cy+int(44*s),cx+int(74*s),cy+int(180*s)),fill=orange,outline=dark,width=max(3,int(4*s)))
-    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=orange,outline=dark,width=max(3,int(4*s)))
-    d.polygon([(cx-r+6,cy-r+20),(cx-int(48*s),cy-r-int(58*s)),(cx-int(10*s),cy-r+8)],fill=orange,outline=dark)
-    d.polygon([(cx+r-6,cy-r+20),(cx+int(48*s),cy-r-int(58*s)),(cx+int(10*s),cy-r+8)],fill=orange,outline=dark)
-    d.polygon([(cx-int(40*s),cy+int(6*s)),(cx,cy+int(50*s)),(cx+int(40*s),cy+int(6*s))],fill=cream)
-    d.ellipse((cx-int(13*s),cy+int(18*s),cx+int(13*s),cy+int(34*s)),fill=dark)
-    face(d,cx,cy,r,e)
-
-def bear(d,x,y,s,e):
-    cx,cy=int(W*x),int(H*y);r=int(74*s)
-    draw_shadow(d,cx,cy+int(185*s),int(105*s),int(20*s))
-    fur=(142,96,63); edge=(72,48,34); muzzle=(205,173,140)
-    d.ellipse((cx-int(82*s),cy+int(42*s),cx+int(82*s),cy+int(188*s)),fill=fur,outline=edge,width=max(3,int(4*s)))
-    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=fur,outline=edge,width=max(3,int(4*s)))
-    d.ellipse((cx-r-int(18*s),cy-r-int(12*s),cx-r+int(22*s),cy-r+int(28*s)),fill=fur,outline=edge,width=max(2,int(3*s)))
-    d.ellipse((cx+r-int(22*s),cy-r-int(12*s),cx+r+int(18*s),cy-r+int(28*s)),fill=fur,outline=edge,width=max(2,int(3*s)))
-    d.ellipse((cx-int(38*s),cy+int(4*s),cx+int(38*s),cy+int(48*s)),fill=muzzle)
-    d.ellipse((cx-int(14*s),cy+int(12*s),cx+int(14*s),cy+int(30*s)),fill=edge)
-    face(d,cx,cy,r,e)
-
-def penguin(d,x,y,s,e):
-    cx,cy=int(W*x),int(H*y);r=int(60*s)
-    draw_shadow(d,cx,cy+int(175*s),int(82*s),int(18*s))
-    black=(36,42,52); white=(235,238,242); beak=(232,154,58)
-    d.ellipse((cx-int(66*s),cy+int(30*s),cx+int(66*s),cy+int(172*s)),fill=black)
-    d.ellipse((cx-int(44*s),cy+int(50*s),cx+int(44*s),cy+int(154*s)),fill=white)
-    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=black)
-    d.ellipse((cx-int(42*s),cy-int(18*s),cx+int(42*s),cy+int(45*s)),fill=white)
-    d.polygon([(cx,cy+int(16*s)),(cx-int(12*s),cy+int(30*s)),(cx+int(12*s),cy+int(30*s))],fill=beak)
-    face(d,cx,cy,r,e)
-
-def deer(d,x,y,s,e):
-    cx,cy=int(W*x),int(H*y);r=int(64*s)
-    draw_shadow(d,cx,cy+int(180*s),int(90*s),int(18*s))
-    fur=(184,126,76); edge=(95,63,42); cream=(232,204,165)
-    d.ellipse((cx-int(70*s),cy+int(42*s),cx+int(70*s),cy+int(176*s)),fill=fur,outline=edge,width=max(3,int(4*s)))
-    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=fur,outline=edge,width=max(3,int(4*s)))
-    d.polygon([(cx-r+8,cy-r+15),(cx-r-int(30*s),cy-int(15*s)),(cx-int(32*s),cy+int(5*s))],fill=fur)
-    d.polygon([(cx+r-8,cy-r+15),(cx+r+int(30*s),cy-int(15*s)),(cx+int(32*s),cy+int(5*s))],fill=fur)
-    d.ellipse((cx-int(34*s),cy+int(5*s),cx+int(34*s),cy+int(42*s)),fill=cream)
-    d.ellipse((cx-int(12*s),cy+int(12*s),cx+int(12*s),cy+int(28*s)),fill=edge)
-    face(d,cx,cy,r,e)
-
-def raccoon(d,x,y,s,e):
-    cx,cy=int(W*x),int(H*y);r=int(66*s)
-    draw_shadow(d,cx,cy+int(175*s),int(90*s),int(18*s))
-    fur=(130,136,145); dark=(55,60,68); light=(190,194,200)
-    d.arc((cx+int(35*s),cy+int(75*s),cx+int(145*s),cy+int(170*s)),210,355,fill=dark,width=max(5,int(16*s)))
-    d.ellipse((cx-int(70*s),cy+int(40*s),cx+int(70*s),cy+int(170*s)),fill=fur,outline=dark,width=max(3,int(4*s)))
-    d.ellipse((cx-r,cy-r,cx+r,cy+r),fill=fur,outline=dark,width=max(3,int(4*s)))
-    d.ellipse((cx-int(48*s),cy-int(12*s),cx+int(48*s),cy+int(26*s)),fill=dark)
-    d.ellipse((cx-int(34*s),cy+int(4*s),cx+int(34*s),cy+int(40*s)),fill=light)
-    d.ellipse((cx-int(12*s),cy+int(12*s),cx+int(12*s),cy+int(28*s)),fill=dark)
-    face(d,cx,cy,r,e)
-
-def draw_actor(d,a):
-    kind=str(a.get("type","dog")).lower()
-    fn={
-        "dog":dog,
-        "cat":cat,
-        "rabbit":rabbit,
-        "fox":fox,
-        "bear":bear,
-        "penguin":penguin,
-        "deer":deer,
-        "raccoon":raccoon
-    }.get(kind,dog)
-    ax=min(float(a.get("x",.5)),0.68)
-    ay=min(float(a.get("y",.62)),0.69)
-    fn(d,ax,ay,float(a.get("scale",1)),a.get("emotion","calm"))
-
-def rounded_panel(img,box,alpha=165,radius=28):
-    ov=Image.new("RGBA",(W,H),(0,0,0,0))
-    d=ImageDraw.Draw(ov)
-    d.rounded_rectangle(box,radius=radius,fill=(10,14,22,alpha))
-    return Image.alpha_composite(img.convert("RGBA"),ov).convert("RGB")
-
-def scene_image(scene,idx,title,total_scenes):
-    img=bg(scene.get("background","park"),idx*7919+17)
-    d=ImageDraw.Draw(img,"RGBA")
-
-    # Keep actors inside the visual-safe region and away from the right-side Shorts controls.
-    for a in scene.get("actors",[]):
-        draw_actor(d,a)
-
-    # v3: no large title card inside the video. The YouTube title already appears below the Short.
-    # This keeps the top area clear of back/search/menu controls.
-
-    # Caption safe-zone:
-    # left-side card, above the characters, leaving the entire right column free for Shorts buttons.
-    caption=wrap_text(scene.get("caption",""),font(34,True),430,2)
-    cf=font(34,True)
-    bb=d.multiline_textbbox((0,0),caption,font=cf,spacing=7,align="left")
-    th=bb[3]-bb[1]
-
-    x1,x2=48,548
-    center_y=560
-    y1=int(center_y-th/2-24)
-    y2=int(center_y+th/2+24)
-
-    ov=Image.new("RGBA",(W,H),(0,0,0,0))
-    od=ImageDraw.Draw(ov)
-    od.rounded_rectangle((x1,y1,x2,y2),radius=24,fill=(8,12,20,148))
-    od.rounded_rectangle((x1+12,y1+14,x1+18,y2-14),radius=3,fill=(255,255,255,180))
-    img=Image.alpha_composite(img.convert("RGBA"),ov).convert("RGB")
-
-    d=ImageDraw.Draw(img,"RGBA")
-    d.multiline_text(
-        (x1+34,center_y),
-        caption,
-        font=cf,
-        fill=(255,255,255,255),
-        anchor="lm",
-        align="left",
-        spacing=7,
-        stroke_width=2,
-        stroke_fill=(0,0,0,120)
+    return (
+        f"Vertical 9:16 cinematic short-form video. {bg}. "
+        f"Main subject: {actor_text}. "
+        f"Story beat: {beat}. "
+        f"The characters must physically ACT out the story beat with clear body movement and facial reaction; "
+        f"do not pose or stand still. {camera}. "
+        f"Strong foreground/background separation, realistic lighting, detailed environment, dynamic motion, "
+        f"clear visual storytelling that works without narration. "
+        f"Shot {index + 1} of {total}. No written text, no subtitles, no logo, no watermark."
     )
 
-    # No scene counter in v4/v5; keeps the frame cleaner for Shorts.
-    return vignette(img)
 
-def synth(path,duration):
-    sr=44100
-    notes=[196,246.94,293.66,392,293.66,246.94]
-    with wave.open(str(path),"w") as wf:
-        wf.setnchannels(1);wf.setsampwidth(2);wf.setframerate(sr)
-        frames=bytearray()
-        for i in range(int(duration*sr)):
-            t=i/sr;n=notes[int(t/2.5)%len(notes)]
-            # softer pad + pulse, still original and license-free
-            env=.65+.35*math.sin(2*math.pi*.12*t)
-            v=(math.sin(2*math.pi*n*t)+.30*math.sin(2*math.pi*n*.5*t)+.22*math.sin(2*math.pi*n*1.5*t))*.034*env
-            frames+=int(max(-1,min(1,v))*32767).to_bytes(2,"little",signed=True)
+def extract_video_path(result):
+    value = result[0] if isinstance(result, (tuple, list)) else result
+
+    if isinstance(value, str):
+        return Path(value)
+
+    if isinstance(value, dict):
+        for key in ("path", "video", "name"):
+            candidate = value.get(key)
+            if isinstance(candidate, str):
+                return Path(candidate)
+            if isinstance(candidate, dict) and isinstance(candidate.get("path"), str):
+                return Path(candidate["path"])
+
+    raise RuntimeError(f"Unsupported video result type: {type(value)!r}")
+
+
+def generate_clip(client, scene, index, total, seconds):
+    prompt = build_prompt(scene, index, total)
+    print(f"Generating AI clip {index + 1}/{total} ({seconds}s)...")
+    result = client.predict(
+        None,
+        prompt,
+        "480x832",
+        int(seconds),
+        api_name="/generate_video",
+    )
+    src = extract_video_path(result)
+    if not src.exists():
+        raise RuntimeError(f"Generated clip not found: {src}")
+
+    dst = CLIP_DIR / f"raw_{index:02d}.mp4"
+    shutil.copy2(src, dst)
+    return dst
+
+
+def escape_drawtext_path(path):
+    return str(path).replace("\\", "\\\\").replace(":", "\\:")
+
+
+def stylize_clip(src, caption, index):
+    text_file = CLIP_DIR / f"caption_{index:02d}.txt"
+    text_file.write_text(str(caption).strip(), encoding="utf-8")
+    dst = CLIP_DIR / f"edit_{index:02d}.mp4"
+
+    draw = (
+        "drawtext="
+        f"textfile='{escape_drawtext_path(text_file)}':"
+        "font='DejaVu Sans':"
+        "fontcolor=white:fontsize=58:"
+        "borderw=5:bordercolor=black@0.85:"
+        "line_spacing=10:"
+        "x=(w-text_w)/2:"
+        "y=h*0.76"
+    )
+
+    vf = (
+        "scale=1080:1920:force_original_aspect_ratio=increase,"
+        "crop=1080:1920,"
+        f"{draw},"
+        "format=yuv420p"
+    )
+
+    run([
+        "ffmpeg", "-y", "-i", str(src),
+        "-vf", vf,
+        "-an",
+        "-r", "30",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-movflags", "+faststart",
+        str(dst),
+    ])
+    return dst
+
+
+def concat_clips(clips):
+    list_file = CLIP_DIR / "concat.txt"
+    list_file.write_text(
+        "".join(f"file '{p.resolve()}'\n" for p in clips),
+        encoding="utf-8",
+    )
+    silent = CLIP_DIR / "silent.mp4"
+    run([
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0", "-i", str(list_file),
+        "-c", "copy",
+        str(silent),
+    ])
+    return silent
+
+
+def duration_of(path):
+    out = subprocess.check_output([
+        "ffprobe", "-v", "error",
+        "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1",
+        str(path),
+    ], text=True).strip()
+    return max(0.1, float(out))
+
+
+def synth_audio(path, duration, scene_count):
+    sr = 44100
+    rng = random.Random(20260927)
+    transitions = [
+        duration * i / max(1, scene_count)
+        for i in range(1, scene_count)
+    ]
+
+    with wave.open(str(path), "w") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sr)
+
+        frames = bytearray()
+        for i in range(int(duration * sr)):
+            t = i / sr
+
+            # Minimal cinematic pulse bed.
+            pulse = 0.018 * math.sin(2 * math.pi * 110 * t)
+            pulse += 0.010 * math.sin(2 * math.pi * 164.81 * t)
+            pulse *= 0.55 + 0.45 * (0.5 + 0.5 * math.sin(2 * math.pi * 1.8 * t))
+
+            # Short transition impacts generated locally; no copyrighted audio.
+            impact = 0.0
+            for mark in transitions:
+                dt = t - mark
+                if 0 <= dt < 0.16:
+                    env = math.exp(-18 * dt)
+                    impact += env * (
+                        0.06 * math.sin(2 * math.pi * (240 - 900 * dt) * dt)
+                        + 0.025 * (rng.random() * 2 - 1)
+                    )
+
+            # Tiny opening hook hit.
+            if t < 0.12:
+                pulse += 0.06 * math.exp(-24 * t) * math.sin(2 * math.pi * 330 * t)
+
+            v = max(-0.95, min(0.95, pulse + impact))
+            frames += int(v * 32767).to_bytes(2, "little", signed=True)
+
         wf.writeframes(frames)
 
-def render(story):
-    scenes=story.get("scenes") or []
-    if len(scenes)<2:
-        raise SystemExit("Need at least 2 scenes")
-    SCENE_DIR.mkdir(exist_ok=True)
 
-    # Let each daily trend-selected format choose its own length.
-    total=float(story.get("duration_seconds", DEFAULT_TOTAL))
-    total=max(8.0,min(24.0,total))
-    per=total/len(scenes)
-    pngs=[]
-    for i,s in enumerate(scenes):
-        p=SCENE_DIR/f"{i:02d}.png"
-        scene_image(s,i,story.get("title","Animal Story"),len(scenes)).save(p,quality=96)
-        pngs.append(p)
+def mux_audio(video, audio):
+    run([
+        "ffmpeg", "-y",
+        "-i", str(video), "-i", str(audio),
+        "-map", "0:v:0", "-map", "1:a:0",
+        "-c:v", "copy",
+        "-c:a", "aac", "-b:a", "160k",
+        "-shortest",
+        "-movflags", "+faststart",
+        str(OUT),
+    ])
 
-    synth(AUDIO,total)
-    cmd=["ffmpeg","-y"]
-    for p in pngs:
-        cmd += ["-loop","1","-t",f"{per:.3f}","-i",str(p)]
-    cmd += ["-i",str(AUDIO)]
 
-    filters=[]
-    for i in range(len(pngs)):
-        # Gentle Ken Burns motion. Odd/even scenes drift in opposite directions.
-        pan = "iw/2-(iw/zoom/2)+8*sin(on/22)" if i%2==0 else "iw/2-(iw/zoom/2)-8*sin(on/22)"
-        filters.append(
-            f"[{i}:v]scale=780:1387,"
-            f"zoompan=z='min(1.0+on*0.00035,1.045)':x='{pan}':y='ih/2-(ih/zoom/2)':"
-            f"d=1:s={W}x{H}:fps={FPS},"
-            f"fade=t=in:st=0:d=0.16,fade=t=out:st={max(0,per-.16):.3f}:d=0.16[v{i}]"
-        )
-    filters.append("".join(f"[v{i}]" for i in range(len(pngs)))+f"concat=n={len(pngs)}:v=1:a=0[v]")
-
-    cmd += [
-        "-filter_complex",";".join(filters),
-        "-map","[v]","-map",f"{len(pngs)}:a",
-        "-r",str(FPS),"-c:v","libx264","-preset","veryfast","-crf","21",
-        "-pix_fmt","yuv420p","-c:a","aac","-b:a","128k",
-        "-movflags","+faststart","-shortest",str(OUT)
-    ]
-    subprocess.run(cmd,check=True)
-
+def write_metadata(story, actual_duration):
     META.write_text(json.dumps({
-        "story_id":story.get("story_id","unknown"),
-        "title":story.get("title","Animal Story")[:100],
-        "description":story.get("description",""),
-        "hashtags":story.get("hashtags",[]),
-        "category_id":story.get("category_id","15"),
-        "made_for_kids":bool(story.get("made_for_kids",False)),
-        "synthetic_media":bool(story.get("synthetic_media",False)),
-        "format":story.get("format","emotion_twist"),
-        "duration_seconds":total
-    },ensure_ascii=False,indent=2),encoding="utf-8")
-    print(f"Rendered {OUT}")
+        "story_id": story.get("story_id", "unknown"),
+        "title": str(story.get("title", "AI Short"))[:100],
+        "description": story.get("description", ""),
+        "hashtags": story.get("hashtags", []),
+        "category_id": str(story.get("category_id", "15")),
+        "made_for_kids": bool(story.get("made_for_kids", False)),
+        "synthetic_media": bool(story.get("synthetic_media", False)),
+        "content_format": story.get("content_format", "suspense_reveal"),
+        "duration_seconds": round(actual_duration, 2),
+        "render_engine": "hf_zerogpu_wan_t2v",
+        "hf_space": HF_SPACE,
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
 
-if __name__=="__main__":
-    render(json.loads(STORY.read_text(encoding="utf-8")))
+
+def main():
+    READY.unlink(missing_ok=True)
+    OUT.unlink(missing_ok=True)
+
+    if not HF_TOKEN:
+        raise SystemExit(
+            "HF_TOKEN is missing. AI video generation will not run, and the legacy sticker renderer is intentionally disabled."
+        )
+
+    story = json.loads(STORY.read_text(encoding="utf-8"))
+    scenes = story.get("scenes") or []
+    if not 3 <= len(scenes) <= 6:
+        raise SystemExit("story.json must contain 3-6 scenes")
+
+    target = float(story.get("duration_seconds", 10))
+    # Keep ZeroGPU use inside the free daily quota: 2-3 seconds per scene.
+    clip_seconds = max(2, min(3, round(target / len(scenes))))
+
+    if CLIP_DIR.exists():
+        shutil.rmtree(CLIP_DIR)
+    CLIP_DIR.mkdir(parents=True, exist_ok=True)
+
+    print(f"Using free ZeroGPU Space: {HF_SPACE}")
+    print(f"Scenes: {len(scenes)} | AI seconds per scene: {clip_seconds}")
+    client = Client(HF_SPACE, token=HF_TOKEN)
+
+    raw = []
+    for i, scene in enumerate(scenes):
+        raw.append(generate_clip(client, scene, i, len(scenes), clip_seconds))
+
+    edited = []
+    for i, (src, scene) in enumerate(zip(raw, scenes)):
+        edited.append(stylize_clip(src, scene.get("caption", ""), i))
+
+    silent = concat_clips(edited)
+    total = duration_of(silent)
+    synth_audio(AUDIO, total, len(scenes))
+    mux_audio(silent, AUDIO)
+    write_metadata(story, total)
+
+    READY.write_text("ok\n", encoding="utf-8")
+    print(f"Rendered dynamic AI Short: {OUT} ({total:.1f}s)")
+
+
+if __name__ == "__main__":
+    main()
