@@ -5,9 +5,6 @@ on:
   push:
     paths:
       - "ai-shorts-bot/story.json"
-      - "ai-shorts-bot/render.py"
-      - "ai-shorts-bot/upload.py"
-      - ".github/workflows/ai-shorts-bot.yml"
 
 permissions:
   contents: read
