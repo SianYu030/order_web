@@ -261,27 +261,31 @@ def main():
     READY.unlink(missing_ok=True)
     OUT.unlink(missing_ok=True)
 
-    if not HF_TOKEN:
-        raise SystemExit(
-            "HF_TOKEN is missing. AI video generation will not run, and the legacy sticker renderer is intentionally disabled."
-        )
-
     story = json.loads(STORY.read_text(encoding="utf-8"))
     scenes = story.get("scenes") or []
     if not 3 <= len(scenes) <= 6:
         raise SystemExit("story.json must contain 3-6 scenes")
 
-    target = float(story.get("duration_seconds", 10))
-    # Keep ZeroGPU use inside the free daily quota: 2-3 seconds per scene.
-    clip_seconds = max(2, min(3, round(target / len(scenes))))
+    # Fully hands-off $0 mode:
+    # Hugging Face currently gives unauthenticated ZeroGPU visitors about 2 minutes/day.
+    # To stay inside that budget, anonymous runs use only the first 3 scenes at 2 seconds each.
+    # If HF_TOKEN is added later, the signed-in free quota is larger and 3-6 scenes can be used.
+    anonymous_mode = not HF_TOKEN
+    if anonymous_mode:
+        scenes = scenes[:3]
+        clip_seconds = 2
+    else:
+        target = float(story.get("duration_seconds", 10))
+        clip_seconds = max(2, min(3, round(target / len(scenes))))
 
     if CLIP_DIR.exists():
         shutil.rmtree(CLIP_DIR)
     CLIP_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"Using free ZeroGPU Space: {HF_SPACE}")
+    print(f"Mode: {'anonymous $0' if anonymous_mode else 'signed-in free quota'}")
     print(f"Scenes: {len(scenes)} | AI seconds per scene: {clip_seconds}")
-    client = Client(HF_SPACE, token=HF_TOKEN)
+    client = Client(HF_SPACE, token=HF_TOKEN or None)
 
     raw = []
     for i, scene in enumerate(scenes):
