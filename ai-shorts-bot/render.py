@@ -198,6 +198,17 @@ def main():
     if len(scenes) < 3:
         raise SystemExit("story.json must contain at least 3 scenes")
 
+    # HIGH_QUALITY_STORY_GUARD
+    # The free one-clip renderer is only allowed for intentionally short 6s stories.
+    # Never compress a 30-50s / multi-scene high-quality story into a cheap 2s remix.
+    requested_duration = float(story.get("duration_seconds", 6))
+    if requested_duration > 6 or len(scenes) > 3:
+        print(
+            f"High-quality story detected ({requested_duration}s, {len(scenes)} scenes). "
+            "Free one-clip fallback is intentionally disabled; skipping render/upload."
+        )
+        return
+
     if CLIP_DIR.exists():
         shutil.rmtree(CLIP_DIR)
     CLIP_DIR.mkdir(parents=True, exist_ok=True)
