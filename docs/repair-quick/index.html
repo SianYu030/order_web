@@ -524,7 +524,9 @@ Object.keys(DATA).forEach(d=>{
 
 const TEST_REPAIR_ACCOUNT="機修";
 const TEST_REPAIR_PASSWORD="1234";
-let repairAuth=sessionStorage.getItem("repairAuth")==="1";
+sessionStorage.removeItem("repairAuth");
+sessionStorage.removeItem("repairUser");
+let repairAuth=false;
 
 function showRepairLogin(){
   el("repairLoginError").classList.add("hidden");
@@ -538,8 +540,6 @@ function doRepairLogin(){
   const password=el("repairLoginPassword").value;
   if(account===TEST_REPAIR_ACCOUNT && password===TEST_REPAIR_PASSWORD){
     repairAuth=true;
-    sessionStorage.setItem("repairAuth","1");
-    sessionStorage.setItem("repairUser",account);
     el("repairLoginUser").textContent=account;
     hideRepairLogin();
     switchMode("repair");
@@ -557,11 +557,9 @@ el("repairLoginPassword").addEventListener("keydown",e=>{if(e.key==="Enter")doRe
 el("repairLoginAccount").addEventListener("keydown",e=>{if(e.key==="Enter")el("repairLoginPassword").focus();});
 el("repairLogoutBtn").onclick=()=>{
   repairAuth=false;
-  sessionStorage.removeItem("repairAuth");
-  sessionStorage.removeItem("repairUser");
   switchMode("report");
 };
-el("repairLoginUser").textContent=sessionStorage.getItem("repairUser")||"機修";
+el("repairLoginUser").textContent="機修";
 
 function switchMode(mode){
   if(mode==="repair" && !repairAuth){showRepairLogin();return;}
