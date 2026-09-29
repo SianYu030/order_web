@@ -92,6 +92,11 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 .time-action.done{background:#187a45}
 .work-box{margin-top:10px;background:#eef6ff;border:1px solid #c9dff5;color:#164f82;border-radius:14px;padding:12px;font-size:13px}
 .work-box b{font-size:18px}
+.complete-repair-btn{width:100%;border:0;border-radius:14px;background:#16804a;color:#fff;padding:14px;font-size:16px;font-weight:950;margin-top:10px;box-shadow:0 5px 14px rgba(22,128,74,.18)}
+.complete-repair-btn:disabled{background:#aab8c7;box-shadow:none}
+.complete-note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:7px}
+.history-title{font-size:13px;font-weight:900;color:#314254;margin:14px 0 8px}
+.history-empty{font-size:12px;color:var(--muted);padding:10px 0}
 .save-repair{width:100%;border:0;border-radius:14px;background:var(--navy);color:#fff;padding:14px;font-size:16px;font-weight:900;margin-top:12px}
 .save-msg{margin-top:9px;font-size:13px;color:#14703d;font-weight:800;text-align:center}
 .track-overview{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0 12px}
@@ -197,9 +202,12 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
     <div id="repairMode" class="hidden">
       <section class="card" id="repairListCard">
         <h2>維修工單</h2>
-        <div class="hint">點選一張 MR 工單進行維修處理</div>
+        <div class="hint">待處理／處理中／待料／外修都屬於「未完成工單」，直到真正修復後才結案。</div>
         <div class="track-overview" id="trackOverview"></div>
+        <div class="section-title">未完成工單</div>
         <div class="order-list" id="repairOrderList"></div>
+        <div class="history-title">已完成歷史</div>
+        <div class="order-list" id="repairHistoryList"></div>
       </section>
 
       <section class="card hidden" id="repairDetailCard">
@@ -297,7 +305,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 
         <div class="work-box">自動維修工時：<b id="repairWork">0時00分</b><br><span style="font-size:12px">08:00–12:00、13:00–17:00，午休不計。</span></div>
 
-        <div class="section-title">維修狀態</div>
+        <div class="section-title">維修狀態（未完成追蹤）</div>
         <div class="repair-status-grid" id="repairStatusGrid"></div>
         <div class="follow-panel hidden" id="followPanel">
           <h3 id="followTitle">後續追蹤</h3>
@@ -307,6 +315,9 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 
         <div class="section-title">追蹤紀錄</div>
         <div class="timeline" id="repairTimeline"></div>
+
+        <button class="complete-repair-btn" id="completeRepairBtn">✅ 維修完成・結案</button>
+        <div class="complete-note">只有設備真的修復完成才按這裡。待料、外修、處理中都會繼續保留在未完成工單內。</div>
 
         <div class="section-title">備註</div>
         <textarea id="repairNote" placeholder="例如：高速皮帶106J*1，已請購2條…"></textarea>
@@ -397,13 +408,26 @@ function renderRepairOrders(){
   el("repairDetailCard").classList.add("hidden");
   renderTrackingOverview();
   el("repairOrderList").innerHTML="";
-  MOCK_ORDERS.forEach(o=>{
+  el("repairHistoryList").innerHTML="";
+  const openOrders=MOCK_ORDERS.filter(o=>o.status!=="已完成");
+  const doneOrders=MOCK_ORDERS.filter(o=>o.status==="已完成");
+  openOrders.forEach(o=>{
     const b=button("","order-card",()=>openRepairOrder(o));
     const cls=o.level==="停線"?"red":o.level==="緊急"?"yellow":"green";
     b.innerHTML='<div class="order-top"><div class="order-no">'+o.no+'</div><span class="tag '+cls+'">'+o.level+'</span></div>'+
       '<div class="order-meta">'+o.dept+'｜'+o.machine+'｜'+o.person+'<br>'+o.issue+'<br>狀態：'+o.status+(storeFor(o).followup?'<br>追蹤：'+esc(storeFor(o).followup.summary):'')+'</div>';
     el("repairOrderList").appendChild(b);
   });
+  if(doneOrders.length===0){
+    el("repairHistoryList").innerHTML='<div class="history-empty">目前沒有已完成工單</div>';
+  }else{
+    doneOrders.forEach(o=>{
+      const b=button("","order-card",()=>openRepairOrder(o));
+      b.innerHTML='<div class="order-top"><div class="order-no">'+o.no+'</div><span class="tag green">已完成</span></div>'+
+        '<div class="order-meta">'+o.dept+'｜'+o.machine+'｜'+o.person+'<br>'+o.issue+'</div>';
+      el("repairHistoryList").appendChild(b);
+    });
+  }
 }
 function openRepairOrder(o){
   const s=storeFor(o);
@@ -416,12 +440,13 @@ function openRepairOrder(o){
   el("repairEnd").textContent=s.end?formatHM(s.end):"--:--";
   el("repairClassSelect").value=s.classification;
   el("saveRepairMsg").classList.add("hidden");el("followPanel").classList.add("hidden");
+  el("completeRepairBtn").disabled=s.status==="已完成";
   buildRepairStatus();renderWork();renderTimeline();window.scrollTo({top:0,behavior:"smooth"});
 }
 el("repairBack").onclick=renderRepairOrders;
 el("repairClassSelect").onchange=()=>{repairState.classification=el("repairClassSelect").value;};
 function buildRepairStatus(){
-  const list=["待處理","處理中","待料","外修","已完成"];
+  const list=["待處理","處理中","待料","外修"];
   el("repairStatusGrid").innerHTML="";
   list.forEach(v=>{
     const b=button(v,"repair-status-btn",()=>chooseRepairStatus(v));
@@ -435,7 +460,7 @@ function chooseRepairStatus(v){
     showFollowPanel(v);
     return;
   }
-  applyRepairStatus(v,v==="處理中"?"開始／恢復維修":v==="已完成"?"維修完成":"狀態更新");
+  applyRepairStatus(v,v==="處理中"?"開始／恢復維修":"狀態更新");
 }
 function showFollowPanel(v){
   el("followPanel").classList.remove("hidden");
@@ -475,7 +500,6 @@ function applyRepairStatus(v,detail){
   if(v==="處理中"&&!s.activeStart){
     const now=new Date();s.activeStart=now;if(!s.firstStart)s.firstStart=now;
   }
-  if(v==="已完成"){closeActive(s);s.end=new Date();}
   s.status=v;repairState.status=v;repairState.order.status=v;
   s.timeline.push({at:formatStamp(new Date()),title:v,detail:detail||"狀態更新"});
   el("repairStart").textContent=s.firstStart?formatHM(s.firstStart):"--:--";
@@ -498,7 +522,19 @@ function renderTrackingOverview(){
 }
 function overlap(a,b,s,e){return Math.max(0,Math.min(b,e)-Math.max(a,s));}
 el("repairStartBtn").onclick=()=>applyRepairStatus("處理中","按下開始維修");
-el("repairEndBtn").onclick=()=>applyRepairStatus("已完成","按下完成維修");
+el("repairEndBtn").onclick=()=>{repairState.end=nowHM();el("repairEnd").textContent=repairState.end;};
+el("completeRepairBtn").onclick=()=>{
+  const s=repairState.store;if(!s)return;
+  if(!s.firstStart){alert("尚未開始維修，不能直接結案");return;}
+  closeActive(s);
+  const now=new Date();s.end=now;s.status="已完成";repairState.status="已完成";repairState.order.status="已完成";
+  s.timeline.push({at:formatStamp(now),title:"已完成",detail:"維修完成・工單結案"});
+  el("repairEnd").textContent=formatHM(now);
+  renderWork();renderTimeline();buildRepairStatus();renderTrackingOverview();
+  el("completeRepairBtn").disabled=true;
+  el("saveRepairMsg").textContent="✅ 工單已模擬結案（未寫入正式資料）";
+  el("saveRepairMsg").classList.remove("hidden");
+};
 el("saveRepairBtn").onclick=()=>{
   const s=repairState.store;if(!s)return;
   s.classification=el("repairClassSelect").value;s.content=el("repairContent").value.trim();s.note=el("repairNote").value.trim();
