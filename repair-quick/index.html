@@ -50,6 +50,7 @@ button{cursor:pointer}
 .levelbtn.sel[data-v="停線"]{border-color:#d84a4a;background:#fff0f0;color:#b51f1f}
 textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;background:#fbfcfe;outline:none;line-height:1.5}
 .voice-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px;margin-bottom:10px;width:100%}
+.voice-row.single{grid-template-columns:1fr}
 .smallbtn{border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:11px 13px;font-weight:750;color:#31577c;flex:1}
 .filebox{display:block;width:100%;clear:both;margin:0;border:1.5px dashed #9fb5ca;border-radius:14px;padding:13px 12px;text-align:center;background:#f8fbfe;color:#31577c;font-weight:750;line-height:1.35}
 .filebox input{display:none}
@@ -185,8 +186,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
       <h2>⑥ 機台異常描述</h2>
       <div class="hint">簡單描述看到的問題即可</div>
       <textarea id="issue" placeholder="例如：機台啟動後出現警報，無法正常加工…"></textarea>
-      <div class="voice-row">
-        <button class="smallbtn" id="voiceBtn" type="button">🎙 語音輸入</button>
+      <div class="voice-row single">
         <button class="smallbtn" id="clearIssue" type="button">清除描述</button>
       </div>
       <label class="filebox">📷 拍照／選照片（選填）
@@ -704,18 +704,6 @@ document.querySelectorAll(".levelbtn").forEach(b=>b.onclick=()=>{
 el("issue").addEventListener("input",update);
 el("clearIssue").onclick=()=>{el("issue").value="";update();};
 
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-if(!SR){el("voiceBtn").textContent="🎙 此瀏覽器不支援語音";el("voiceBtn").disabled=true;}
-else{
-  el("voiceBtn").onclick=()=>{
-    const r=new SR();r.lang="zh-TW";r.interimResults=false;r.maxAlternatives=1;
-    el("voiceBtn").textContent="🎙 聆聽中…";
-    r.onresult=e=>{const t=e.results[0][0].transcript;el("issue").value=(el("issue").value+" "+t).trim();update();};
-    r.onend=()=>el("voiceBtn").textContent="🎙 語音輸入";
-    r.onerror=()=>el("voiceBtn").textContent="🎙 語音輸入";
-    r.start();
-  };
-}
 el("photo").addEventListener("change",e=>{
   const f=e.target.files[0],box=el("photoPreview"),img=box.querySelector("img");
   if(!f){box.style.display="none";return;}
