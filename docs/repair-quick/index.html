@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b3f70">
+<title>系統櫃線上報修｜速點測試版</title>
+<style>
+:root{--navy:#0b3f70;--navy2:#154f82;--bg:#f3f6fa;--card:#fff;--text:#17212b;--muted:#697586;--line:#dbe3ec;--blue:#eaf3ff;--blueText:#0a5db5;--green:#0e8a4a;--yellow:#d88a00;--red:#cf2f2f;--shadow:0 10px 28px rgba(17,45,78,.09)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",Arial,sans-serif;color:var(--text)}
+body{min-height:100vh}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.app{max-width:720px;margin:0 auto;padding-bottom:112px}
+.hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:18px 16px 16px;position:sticky;top:0;z-index:20;box-shadow:0 6px 18px rgba(10,50,90,.16)}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.title{font-weight:900;font-size:20px;letter-spacing:.2px}
+.badge{font-size:12px;font-weight:800;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2)}
+.subtitle{margin-top:4px;font-size:12px;opacity:.82}
+.progress{display:flex;gap:6px;margin-top:13px}
+.progress span{height:5px;flex:1;background:rgba(255,255,255,.22);border-radius:999px;transition:.2s}
+.progress span.on{background:#fff}
+.container{padding:14px}
+.notice{background:#fff9e8;border:1px solid #f1d897;color:#7b5b00;border-radius:14px;padding:11px 13px;font-size:13px;line-height:1.5;margin-bottom:12px}
+.card{background:var(--card);border:1px solid #e7edf3;border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h2{font-size:16px;margin:0 0 3px}.hint{color:var(--muted);font-size:12px;margin-bottom:11px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.dept-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.choice{border:1.5px solid var(--line);background:#fff;border-radius:14px;min-height:54px;padding:11px 10px;font-weight:800;color:#1f2c3a;text-align:center;transition:.12s}
+.choice:active{transform:scale(.98)}
+.choice.sel{border-color:#4a91d9;background:var(--blue);color:var(--blueText);box-shadow:inset 0 0 0 1px #9dc9f3}
+.choice.dept{min-height:64px;font-size:16px}
+.person-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.machine-grid{grid-template-columns:1fr 1fr;max-height:400px;overflow:auto;padding-right:2px}
+.machine{border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:11px;text-align:left;min-height:58px;font-weight:750;line-height:1.3;color:#243141}
+.machine.sel{border-color:#4a91d9;background:var(--blue);color:var(--blueText)}
+.search{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;background:#fbfcfe;color:var(--text);outline:none;margin-bottom:10px}
+.search:focus,textarea:focus{border-color:#4a91d9;background:#fff}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stopbtn,.levelbtn{border:1.5px solid var(--line);background:#fff;border-radius:14px;min-height:54px;font-weight:850}
+.stopbtn.sel.yes{border-color:#d84a4a;background:#fff1f1;color:#bd2525}
+.stopbtn.sel.no{border-color:#3b9c68;background:#eefaf3;color:#187a45}
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.levelbtn.sel[data-v="一般"]{border-color:#4ca06f;background:#edf9f2;color:#14703d}
+.levelbtn.sel[data-v="緊急"]{border-color:#e1a13a;background:#fff7e9;color:#a96300}
+.levelbtn.sel[data-v="停線"]{border-color:#d84a4a;background:#fff0f0;color:#b51f1f}
+textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;background:#fbfcfe;outline:none;line-height:1.5}
+.voice-row{display:flex;gap:9px;margin-top:9px}
+.smallbtn{border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:11px 13px;font-weight:750;color:#31577c;flex:1}
+.filebox{margin-top:9px;border:1.5px dashed #9fb5ca;border-radius:14px;padding:12px;text-align:center;background:#f8fbfe;color:#31577c;font-weight:750}
+.filebox input{display:none}
+.preview{margin-top:9px;display:none}
+.preview img{max-width:100%;max-height:220px;border-radius:12px;border:1px solid var(--line)}
+.summary{background:#f7f9fc;border-radius:14px;padding:12px 13px;line-height:1.65;font-size:13px;color:#435064}
+.summary strong{color:#1b2937}
+.hidden{display:none!important}
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+.bottom-in{max-width:696px;margin:auto;display:flex;gap:9px}
+.reset{width:86px;border:1.5px solid var(--line);background:#fff;border-radius:15px;font-weight:800;color:#546273}
+.submit{flex:1;border:0;background:var(--navy);color:#fff;border-radius:15px;padding:15px;font-size:17px;font-weight:900;box-shadow:0 5px 14px rgba(11,63,112,.24)}
+.submit:disabled{background:#aab8c7;box-shadow:none}
+.success{position:fixed;inset:0;background:rgba(10,24,40,.5);z-index:100;display:grid;place-items:center;padding:18px}
+.modal{width:min(92vw,430px);background:#fff;border-radius:22px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.22);text-align:center}
+.check{width:64px;height:64px;border-radius:50%;background:#eaf8ef;color:#0b8b48;display:grid;place-items:center;font-size:34px;margin:0 auto 12px}
+.order{font-size:24px;font-weight:950;letter-spacing:.6px;margin:7px 0}
+.modal p{color:#647184;font-size:13px;line-height:1.6}
+.modal button{border:0;border-radius:14px;background:var(--navy);color:white;padding:13px 18px;font-weight:850;width:100%}
+@media(max-width:420px){.machine-grid{grid-template-columns:1fr}.person-grid{grid-template-columns:repeat(2,1fr)}.title{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <div class="topline">
+      <div>
+        <div class="title">🛠 系統櫃線上報修・速點版</div>
+        <div class="subtitle">手機現場快速報修</div>
+      </div>
+      <div class="badge">測試版</div>
+    </div>
+    <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
+  </header>
+
+  <main class="container">
+    <div class="notice">目前是介面測試：不會寫入「機修維修單」、不會發送 LINE。確認好用後再接你現有 Apps Script 正式後台。</div>
+
+    <section class="card" id="deptCard">
+      <h2>① 選擇部門</h2>
+      <div class="hint">先點你目前報修的廠區／部門</div>
+      <div class="grid dept-grid" id="deptGrid"></div>
+    </section>
+
+    <section class="card hidden" id="personCard">
+      <h2>② 報修人</h2>
+      <div class="hint" id="personHint">選擇報修人</div>
+      <div class="grid person-grid" id="personGrid"></div>
+    </section>
+
+    <section class="card hidden" id="areaCard">
+      <h2>③ 選擇區域</h2>
+      <div class="hint">有分區的部門先選區域</div>
+      <div class="grid" id="areaGrid"></div>
+    </section>
+
+    <section class="card hidden" id="machineCard">
+      <h2>④ 選擇機台</h2>
+      <div class="hint">可以直接點，也可以搜尋機台名稱</div>
+      <input class="search" id="machineSearch" placeholder="🔎 搜尋機台名稱">
+      <div class="grid machine-grid" id="machineGrid"></div>
+    </section>
+
+    <section class="card hidden" id="statusCard">
+      <h2>⑤ 報修狀況</h2>
+      <div class="hint">是否停機與緊急程度</div>
+      <div class="twocol">
+        <button class="stopbtn yes" data-stop="是">🛑 是，已停機</button>
+        <button class="stopbtn no" data-stop="否">✅ 否，可運轉</button>
+      </div>
+      <div style="height:11px"></div>
+      <div class="levels">
+        <button class="levelbtn" data-v="一般">🟢 一般</button>
+        <button class="levelbtn" data-v="緊急">🟡 緊急</button>
+        <button class="levelbtn" data-v="停線">🔴 停線</button>
+      </div>
+    </section>
+
+    <section class="card hidden" id="issueCard">
+      <h2>⑥ 機台異常描述</h2>
+      <div class="hint">簡單描述看到的問題即可</div>
+      <textarea id="issue" placeholder="例如：機台啟動後出現警報，無法正常加工…"></textarea>
+      <div class="voice-row">
+        <button class="smallbtn" id="voiceBtn" type="button">🎙 語音輸入</button>
+        <button class="smallbtn" id="clearIssue" type="button">清除描述</button>
+      </div>
+      <label class="filebox">📷 拍照／選照片（選填）
+        <input id="photo" type="file" accept="image/*" capture="environment">
+      </label>
+      <div class="preview" id="photoPreview"><img alt="照片預覽"></div>
+    </section>
+
+    <section class="card hidden" id="summaryCard">
+      <h2>送出前確認</h2>
+      <div class="hint">確認沒問題就按下方「送出測試報修」</div>
+      <div class="summary" id="summary"></div>
+    </section>
+  </main>
+</div>
+
+<div class="bottom">
+  <div class="bottom-in">
+    <button class="reset" id="resetBtn">重選</button>
+    <button class="submit" id="submitBtn" disabled>送出測試報修</button>
+  </div>
+</div>
+
+<div class="success hidden" id="success">
+  <div class="modal">
+    <div class="check">✓</div>
+    <h2 style="margin:0">測試送出成功</h2>
+    <div class="order" id="orderNo"></div>
+    <p>這是模擬工單，尚未寫入正式「機修維修單」，也沒有發送 LINE。</p>
+    <button id="againBtn">再測一筆</button>
+  </div>
+</div>
+
+<script>
+const DATA = {
+"E3":{"people":["王川茂","郭凱倫","李灌育"],"areas":{
+"E3主區":["380裁板機","330裁板機","液壓升降平台(380專用)","液壓升降平台(330專用)","直線封邊機","軟成型封邊機","六面無縫封邊機","窄邊封邊機","斜背封邊機","鉸鏈孔加工機","CNC","異形封邊機(柯耐)","半自動手工封邊機(豪美)","半自動手工封邊機2(洪業)","六面鑽單機(恩德)"],
+"手工造型門板區":["立芯機","銑溝機(1號)","銑溝機(2號)","銑溝機(3號)","分隔引孔機(1號)","分隔引孔機(2號)","修邊機","雙軌多角度切斷機"],
+"鋁框區":["雙軌多角度切斷機","750數控鑽銑機","MS35F雙刀45度裁切機","伺服上下自動鋸台10W500","雙桶式工業用集塵機","手動鑽床鑽孔機(1號)","手動鑽床鑽孔機(2號)","手動鑽床鑽孔機(3號)"]}},
+"E4":{"people":["鍾政良"],"areas":{"E4":["330裁板機","液壓升降平台(330專用)","長風裁板機","液壓升降平台(長風專用)","雙桶式工業用集塵機","Nesting10號機","液壓升降平台(Nesting10號專用)","Nesting20號機","液壓升降平台(Nesting20號專用)","機械手臂(Nesting專用)","直線封邊機1號","直線封邊機2號","直線封邊機3號","ABD鑽孔機","CNC","六面鑽單機","工作站單機1號","工作站單機2號","工作站單機3號","工作站單機4號","機械手臂(六面鑽工作站專用)","手拉式電動拖板車"]}},
+"E5":{"people":["許竣凱"],"areas":{"E5":["分料機(1號)","分料機(2號)","邊條打洞機","550單頭鋸","重型單頭鋸","拔筋機(崁把手研磨)","柴油動力堆高機1號","柴油動力堆高機2號","柴油動力堆高機3號","柴油動力堆高機4號(W8)","白鐵管金工切斷機","研磨機"]}},
+"W8":{"people":["薛凱澤","張志賢","方迋栩"],"areas":{"W8":["330裁板機","液壓升降平台(330專用)","邰展裁板機","液壓升降平台(邰展專用)","Nesting10號機","Nesting20號機","機械手臂(Nesting專用)","直線封邊機1號","直線封邊機2號","直線封邊機3號","直線封邊機4號","液壓升降平台(直線封邊機3號專用)","液壓升降平台(直線封邊機4號專用)","ABD鑽孔機","CNC","六面鑽單機","六面工作站1號","六面工作站2號","六面工作站3號","六面工作站4號","機械手臂(六面工作站專用)","研磨機","站立式電動拖板車2號"]}},
+"W8整修&組立":{"people":["張育齊"],"areas":{
+"組立區":["SCM組立機(1號機)","自動包膜機(1號機)","低位自動打包機(1號機)","自動打包機(小)","SCM組立機(2號機)","自動包膜機(2號機)","低位自動打包機(2號機)","站立式電動拖板車(3號)","雙軌多角度切斷機","雙桶式工業用集塵機","背板銑溝機","門板銑溝機(立芯機)","底板銑溝機(立芯機)","移動式鋸台","手動式沖床","手拉式拖板車"],
+"整修區":["電動拋光機","門式打包機","自動打包機(小)","自動磨刀機"]}},
+"空壓機室":{"people":["楊添志"],"areas":{"空壓機室":["空壓機(1號)","空壓機(2號)","乾燥機(1號)","乾燥機(2號)","抽水機(1號)","抽水機(2號)","抽水機(3號)","抽水機(4號)"]}}
+};
+
+const state={dept:"",person:"",area:"",machine:"",stop:"",level:""};
+const el=id=>document.getElementById(id);
+const cards=["personCard","areaCard","machineCard","statusCard","issueCard","summaryCard"];
+
+function button(text,cls,onClick){
+  const b=document.createElement("button");
+  b.className=cls;b.textContent=text;b.type="button";b.onclick=onClick;return b;
+}
+Object.keys(DATA).forEach(d=>{
+  el("deptGrid").appendChild(button(d,"choice dept",()=>chooseDept(d)));
+});
+
+function chooseDept(d){
+  state.dept=d;state.person=state.area=state.machine=state.stop=state.level="";
+  document.querySelectorAll("#deptGrid .choice").forEach(b=>b.classList.toggle("sel",b.textContent===d));
+  el("personGrid").innerHTML="";
+  DATA[d].people.forEach(p=>el("personGrid").appendChild(button(p,"choice",()=>choosePerson(p))));
+  el("personCard").classList.remove("hidden");
+  if(DATA[d].people.length===1){choosePerson(DATA[d].people[0]);el("personHint").textContent="此部門報修人已自動選取";}
+  else el("personHint").textContent="請選擇報修人";
+  update();
+}
+function choosePerson(p){
+  state.person=p;
+  document.querySelectorAll("#personGrid .choice").forEach(b=>b.classList.toggle("sel",b.textContent===p));
+  const areas=Object.keys(DATA[state.dept].areas);
+  el("areaGrid").innerHTML="";
+  if(areas.length===1){
+    state.area=areas[0];el("areaCard").classList.add("hidden");showMachines();
+  }else{
+    areas.forEach(a=>el("areaGrid").appendChild(button(a,"choice",()=>chooseArea(a))));
+    el("areaCard").classList.remove("hidden");
+  }
+  update();
+}
+function chooseArea(a){
+  state.area=a;state.machine="";
+  document.querySelectorAll("#areaGrid .choice").forEach(b=>b.classList.toggle("sel",b.textContent===a));
+  showMachines();update();
+}
+function showMachines(){
+  if(!state.area)return;
+  el("machineCard").classList.remove("hidden");
+  el("machineSearch").value="";
+  renderMachines();
+}
+function renderMachines(){
+  const q=el("machineSearch").value.trim().toLowerCase();
+  const list=(DATA[state.dept].areas[state.area]||[]).filter(x=>x.toLowerCase().includes(q));
+  el("machineGrid").innerHTML="";
+  list.forEach(m=>{
+    const b=button(m,"machine",()=>{state.machine=m;renderMachines();el("statusCard").classList.remove("hidden");el("issueCard").classList.remove("hidden");update();});
+    if(state.machine===m)b.classList.add("sel");
+    el("machineGrid").appendChild(b);
+  });
+}
+el("machineSearch").addEventListener("input",renderMachines);
+document.querySelectorAll(".stopbtn").forEach(b=>b.onclick=()=>{
+  state.stop=b.dataset.stop;
+  document.querySelectorAll(".stopbtn").forEach(x=>x.classList.toggle("sel",x===b));
+  update();
+});
+document.querySelectorAll(".levelbtn").forEach(b=>b.onclick=()=>{
+  state.level=b.dataset.v;
+  document.querySelectorAll(".levelbtn").forEach(x=>x.classList.toggle("sel",x===b));
+  update();
+});
+el("issue").addEventListener("input",update);
+el("clearIssue").onclick=()=>{el("issue").value="";update();};
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR){el("voiceBtn").textContent="🎙 此瀏覽器不支援語音";el("voiceBtn").disabled=true;}
+else{
+  el("voiceBtn").onclick=()=>{
+    const r=new SR();r.lang="zh-TW";r.interimResults=false;r.maxAlternatives=1;
+    el("voiceBtn").textContent="🎙 聆聽中…";
+    r.onresult=e=>{const t=e.results[0][0].transcript;el("issue").value=(el("issue").value+" "+t).trim();update();};
+    r.onend=()=>el("voiceBtn").textContent="🎙 語音輸入";
+    r.onerror=()=>el("voiceBtn").textContent="🎙 語音輸入";
+    r.start();
+  };
+}
+el("photo").addEventListener("change",e=>{
+  const f=e.target.files[0],box=el("photoPreview"),img=box.querySelector("img");
+  if(!f){box.style.display="none";return;}
+  img.src=URL.createObjectURL(f);box.style.display="block";
+});
+
+function update(){
+  const issue=el("issue").value.trim();
+  const ready=state.dept&&state.person&&state.area&&state.machine&&state.stop&&state.level&&issue;
+  el("submitBtn").disabled=!ready;
+  if(ready){
+    el("summaryCard").classList.remove("hidden");
+    el("summary").innerHTML=
+      "<strong>部門：</strong>"+esc(state.dept)+"<br>"+
+      (state.area!==state.dept&&state.area!=="空壓機室"?"<strong>區域：</strong>"+esc(state.area)+"<br>":"")+
+      "<strong>報修人：</strong>"+esc(state.person)+"<br>"+
+      "<strong>機台：</strong>"+esc(state.machine)+"<br>"+
+      "<strong>是否停機：</strong>"+esc(state.stop)+"<br>"+
+      "<strong>緊急程度：</strong>"+esc(state.level)+"<br>"+
+      "<strong>異常描述：</strong>"+esc(issue);
+  }else el("summaryCard").classList.add("hidden");
+  const score=[state.dept,state.person,state.area,state.machine,(state.stop&&state.level&&issue)].filter(Boolean).length;
+  document.querySelectorAll("#progress span").forEach((s,i)=>s.classList.toggle("on",i<Math.max(1,score)));
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function fakeNo(){
+  const d=new Date(),p=n=>String(n).padStart(2,"0");
+  return "MR"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"01";
+}
+el("submitBtn").onclick=()=>{el("orderNo").textContent=fakeNo();el("success").classList.remove("hidden");};
+el("againBtn").onclick=()=>{el("success").classList.add("hidden");reset();};
+el("resetBtn").onclick=reset;
+function reset(){
+  Object.keys(state).forEach(k=>state[k]="");
+  el("issue").value="";el("machineSearch").value="";el("photo").value="";el("photoPreview").style.display="none";
+  document.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));
+  cards.forEach(id=>el(id).classList.add("hidden"));
+  el("submitBtn").disabled=true;update();
+}
+update();
+</script>
+</body>
+</html>
