@@ -201,7 +201,70 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <textarea id="repairContent" placeholder="例如：更換皮帶、調整張力、清潔感測器…"></textarea>
 
         <div class="section-title">故障分類</div>
-        <div class="class-grid" id="repairClassGrid"></div>
+        <select id="repairClassSelect">
+          <option value="">請選擇故障分類</option>
+          <optgroup label="電氣控制">
+            <option>【電氣控制】電控異常</option>
+            <option>【電氣控制】伺服異常</option>
+            <option>【電氣控制】變頻器異常</option>
+            <option>【電氣控制】電源異常</option>
+            <option>【電氣控制】馬達異常</option>
+            <option>【電氣控制】感應器異常</option>
+          </optgroup>
+          <optgroup label="氣壓真空">
+            <option>【氣壓真空】氣壓異常</option>
+            <option>【氣壓真空】真空異常</option>
+            <option>【氣壓真空】吸盤異常</option>
+          </optgroup>
+          <optgroup label="安全保護">
+            <option>【安全保護】急停觸發</option>
+            <option>【安全保護】安全門異常</option>
+          </optgroup>
+          <optgroup label="軟體通訊">
+            <option>【軟體通訊】軟體異常</option>
+            <option>【軟體通訊】通訊異常</option>
+            <option>【軟體通訊】原點異常</option>
+            <option>【軟體通訊】定位異常</option>
+          </optgroup>
+          <optgroup label="傳動送料">
+            <option>【傳動送料】送料異常</option>
+            <option>【傳動送料】夾料異常</option>
+            <option>【傳動送料】滑軌異常</option>
+            <option>【傳動送料】鏈條異常</option>
+            <option>【傳動送料】皮帶異常</option>
+            <option>【傳動送料】卡料</option>
+          </optgroup>
+          <optgroup label="鋸切系統">
+            <option>【鋸切系統】鋸座異常</option>
+            <option>【鋸切系統】鋸片異常</option>
+          </optgroup>
+          <optgroup label="封邊系統">
+            <option>【封邊系統】封邊異常</option>
+            <option>【封邊系統】修邊異常</option>
+            <option>【封邊系統】刮邊異常</option>
+            <option>【封邊系統】拋光異常</option>
+          </optgroup>
+          <optgroup label="鑽孔加工">
+            <option>【鑽孔加工】鑽孔異常</option>
+            <option>【鑽孔加工】側孔異常</option>
+            <option>【鑽孔加工】刀具異常</option>
+            <option>【鑽孔加工】加工尺寸異常</option>
+          </optgroup>
+          <optgroup label="機構零件">
+            <option>【機構零件】螺絲異常</option>
+            <option>【機構零件】潤滑異常</option>
+            <option>【機構零件】異音</option>
+          </optgroup>
+          <optgroup label="狀態">
+            <option>【狀態】停機</option>
+          </optgroup>
+          <optgroup label="改善">
+            <option>【改善】設備優化</option>
+          </optgroup>
+          <optgroup label="其他">
+            <option>【其他】其他</option>
+          </optgroup>
+        </select>
 
         <div class="section-title">維修時間</div>
         <div class="time-grid">
@@ -313,17 +376,10 @@ function openRepairOrder(o){
   el("repairNo").textContent=o.no;el("repairMeta").textContent=o.dept+"｜"+o.machine;
   el("repairKV").innerHTML='<div class="k">報修時間</div><div>'+o.time+'</div><div class="k">報修人</div><div>'+o.person+'</div><div class="k">是否停機</div><div>'+o.stop+'</div><div class="k">緊急程度</div><div>'+o.level+'</div><div class="k">異常描述</div><div>'+o.issue+'</div>';
   el("repairContent").value="";el("repairNote").value="";el("repairStart").textContent="--:--";el("repairEnd").textContent="--:--";el("repairWork").textContent="0時00分";el("saveRepairMsg").classList.add("hidden");
-  buildRepairClass();buildRepairStatus();window.scrollTo({top:0,behavior:"smooth"});
+  el("repairClassSelect").value="";buildRepairStatus();window.scrollTo({top:0,behavior:"smooth"});
 }
 el("repairBack").onclick=renderRepairOrders;
-function buildRepairClass(){
-  const list=["傳動送料","電氣異常","氣壓異常","刀具異常","軟體系統","其他"];
-  el("repairClassGrid").innerHTML="";
-  list.forEach(v=>{
-    const b=button(v,"class-btn",()=>{repairState.classification=v;document.querySelectorAll(".class-btn").forEach(x=>x.classList.toggle("sel",x===b));});
-    el("repairClassGrid").appendChild(b);
-  });
-}
+el("repairClassSelect").onchange=()=>{repairState.classification=el("repairClassSelect").value;};
 function buildRepairStatus(){
   const list=["待處理","處理中","待料","外修","已完成"];
   el("repairStatusGrid").innerHTML="";
