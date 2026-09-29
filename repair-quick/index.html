@@ -117,6 +117,17 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 .timeline-item:before{content:"";position:absolute;width:9px;height:9px;border-radius:50%;background:var(--navy);left:-18px;top:4px}
 .timeline-time{font-size:11px;color:var(--muted)}.timeline-title{font-size:13px;font-weight:850;margin-top:2px}.timeline-detail{font-size:12px;color:#566473;line-height:1.45;margin-top:2px}
 .pause-note{font-size:12px;color:#7b5b00;background:#fff9e8;border:1px solid #eed38c;border-radius:12px;padding:9px;margin-top:8px}
+.login-overlay{position:fixed;inset:0;background:rgba(10,24,40,.58);z-index:220;display:grid;place-items:center;padding:18px}
+.login-card{width:min(92vw,420px);background:#fff;border-radius:22px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.28)}
+.login-icon{width:58px;height:58px;border-radius:18px;background:#eaf3fb;color:var(--navy);display:grid;place-items:center;font-size:29px;margin:0 auto 12px}
+.login-card h2{margin:0;text-align:center;font-size:20px}.login-sub{text-align:center;color:var(--muted);font-size:13px;line-height:1.55;margin:7px 0 16px}
+.login-label{display:block;font-size:13px;font-weight:850;color:#33485d;margin:10px 0 6px}
+.login-input{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:14px;background:#fff;padding:14px;font-size:16px;outline:none}
+.login-input:focus{border-color:#4a91d9;box-shadow:0 0 0 3px rgba(74,145,217,.12)}
+.login-actions{display:grid;grid-template-columns:92px 1fr;gap:9px;margin-top:16px}.login-cancel,.login-submit{border:0;border-radius:14px;padding:13px 12px;font-weight:900;font-size:15px}
+.login-cancel{background:#eef3f8;color:#41586f}.login-submit{background:var(--navy);color:#fff}.login-error{margin-top:9px;color:#b42318;font-size:12px;font-weight:800;text-align:center}
+.login-demo{margin-top:12px;padding:9px 11px;border-radius:11px;background:#fff8e7;border:1px solid #f0d58d;color:#785b00;font-size:12px;line-height:1.5}
+.repair-loginbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding:9px 11px;border-radius:13px;background:#edf5fc;color:#234d73;font-size:12px;font-weight:800}.logout-btn{border:0;border-radius:10px;background:#fff;color:#31577c;padding:7px 10px;font-weight:850}
 @media(max-width:420px){.machine-grid{grid-template-columns:1fr}.person-grid{grid-template-columns:repeat(2,1fr)}.title{font-size:18px}.class-grid,.repair-status-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -204,6 +215,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 
     <div id="repairMode" class="hidden">
       <section class="card" id="repairListCard">
+        <div class="repair-loginbar"><span>🔐 已登入：<b id="repairLoginUser">機修</b></span><button class="logout-btn" id="repairLogoutBtn" type="button">登出</button></div>
         <h2>維修工單</h2>
         <div class="hint">待處理／處理中／待料／外修都屬於「未完成工單」，直到真正修復後才結案。</div>
         <div class="track-overview" id="trackOverview"></div>
@@ -447,6 +459,24 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
   </div>
 </div>
 
+<div class="login-overlay hidden" id="repairLoginModal">
+  <div class="login-card">
+    <div class="login-icon">🔐</div>
+    <h2>維修人員登入</h2>
+    <div class="login-sub">「維修處理」僅限授權人員使用。<br>登入後才可查看與處理維修工單。</div>
+    <label class="login-label" for="repairLoginAccount">帳號</label>
+    <input class="login-input" id="repairLoginAccount" autocomplete="username" placeholder="請輸入帳號">
+    <label class="login-label" for="repairLoginPassword">密碼</label>
+    <input class="login-input" id="repairLoginPassword" type="password" autocomplete="current-password" placeholder="請輸入密碼">
+    <div class="login-error hidden" id="repairLoginError">帳號或密碼錯誤，請重新輸入。</div>
+    <div class="login-demo">目前為介面測試帳號：<b>機修</b>　密碼：<b>1234</b><br>正式版會改由 Apps Script 後端驗證，不會把正式密碼放在網頁程式內。</div>
+    <div class="login-actions">
+      <button class="login-cancel" id="repairLoginCancel" type="button">取消</button>
+      <button class="login-submit" id="repairLoginSubmit" type="button">登入維修處理</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const DATA = {
 "E3":{"people":["王川茂","郭凱倫","李灌育"],"areas":{
@@ -492,9 +522,49 @@ Object.keys(DATA).forEach(d=>{
   el("deptGrid").appendChild(button(d,"choice dept",()=>chooseDept(d)));
 });
 
-el("reportModeBtn").onclick=()=>switchMode("report");
-el("repairModeBtn").onclick=()=>switchMode("repair");
+const TEST_REPAIR_ACCOUNT="機修";
+const TEST_REPAIR_PASSWORD="1234";
+let repairAuth=sessionStorage.getItem("repairAuth")==="1";
+
+function showRepairLogin(){
+  el("repairLoginError").classList.add("hidden");
+  el("repairLoginPassword").value="";
+  el("repairLoginModal").classList.remove("hidden");
+  setTimeout(()=>el("repairLoginAccount").focus(),80);
+}
+function hideRepairLogin(){ el("repairLoginModal").classList.add("hidden"); }
+function doRepairLogin(){
+  const account=el("repairLoginAccount").value.trim();
+  const password=el("repairLoginPassword").value;
+  if(account===TEST_REPAIR_ACCOUNT && password===TEST_REPAIR_PASSWORD){
+    repairAuth=true;
+    sessionStorage.setItem("repairAuth","1");
+    sessionStorage.setItem("repairUser",account);
+    el("repairLoginUser").textContent=account;
+    hideRepairLogin();
+    switchMode("repair");
+  }else{
+    el("repairLoginError").classList.remove("hidden");
+    el("repairLoginPassword").select();
+  }
+}
+
+el("reportModeBtn").onclick=()=>{hideRepairLogin();switchMode("report");};
+el("repairModeBtn").onclick=()=>repairAuth?switchMode("repair"):showRepairLogin();
+el("repairLoginCancel").onclick=hideRepairLogin;
+el("repairLoginSubmit").onclick=doRepairLogin;
+el("repairLoginPassword").addEventListener("keydown",e=>{if(e.key==="Enter")doRepairLogin();});
+el("repairLoginAccount").addEventListener("keydown",e=>{if(e.key==="Enter")el("repairLoginPassword").focus();});
+el("repairLogoutBtn").onclick=()=>{
+  repairAuth=false;
+  sessionStorage.removeItem("repairAuth");
+  sessionStorage.removeItem("repairUser");
+  switchMode("report");
+};
+el("repairLoginUser").textContent=sessionStorage.getItem("repairUser")||"機修";
+
 function switchMode(mode){
+  if(mode==="repair" && !repairAuth){showRepairLogin();return;}
   const isReport=mode==="report";
   el("reportMode").classList.toggle("hidden",!isReport);
   el("repairMode").classList.toggle("hidden",isReport);
