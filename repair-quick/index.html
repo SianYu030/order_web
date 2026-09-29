@@ -46,9 +46,9 @@ button{cursor:pointer}
 .levelbtn.sel[data-v="緊急"]{border-color:#e1a13a;background:#fff7e9;color:#a96300}
 .levelbtn.sel[data-v="停線"]{border-color:#d84a4a;background:#fff0f0;color:#b51f1f}
 textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;background:#fbfcfe;outline:none;line-height:1.5}
-.voice-row{display:flex;gap:9px;margin-top:9px}
+.voice-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px;margin-bottom:10px;width:100%}
 .smallbtn{border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:11px 13px;font-weight:750;color:#31577c;flex:1}
-.filebox{margin-top:9px;border:1.5px dashed #9fb5ca;border-radius:14px;padding:12px;text-align:center;background:#f8fbfe;color:#31577c;font-weight:750}
+.filebox{display:block;width:100%;clear:both;margin:0;border:1.5px dashed #9fb5ca;border-radius:14px;padding:13px 12px;text-align:center;background:#f8fbfe;color:#31577c;font-weight:750;line-height:1.35}
 .filebox input{display:none}
 .preview{margin-top:9px;display:none}
 .preview img{max-width:100%;max-height:220px;border-radius:12px;border:1px solid var(--line)}
