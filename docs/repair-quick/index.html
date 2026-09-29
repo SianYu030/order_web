@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b3f70">
-<title>系統櫃線上報修｜速點測試版</title>
+<title>系統櫃線上報修｜測試版</title>
 <style>
 :root{--navy:#0b3f70;--navy2:#154f82;--bg:#f3f6fa;--card:#fff;--text:#17212b;--muted:#697586;--line:#dbe3ec;--blue:#eaf3ff;--blueText:#0a5db5;--green:#0e8a4a;--yellow:#d88a00;--red:#cf2f2f;--shadow:0 10px 28px rgba(17,45,78,.09)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -66,7 +66,35 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 .order{font-size:24px;font-weight:950;letter-spacing:.6px;margin:7px 0}
 .modal p{color:#647184;font-size:13px;line-height:1.6}
 .modal button{border:0;border-radius:14px;background:var(--navy);color:white;padding:13px 18px;font-weight:850;width:100%}
-@media(max-width:420px){.machine-grid{grid-template-columns:1fr}.person-grid{grid-template-columns:repeat(2,1fr)}.title{font-size:18px}}
+.mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.mode-btn{border:1.5px solid var(--line);background:#fff;border-radius:16px;padding:14px 10px;font-weight:900;font-size:16px;color:#31465b}
+.mode-btn.active{background:var(--navy);border-color:var(--navy);color:#fff}
+.order-list{display:grid;gap:9px}
+.order-card{border:1.5px solid var(--line);background:#fff;border-radius:15px;padding:12px;text-align:left}
+.order-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.order-no{font-weight:950;font-size:15px}
+.order-meta{font-size:12px;color:var(--muted);line-height:1.5;margin-top:5px}
+.tag{font-size:11px;font-weight:850;border-radius:999px;padding:5px 8px;background:#eef3f7;color:#52606f}
+.tag.red{background:#fff0f0;color:#b51f1f}.tag.yellow{background:#fff7e8;color:#a96300}.tag.green{background:#edf9f2;color:#14703d}
+.detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.backbtn{border:0;background:#eef3f8;color:#31577c;border-radius:12px;padding:9px 11px;font-weight:800}
+.kv{display:grid;grid-template-columns:90px 1fr;gap:7px 9px;font-size:13px;line-height:1.45;margin-top:12px}
+.kv .k{color:var(--muted)}
+.section-title{font-size:13px;font-weight:900;color:#314254;margin:14px 0 8px}
+.class-grid,.repair-status-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.class-btn,.repair-status-btn{border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:10px;font-weight:800}
+.class-btn.sel,.repair-status-btn.sel{border-color:#4a91d9;background:var(--blue);color:var(--blueText)}
+.time-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.time-box{background:#f7f9fc;border-radius:14px;padding:11px}
+.time-box small{display:block;color:var(--muted);margin-bottom:5px}
+.time-value{font-size:18px;font-weight:950}
+.time-action{width:100%;margin-top:8px;border:0;border-radius:11px;background:var(--navy);color:#fff;padding:10px;font-weight:850}
+.time-action.done{background:#187a45}
+.work-box{margin-top:10px;background:#eef6ff;border:1px solid #c9dff5;color:#164f82;border-radius:14px;padding:12px;font-size:13px}
+.work-box b{font-size:18px}
+.save-repair{width:100%;border:0;border-radius:14px;background:var(--navy);color:#fff;padding:14px;font-size:16px;font-weight:900;margin-top:12px}
+.save-msg{margin-top:9px;font-size:13px;color:#14703d;font-weight:800;text-align:center}
+@media(max-width:420px){.machine-grid{grid-template-columns:1fr}.person-grid{grid-template-columns:repeat(2,1fr)}.title{font-size:18px}.class-grid,.repair-status-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -74,8 +102,8 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
   <header class="hero">
     <div class="topline">
       <div>
-        <div class="title">🛠 系統櫃線上報修・速點版</div>
-        <div class="subtitle">手機現場快速報修</div>
+        <div class="title">🛠 系統櫃線上報修</div>
+        <div class="subtitle">手機報修／維修處理</div>
       </div>
       <div class="badge">測試版</div>
     </div>
@@ -85,6 +113,12 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
   <main class="container">
     <div class="notice">目前是介面測試：不會寫入「機修維修單」、不會發送 LINE。確認好用後再接你現有 Apps Script 正式後台。</div>
 
+    <div class="mode-switch">
+      <button class="mode-btn active" id="reportModeBtn">📱 報修</button>
+      <button class="mode-btn" id="repairModeBtn">🔧 維修處理</button>
+    </div>
+
+    <div id="reportMode">
     <section class="card" id="deptCard">
       <h2>① 選擇部門</h2>
       <div class="hint">先點你目前報修的廠區／部門</div>
@@ -144,10 +178,60 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
       <div class="hint">確認沒問題就按下方「送出測試報修」</div>
       <div class="summary" id="summary"></div>
     </section>
+    </div>
+
+    <div id="repairMode" class="hidden">
+      <section class="card" id="repairListCard">
+        <h2>維修工單</h2>
+        <div class="hint">點選一張 MR 工單進行維修處理</div>
+        <div class="order-list" id="repairOrderList"></div>
+      </section>
+
+      <section class="card hidden" id="repairDetailCard">
+        <div class="detail-head">
+          <div>
+            <div class="order-no" id="repairNo" style="font-size:18px"></div>
+            <div class="hint" id="repairMeta" style="margin:4px 0 0"></div>
+          </div>
+          <button class="backbtn" id="repairBack">← 工單列表</button>
+        </div>
+        <div class="kv" id="repairKV"></div>
+
+        <div class="section-title">維修內容</div>
+        <textarea id="repairContent" placeholder="例如：更換皮帶、調整張力、清潔感測器…"></textarea>
+
+        <div class="section-title">故障分類</div>
+        <div class="class-grid" id="repairClassGrid"></div>
+
+        <div class="section-title">維修時間</div>
+        <div class="time-grid">
+          <div class="time-box">
+            <small>開始維修時間</small>
+            <div class="time-value" id="repairStart">--:--</div>
+            <button class="time-action" id="repairStartBtn">▶ 開始維修</button>
+          </div>
+          <div class="time-box">
+            <small>完成時間</small>
+            <div class="time-value" id="repairEnd">--:--</div>
+            <button class="time-action done" id="repairEndBtn">✓ 完成維修</button>
+          </div>
+        </div>
+
+        <div class="work-box">自動維修工時：<b id="repairWork">0時00分</b><br><span style="font-size:12px">08:00–12:00、13:00–17:00，午休不計。</span></div>
+
+        <div class="section-title">維修狀態</div>
+        <div class="repair-status-grid" id="repairStatusGrid"></div>
+
+        <div class="section-title">備註</div>
+        <textarea id="repairNote" placeholder="例如：高速皮帶106J*1，已請購2條…"></textarea>
+        <button class="save-repair" id="saveRepairBtn">儲存測試維修</button>
+        <div class="save-msg hidden" id="saveRepairMsg">✅ 測試儲存成功（未寫入正式資料）</div>
+      </section>
+    </div>
   </main>
 </div>
 
-<div class="bottom">
+<div class="bottom" id="reportBottom">
   <div class="bottom-in">
     <button class="reset" id="resetBtn">重選</button>
     <button class="submit" id="submitBtn" disabled>送出測試報修</button>
@@ -180,6 +264,13 @@ const DATA = {
 };
 
 const state={dept:"",person:"",area:"",machine:"",stop:"",level:""};
+const repairState={order:null,classification:"",start:"",end:"",status:""};
+const MOCK_ORDERS=[
+  {no:"MR2026092901",time:"2026/09/29 下午13:10",person:"王川茂",dept:"E3",machine:"380裁板機",stop:"是",issue:"鋸片馬達異聲",level:"緊急",status:"待處理"},
+  {no:"MR2026092902",time:"2026/09/29 下午13:22",person:"鍾政良",dept:"E4",machine:"直線封邊機2號",stop:"是",issue:"送帶無法連同開機",level:"停線",status:"待處理"},
+  {no:"MR2026092903",time:"2026/09/29 下午13:31",person:"薛凱澤",dept:"W8",machine:"六面工作站1號",stop:"否",issue:"電腦系統備份",level:"一般",status:"處理中"},
+  {no:"MR2026092904",time:"2026/09/29 下午13:44",person:"張育齊",dept:"W8整修&組立",machine:"自動打包機(小)",stop:"否",issue:"打包帶偶發卡帶",level:"一般",status:"待料"}
+];
 const el=id=>document.getElementById(id);
 const cards=["personCard","areaCard","machineCard","statusCard","issueCard","summaryCard"];
 
@@ -190,6 +281,70 @@ function button(text,cls,onClick){
 Object.keys(DATA).forEach(d=>{
   el("deptGrid").appendChild(button(d,"choice dept",()=>chooseDept(d)));
 });
+
+el("reportModeBtn").onclick=()=>switchMode("report");
+el("repairModeBtn").onclick=()=>switchMode("repair");
+function switchMode(mode){
+  const isReport=mode==="report";
+  el("reportMode").classList.toggle("hidden",!isReport);
+  el("repairMode").classList.toggle("hidden",isReport);
+  el("reportBottom").classList.toggle("hidden",!isReport);
+  el("reportModeBtn").classList.toggle("active",isReport);
+  el("repairModeBtn").classList.toggle("active",!isReport);
+  if(!isReport){ renderRepairOrders(); }
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function renderRepairOrders(){
+  el("repairListCard").classList.remove("hidden");
+  el("repairDetailCard").classList.add("hidden");
+  el("repairOrderList").innerHTML="";
+  MOCK_ORDERS.forEach(o=>{
+    const b=button("","order-card",()=>openRepairOrder(o));
+    const cls=o.level==="停線"?"red":o.level==="緊急"?"yellow":"green";
+    b.innerHTML='<div class="order-top"><div class="order-no">'+o.no+'</div><span class="tag '+cls+'">'+o.level+'</span></div>'+
+      '<div class="order-meta">'+o.dept+'｜'+o.machine+'｜'+o.person+'<br>'+o.issue+'<br>狀態：'+o.status+'</div>';
+    el("repairOrderList").appendChild(b);
+  });
+}
+function openRepairOrder(o){
+  repairState.order=o;repairState.classification="";repairState.start="";repairState.end="";repairState.status=o.status;
+  el("repairListCard").classList.add("hidden");el("repairDetailCard").classList.remove("hidden");
+  el("repairNo").textContent=o.no;el("repairMeta").textContent=o.dept+"｜"+o.machine;
+  el("repairKV").innerHTML='<div class="k">報修時間</div><div>'+o.time+'</div><div class="k">報修人</div><div>'+o.person+'</div><div class="k">是否停機</div><div>'+o.stop+'</div><div class="k">緊急程度</div><div>'+o.level+'</div><div class="k">異常描述</div><div>'+o.issue+'</div>';
+  el("repairContent").value="";el("repairNote").value="";el("repairStart").textContent="--:--";el("repairEnd").textContent="--:--";el("repairWork").textContent="0時00分";el("saveRepairMsg").classList.add("hidden");
+  buildRepairClass();buildRepairStatus();window.scrollTo({top:0,behavior:"smooth"});
+}
+el("repairBack").onclick=renderRepairOrders;
+function buildRepairClass(){
+  const list=["傳動送料","電氣異常","氣壓異常","刀具異常","軟體系統","其他"];
+  el("repairClassGrid").innerHTML="";
+  list.forEach(v=>{
+    const b=button(v,"class-btn",()=>{repairState.classification=v;document.querySelectorAll(".class-btn").forEach(x=>x.classList.toggle("sel",x===b));});
+    el("repairClassGrid").appendChild(b);
+  });
+}
+function buildRepairStatus(){
+  const list=["待處理","處理中","待料","外修","已完成"];
+  el("repairStatusGrid").innerHTML="";
+  list.forEach(v=>{
+    const b=button(v,"repair-status-btn",()=>{repairState.status=v;document.querySelectorAll(".repair-status-btn").forEach(x=>x.classList.toggle("sel",x===b));});
+    if(repairState.status===v)b.classList.add("sel");
+    el("repairStatusGrid").appendChild(b);
+  });
+}
+function nowHM(){const d=new Date(),p=n=>String(n).padStart(2,"0");return p(d.getHours())+":"+p(d.getMinutes());}
+function timeMin(t){if(!t)return null;const p=t.split(":");return Number(p[0])*60+Number(p[1]);}
+function overlap(a,b,s,e){return Math.max(0,Math.min(b,e)-Math.max(a,s));}
+function calcRepairWork(){
+  const a=timeMin(repairState.start),b=timeMin(repairState.end);
+  if(a===null||b===null||b<a){el("repairWork").textContent="0時00分";return;}
+  let m=overlap(a,b,480,720)+overlap(a,b,780,1020);m=Math.min(m,480);
+  el("repairWork").textContent=Math.floor(m/60)+"時"+String(m%60).padStart(2,"0")+"分";
+}
+el("repairStartBtn").onclick=()=>{repairState.start=nowHM();el("repairStart").textContent=repairState.start;if(repairState.status==="待處理"){repairState.status="處理中";buildRepairStatus();}calcRepairWork();};
+el("repairEndBtn").onclick=()=>{repairState.end=nowHM();el("repairEnd").textContent=repairState.end;repairState.status="已完成";buildRepairStatus();calcRepairWork();};
+el("saveRepairBtn").onclick=()=>{el("saveRepairMsg").classList.remove("hidden");};
 
 function chooseDept(d){
   state.dept=d;state.person=state.area=state.machine=state.stop=state.level="";
