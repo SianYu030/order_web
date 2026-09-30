@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>封邊標籤穩定辨識測試 v4</title>
+<title>封邊標籤穩定辨識測試 v5</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
@@ -26,7 +26,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>封邊標籤穩定辨識測試 v4</h1>
+    <h1>封邊標籤穩定辨識測試 v5</h1>
     <div class="muted">流程：自動找到白色標籤 → 自動轉正 → 固定讀單號區、B碼區、QR區。只在缺資料時才跑備援。</div>
     <label class="capture">📸 拍標籤測試
       <input id="photo" type="file" accept="image/*" capture="environment">
@@ -249,13 +249,15 @@ async function ocr(worker,canvas,whitelist,psm='7'){
 }
 
 function parseOrder(s){
-  const t=String(s||'').replace(/[^0-9]/g,' ');
-  const a=t.match(/\b20\d{10,14}\b/g)||[];
-  return a[0]||'';
+  // 現場單號固定以 20 開頭、共 12 碼；嚴格格式可避免吃到其他尺寸/日期數字。
+  const t=String(s||'').replace(/[^0-9]/g,'');
+  const m=t.match(/20\d{10}/);
+  return m?m[0]:'';
 }
 function parseB(s){
+  // 現場 B碼固定為 B + 9 位數。即使 OCR 尾端多吃到其他數字，也只取正確長度。
   const t=String(s||'').toUpperCase().replace(/[^B0-9]/g,'');
-  const m=t.match(/B\d{8,12}/);
+  const m=t.match(/B\d{9}/);
   return m?m[0]:'';
 }
 function parseQrHuman(s){
@@ -274,14 +276,37 @@ async function readAll(worker,label){
   }
   if(qr)qrSource='QR圖形';
 
-  const orderRegion=cropNorm(label,0.015,0.005,0.47,0.15,1050,'contrast');
-  const bRegion=cropNorm(label,0.33,0.005,0.38,0.15,950,'contrast');
+  // 頂端欄位改成精準窄區域：左上單號、上方偏中 B碼。
+  // 避免右側 ER3078 / 尺寸數字被 OCR 一起吃進去。
+  const orderRegions=[
+    cropNorm(label,0.005,0.000,0.36,0.105,1200,'contrast'),
+    cropNorm(label,0.015,0.008,0.40,0.125,1200,'binary')
+  ];
+  const bRegions=[
+    cropNorm(label,0.34,0.000,0.26,0.105,1050,'contrast'),
+    cropNorm(label,0.31,0.005,0.31,0.125,1050,'binary')
+  ];
 
-  const orderOcr=await ocr(worker,orderRegion,'0123456789',7);
-  let order=parseOrder(orderOcr.text);
+  let order='',orderConf=0,orderRaw='';
+  for(const region of orderRegions){
+    const rr=await ocr(worker,region,'0123456789',7);
+    orderRaw += '\n'+rr.text;
+    if(rr.confidence>orderConf) orderConf=rr.confidence;
+    order=parseOrder(orderRaw);
+    if(order) break;
+  }
 
-  const bOcr=await ocr(worker,bRegion,'B0123456789',7);
-  let bcode=parseB(bOcr.text);
+  let bcode='',bConf=0,bRaw='';
+  for(const region of bRegions){
+    const rr=await ocr(worker,region,'B0123456789',7);
+    bRaw += '\n'+rr.text;
+    if(rr.confidence>bConf) bConf=rr.confidence;
+    bcode=parseB(bRaw);
+    if(bcode) break;
+  }
+
+  const orderOcr={confidence:orderConf,text:orderRaw};
+  const bOcr={confidence:bConf,text:bRaw};
 
   let qrHuman='',qrHumanConf=0;
   if(!qr){
@@ -295,15 +320,27 @@ async function readAll(worker,label){
   let fallbackUsed=false;
   if(!order||!bcode){
     fallbackUsed=true;
-    const top=cropNorm(label,0.0,0.0,0.76,0.22,1200,'contrast');
-    const topOcr=await ocr(worker,top,'B0123456789',6);
-    if(!order)order=parseOrder(topOcr.text);
-    if(!bcode)bcode=parseB(topOcr.text);
+
+    // 單號備援：只讀左上更窄區域，做兩種二值化/排版模式。
+    if(!order){
+      const orderWide=cropNorm(label,0.0,0.0,0.46,0.16,1500,'contrast');
+      const rr=await ocr(worker,orderWide,'0123456789',6);
+      order=parseOrder(rr.text);
+      orderConf=Math.max(orderConf,rr.confidence||0);
+    }
+
+    // B碼備援：只讀上方中央，不再掃到右側直排文字。
+    if(!bcode){
+      const bWide=cropNorm(label,0.28,0.0,0.36,0.16,1300,'contrast');
+      const rr=await ocr(worker,bWide,'B0123456789',6);
+      bcode=parseB(rr.text);
+      bConf=Math.max(bConf,rr.confidence||0);
+    }
   }
 
   return {
     qr,order,bcode,qrSource,fallbackUsed,
-    confidence:{order:orderOcr.confidence,bcode:bOcr.confidence,qrHuman:qrHumanConf}
+    confidence:{order:orderConf,bcode:bConf,qrHuman:qrHumanConf}
   };
 }
 
