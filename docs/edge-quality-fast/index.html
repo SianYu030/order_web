@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>封邊標籤穩定辨識測試 v5</title>
+<title>封邊標籤穩定辨識測試 v6</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
@@ -26,8 +26,8 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>封邊標籤穩定辨識測試 v5</h1>
-    <div class="muted">流程：自動找到白色標籤 → 自動轉正 → 固定讀單號區、B碼區、QR區。只在缺資料時才跑備援。</div>
+    <h1>封邊標籤穩定辨識測試 v6</h1>
+    <div class="muted">流程：自動找到白色標籤四角 → 透視拉正 → 固定讀單號區、B碼區、QR區。支援遠拍與斜拍；只在缺資料時才跑備援。</div>
     <label class="capture">📸 拍標籤測試
       <input id="photo" type="file" accept="image/*" capture="environment">
     </label>
@@ -107,8 +107,74 @@ function otsu(gray){
   return threshold;
 }
 
+function dist(a,b){
+  const dx=a.x-b.x,dy=a.y-b.y;
+  return Math.hypot(dx,dy);
+}
+
+function affineForTriangle(s0,s1,s2,d0,d1,d2){
+  const det=s0.x*(s1.y-s2.y)+s1.x*(s2.y-s0.y)+s2.x*(s0.y-s1.y);
+  if(Math.abs(det)<1e-8) return null;
+  const a=(d0.x*(s1.y-s2.y)+d1.x*(s2.y-s0.y)+d2.x*(s0.y-s1.y))/det;
+  const c=(d0.x*(s2.x-s1.x)+d1.x*(s0.x-s2.x)+d2.x*(s1.x-s0.x))/det;
+  const e=(d0.x*(s1.x*s2.y-s2.x*s1.y)+d1.x*(s2.x*s0.y-s0.x*s2.y)+d2.x*(s0.x*s1.y-s1.x*s0.y))/det;
+  const b=(d0.y*(s1.y-s2.y)+d1.y*(s2.y-s0.y)+d2.y*(s0.y-s1.y))/det;
+  const d=(d0.y*(s2.x-s1.x)+d1.y*(s0.x-s2.x)+d2.y*(s1.x-s0.x))/det;
+  const f=(d0.y*(s1.x*s2.y-s2.x*s1.y)+d1.y*(s2.x*s0.y-s0.x*s2.y)+d2.y*(s0.x*s1.y-s1.x*s0.y))/det;
+  return {a,b,c,d,e,f};
+}
+
+function drawMappedTriangle(ctx,img,s0,s1,s2,d0,d1,d2){
+  const m=affineForTriangle(s0,s1,s2,d0,d1,d2);
+  if(!m)return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(d0.x,d0.y);ctx.lineTo(d1.x,d1.y);ctx.lineTo(d2.x,d2.y);ctx.closePath();
+  ctx.clip();
+  ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);
+  ctx.drawImage(img,0,0);
+  ctx.restore();
+}
+
+function bilerp(tl,tr,br,bl,u,v){
+  return {
+    x:(1-u)*(1-v)*tl.x + u*(1-v)*tr.x + u*v*br.x + (1-u)*v*bl.x,
+    y:(1-u)*(1-v)*tl.y + u*(1-v)*tr.y + u*v*br.y + (1-u)*v*bl.y
+  };
+}
+
+function warpQuad(img,quad,outW){
+  const [tl,tr,br,bl]=quad;
+  const top=dist(tl,tr),bottom=dist(bl,br),left=dist(tl,bl),right=dist(tr,br);
+  const aspect=((top+bottom)/2)/Math.max(1,(left+right)/2);
+  const safeAspect=Math.max(1.05,Math.min(2.25,aspect));
+  const outH=Math.max(650,Math.round(outW/safeAspect));
+  const out=document.createElement('canvas');out.width=outW;out.height=outH;
+  const ctx=out.getContext('2d',{willReadFrequently:true});
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,outW,outH);
+
+  // 用細網格做透視近似，比單純旋轉更能處理斜拍梯形。
+  const cols=10,rows=7;
+  for(let j=0;j<rows;j++){
+    const v0=j/rows,v1=(j+1)/rows;
+    for(let i=0;i<cols;i++){
+      const u0=i/cols,u1=(i+1)/cols;
+      const s00=bilerp(tl,tr,br,bl,u0,v0);
+      const s10=bilerp(tl,tr,br,bl,u1,v0);
+      const s11=bilerp(tl,tr,br,bl,u1,v1);
+      const s01=bilerp(tl,tr,br,bl,u0,v1);
+      const d00={x:u0*outW,y:v0*outH},d10={x:u1*outW,y:v0*outH};
+      const d11={x:u1*outW,y:v1*outH},d01={x:u0*outW,y:v1*outH};
+      drawMappedTriangle(ctx,img,s00,s10,s11,d00,d10,d11);
+      drawMappedTriangle(ctx,img,s00,s11,s01,d00,d11,d01);
+    }
+  }
+  return {canvas:out,aspect:safeAspect};
+}
+
 function normalizeLabel(img){
-  const maxW=480;
+  // v6：小標籤/遠拍也要能鎖定，所以分析寬度提高、最小面積門檻降低。
+  const maxW=640;
   const scale=Math.min(1,maxW/img.naturalWidth);
   const w=Math.max(1,Math.round(img.naturalWidth*scale));
   const h=Math.max(1,Math.round(img.naturalHeight*scale));
@@ -124,7 +190,7 @@ function normalizeLabel(img){
   }
   mean/=gray.length;
   let th=otsu(gray);
-  th=Math.max(145,Math.min(220,Math.max(th,mean+8)));
+  th=Math.max(135,Math.min(225,Math.max(th,mean+5)));
 
   const mask=new Uint8Array(w*h);
   for(let i=0;i<gray.length;i++) if(gray[i]>=th) mask[i]=1;
@@ -137,12 +203,10 @@ function normalizeLabel(img){
     if(!mask[seed]||seen[seed])continue;
     let sp=0;stack[sp++]=seed;seen[seed]=1;
     let area=0,minx=w,maxx=0,miny=h,maxy=0;
-    let sx=0,sy=0,sxx=0,syy=0,sxy=0;
     const pix=[];
     while(sp){
-      const idx=stack[--sp], y=(idx/w)|0, x=idx-y*w;
-      area++;sx+=x;sy+=y;sxx+=x*x;syy+=y*y;sxy+=x*y;
-      pix.push(idx);
+      const idx=stack[--sp],y=(idx/w)|0,x=idx-y*w;
+      area++;pix.push(idx);
       if(x<minx)minx=x;if(x>maxx)maxx=x;if(y<miny)miny=y;if(y>maxy)maxy=y;
       let n;
       if(x>0){n=idx-1;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
@@ -150,14 +214,15 @@ function normalizeLabel(img){
       if(y>0){n=idx-w;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
       if(y<h-1){n=idx+w;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
     }
-    const bw=maxx-minx+1,bh=maxy-miny+1,ratio=bw/bh,fill=area/(bw*bh),frac=area/total;
-    if(frac<0.035||frac>0.72||ratio<1.12||ratio>2.25||fill<0.40)continue;
-    const aspectScore=1-Math.min(1,Math.abs(ratio-1.50)/0.9);
-    const score=area*fill*(0.65+0.35*aspectScore);
-    if(score>bestScore){
-      bestScore=score;
-      best={area,minx,maxx,miny,maxy,sx,sy,sxx,syy,sxy,pix,ratio,fill,th};
-    }
+    const bw=maxx-minx+1,bh=maxy-miny+1,ratio=bw/Math.max(1,bh),fill=area/(bw*bh),frac=area/total;
+
+    // 遠拍時標籤可能只佔畫面 0.5~3%，舊版 3.5% 門檻會直接漏掉。
+    if(frac<0.0045||frac>0.72||ratio<0.90||ratio>2.70||fill<0.24)continue;
+    const aspectScore=1-Math.min(1,Math.abs(ratio-1.45)/1.15);
+    const centerX=(minx+maxx)/2/w,centerY=(miny+maxy)/2/h;
+    const centerPenalty=Math.min(0.35,Math.hypot(centerX-.5,centerY-.5)*0.25);
+    const score=area*fill*(0.72+0.28*aspectScore)*(1-centerPenalty);
+    if(score>bestScore){bestScore=score;best={area,minx,maxx,miny,maxy,pix,ratio,fill,th};}
   }
 
   if(!best){
@@ -165,42 +230,47 @@ function normalizeLabel(img){
     const ow=1600,oh=Math.round(ow*img.naturalHeight/img.naturalWidth);
     out.width=ow;out.height=oh;
     out.getContext('2d').drawImage(img,0,0,ow,oh);
-    return {canvas:out,located:false,angle:0,threshold:th};
+    return {canvas:out,located:false,angle:0,perspective:false,threshold:th};
   }
 
-  const n=best.area,cx=best.sx/n,cy=best.sy/n;
-  const cxx=best.sxx/n-cx*cx,cyy=best.syy/n-cy*cy,cxy=best.sxy/n-cx*cy;
-  let ang=0.5*Math.atan2(2*cxy,cxx-cyy);
-  if(ang>Math.PI/4)ang-=Math.PI/2;
-  if(ang<-Math.PI/4)ang+=Math.PI/2;
-  const ca=Math.cos(ang),sa=Math.sin(ang);
-  let minLX=1e9,maxLX=-1e9,minLY=1e9,maxLY=-1e9;
+  // 用亮色標籤元件的四個對角極值找四角。
+  let tl=null,tr=null,br=null,bl=null;
+  let minSum=1e9,maxSum=-1e9,minDiff=1e9,maxDiff=-1e9;
   for(const idx of best.pix){
-    const y=(idx/w)|0,x=idx-y*w,dx=x-cx,dy=y-cy;
-    const lx=ca*dx+sa*dy,ly=-sa*dx+ca*dy;
-    if(lx<minLX)minLX=lx;if(lx>maxLX)maxLX=lx;
-    if(ly<minLY)minLY=ly;if(ly>maxLY)maxLY=ly;
+    const y=(idx/w)|0,x=idx-y*w,s=x+y,dif=x-y;
+    if(s<minSum){minSum=s;tl={x,y}}
+    if(s>maxSum){maxSum=s;br={x,y}}
+    if(dif>maxDiff){maxDiff=dif;tr={x,y}}
+    if(dif<minDiff){minDiff=dif;bl={x,y}}
   }
-  const marginX=(maxLX-minLX)*0.025,marginY=(maxLY-minLY)*0.035;
-  minLX-=marginX;maxLX+=marginX;minLY-=marginY;maxLY+=marginY;
+
+  if(!tl||!tr||!br||!bl){
+    const out=document.createElement('canvas');
+    out.width=1600;out.height=Math.round(1600*img.naturalHeight/img.naturalWidth);
+    out.getContext('2d').drawImage(img,0,0,out.width,out.height);
+    return {canvas:out,located:false,angle:0,perspective:false,threshold:th};
+  }
 
   const inv=1/scale;
-  const cxO=cx*inv,cyO=cy*inv,minXO=minLX*inv,maxXO=maxLX*inv,minYO=minLY*inv,maxYO=maxLY*inv;
-  const localW=maxXO-minXO,localH=maxYO-minYO;
-  const outW=1600,outH=Math.max(650,Math.round(outW*localH/localW));
-  const out=document.createElement('canvas');out.width=outW;out.height=outH;
-  const o=out.getContext('2d',{willReadFrequently:true});
-  o.fillStyle='#fff';o.fillRect(0,0,outW,outH);
-  const s=outW/localW;
-  o.setTransform(
-    s*ca,-s*sa,
-    s*sa,s*ca,
-    s*(-ca*cxO-sa*cyO-minXO),
-    s*(sa*cxO-ca*cyO-minYO)
-  );
-  o.drawImage(img,0,0);
-  o.setTransform(1,0,0,1,0,0);
-  return {canvas:out,located:true,angle:ang*180/Math.PI,threshold:th};
+  let quad=[tl,tr,br,bl].map(p=>({x:p.x*inv,y:p.y*inv}));
+  const cx=quad.reduce((s,p)=>s+p.x,0)/4,cy=quad.reduce((s,p)=>s+p.y,0)/4;
+
+  // 往外擴 3%，保留標籤邊緣，避免頂端單號/B碼被裁掉。
+  quad=quad.map(p=>({
+    x:Math.max(0,Math.min(img.naturalWidth-1,cx+(p.x-cx)*1.035)),
+    y:Math.max(0,Math.min(img.naturalHeight-1,cy+(p.y-cy)*1.035))
+  }));
+
+  const topAngle=Math.atan2(quad[1].y-quad[0].y,quad[1].x-quad[0].x)*180/Math.PI;
+  const warped=warpQuad(img,quad,1600);
+  return {
+    canvas:warped.canvas,
+    located:true,
+    angle:topAngle,
+    perspective:true,
+    threshold:th,
+    aspect:warped.aspect
+  };
 }
 
 function cropNorm(src,rx,ry,rw,rh,targetW=900,mode='contrast'){
@@ -368,7 +438,7 @@ $('photo').addEventListener('change',async e=>{
     $('status').textContent='⬜ 自動找標籤並轉正…';
     const norm=normalizeLabel(img);const t2=now();
     $('locBadge').textContent=norm.located
-      ? '✅ 已鎖定標籤｜自動校正 '+Math.abs(norm.angle).toFixed(1)+'°'
+      ? '✅ 已鎖定標籤｜透視校正 '+Math.abs(norm.angle).toFixed(1)+'°'
       : '⚠️ 未鎖定標籤｜使用整張照片備援';
 
     $('preview').src=norm.canvas.toDataURL('image/jpeg',0.86);
@@ -389,7 +459,7 @@ $('photo').addEventListener('change',async e=>{
 
     $('timing').textContent=
       '照片讀取：'+sec(t1-t0)+'\n'+
-      '標籤定位＋轉正：'+sec(t2-t1)+'\n'+
+      '標籤定位＋透視拉正：'+sec(t2-t1)+'\n'+
       'OCR 預熱等待：'+sec(t3-t2)+'\n'+
       '三欄辨識：'+sec(t4-t3)+'\n'+
       '總耗時：'+sec(t4-t0)+'\n'+
