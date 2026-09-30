@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>封邊標籤高速辨識測試</title>
+<title>封邊標籤穩定辨識測試 v4</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
-*{box-sizing:border-box} body{margin:0;padding:16px;background:#f3f6f8}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
 .wrap{max-width:720px;margin:auto}.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.07)}
 h1{font-size:23px;margin:0 0 8px}.muted{color:#667681;line-height:1.55;font-size:14px}
 .capture{display:flex;align-items:center;justify-content:center;min-height:62px;border-radius:14px;background:#145da0;color:#fff;font-weight:800;font-size:19px;cursor:pointer}
@@ -14,10 +14,11 @@ h1{font-size:23px;margin:0 0 8px}.muted{color:#667681;line-height:1.55;font-size
 .grid{display:grid;gap:10px}.result{padding:13px;border:1px solid #d6dee4;border-radius:12px}.result b{display:block;font-size:14px;color:#60717c;margin-bottom:4px}.value{font-size:21px;font-weight:850;word-break:break-all}
 .ok{background:#edf8ef;border-color:#badfc0}.warn{background:#fff7df;border-color:#e7d28f}
 .timing{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.7;white-space:pre-wrap}
-#preview{width:100%;border-radius:12px;margin-top:12px;display:none}
+#preview{width:100%;border-radius:12px;margin-top:12px;display:none;border:1px solid #d7dfe5}
 .small{font-size:13px;color:#667681;margin-top:8px;line-height:1.5}
 button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:800}
 .secondary{width:100%;background:#e7eef3;color:#18323f;margin-top:10px}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#edf2f5;font-size:12px;font-weight:800;margin-top:8px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
@@ -25,13 +26,14 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>封邊標籤高速辨識測試</h1>
-    <div class="muted">只抓 3 個欄位：QR碼、單號、B碼。OCR 模型會在背景先預熱，拍照後優先快速判讀；資料不足才做第 2 次補強。</div>
+    <h1>封邊標籤穩定辨識測試 v4</h1>
+    <div class="muted">流程：自動找到白色標籤 → 自動轉正 → 固定讀單號區、B碼區、QR區。只在缺資料時才跑備援。</div>
     <label class="capture">📸 拍標籤測試
       <input id="photo" type="file" accept="image/*" capture="environment">
     </label>
     <div id="status" class="status">背景載入 OCR 中…</div>
-    <img id="preview" alt="preview">
+    <div id="locBadge" class="badge">尚未定位標籤</div>
+    <img id="preview" alt="normalized label">
     <button id="clearBtn" class="secondary" type="button">清除結果</button>
   </div>
 
@@ -42,74 +44,179 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
   </div>
 
   <div class="card">
-    <b>速度紀錄</b>
+    <b>速度／穩定度紀錄</b>
     <div id="timing" class="timing">尚未測試</div>
-    <div class="small">建議拍攝：標籤盡量佔畫面 60% 以上、避免反光、手機停穩再拍。稍微斜拍可接受；過度傾斜仍會影響 OCR。</div>
+    <div class="small">拍攝不必完全正上方，但請讓整張白色標籤都在畫面內。系統會先找標籤並轉正，再讀固定欄位。</div>
   </div>
 </div>
 
 <script>
-const $ = id => document.getElementById(id);
-let workerPromise = null;
-
-function now(){ return performance.now(); }
-function ms(v){ return (v/1000).toFixed(2) + ' 秒'; }
+const $=id=>document.getElementById(id);
+let workerPromise=null;
+const now=()=>performance.now();
+const sec=v=>(v/1000).toFixed(2)+' 秒';
 
 async function warmWorker(){
-  if (!workerPromise) {
-    workerPromise = Tesseract.createWorker('eng', 1, {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          $('status').textContent = 'OCR 預熱／辨識 ' + Math.round((m.progress||0)*100) + '%';
+  if(!workerPromise){
+    workerPromise=Tesseract.createWorker('eng',1,{
+      logger:m=>{
+        if(m.status==='recognizing text'){
+          $('status').textContent='OCR 載入／辨識 '+Math.round((m.progress||0)*100)+'%';
         }
       }
-    }).then(async w => {
-      try {
-        await w.setParameters({
-          tessedit_pageseg_mode:'6',
-          preserve_interword_spaces:'1',
-          tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-_'
-        });
-      } catch(e) {}
-      $('status').textContent = '✅ OCR 已預熱，可直接拍照';
+    }).then(async w=>{
+      try{await w.setParameters({preserve_interword_spaces:'1'});}catch(e){}
+      $('status').textContent='✅ OCR 已預熱，可直接拍照';
       return w;
-    }).catch(err => {
-      workerPromise = null;
-      $('status').textContent = '⚠️ OCR 載入失敗，請重新整理';
-      throw err;
+    }).catch(e=>{
+      workerPromise=null;
+      $('status').textContent='⚠️ OCR 載入失敗，請重新整理';
+      throw e;
     });
   }
   return workerPromise;
 }
-window.addEventListener('load', () => {
-  if ('requestIdleCallback' in window) requestIdleCallback(() => warmWorker());
-  else setTimeout(() => warmWorker(), 200);
+window.addEventListener('load',()=>{
+  if('requestIdleCallback' in window) requestIdleCallback(()=>warmWorker());
+  else setTimeout(()=>warmWorker(),150);
 });
 
 function loadImage(file){
   return new Promise((resolve,reject)=>{
-    const url=URL.createObjectURL(file);
-    const img=new Image();
+    const url=URL.createObjectURL(file), img=new Image();
     img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};
     img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('照片讀取失敗'))};
     img.src=url;
   });
 }
 
-function makeCanvas(img,maxWidth=1600,mode='contrast'){
-  const scale=Math.min(1,maxWidth/img.naturalWidth);
+function otsu(gray){
+  const hist=new Uint32Array(256);
+  for(let i=0;i<gray.length;i++)hist[gray[i]]++;
+  let total=gray.length,sum=0;
+  for(let i=0;i<256;i++)sum+=i*hist[i];
+  let sumB=0,wB=0,maxVar=-1,threshold=160;
+  for(let t=0;t<256;t++){
+    wB+=hist[t]; if(!wB)continue;
+    const wF=total-wB; if(!wF)break;
+    sumB+=t*hist[t];
+    const mB=sumB/wB,mF=(sum-sumB)/wF;
+    const v=wB*wF*(mB-mF)*(mB-mF);
+    if(v>maxVar){maxVar=v;threshold=t;}
+  }
+  return threshold;
+}
+
+function normalizeLabel(img){
+  const maxW=480;
+  const scale=Math.min(1,maxW/img.naturalWidth);
   const w=Math.max(1,Math.round(img.naturalWidth*scale));
   const h=Math.max(1,Math.round(img.naturalHeight*scale));
-  const c=document.createElement('canvas'); c.width=w;c.height=h;
+  const c=document.createElement('canvas');c.width=w;c.height=h;
   const ctx=c.getContext('2d',{willReadFrequently:true});
   ctx.drawImage(img,0,0,w,h);
+  const im=ctx.getImageData(0,0,w,h),d=im.data;
+  const gray=new Uint8Array(w*h);
+  let mean=0;
+  for(let p=0,i=0;p<gray.length;p++,i+=4){
+    const g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+    gray[p]=g;mean+=g;
+  }
+  mean/=gray.length;
+  let th=otsu(gray);
+  th=Math.max(145,Math.min(220,Math.max(th,mean+8)));
+
+  const mask=new Uint8Array(w*h);
+  for(let i=0;i<gray.length;i++) if(gray[i]>=th) mask[i]=1;
+  const seen=new Uint8Array(w*h);
+  const stack=new Int32Array(w*h);
+  let best=null,bestScore=0;
+  const total=w*h;
+
+  for(let seed=0;seed<mask.length;seed++){
+    if(!mask[seed]||seen[seed])continue;
+    let sp=0;stack[sp++]=seed;seen[seed]=1;
+    let area=0,minx=w,maxx=0,miny=h,maxy=0;
+    let sx=0,sy=0,sxx=0,syy=0,sxy=0;
+    const pix=[];
+    while(sp){
+      const idx=stack[--sp], y=(idx/w)|0, x=idx-y*w;
+      area++;sx+=x;sy+=y;sxx+=x*x;syy+=y*y;sxy+=x*y;
+      pix.push(idx);
+      if(x<minx)minx=x;if(x>maxx)maxx=x;if(y<miny)miny=y;if(y>maxy)maxy=y;
+      let n;
+      if(x>0){n=idx-1;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
+      if(x<w-1){n=idx+1;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
+      if(y>0){n=idx-w;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
+      if(y<h-1){n=idx+w;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
+    }
+    const bw=maxx-minx+1,bh=maxy-miny+1,ratio=bw/bh,fill=area/(bw*bh),frac=area/total;
+    if(frac<0.035||frac>0.72||ratio<1.12||ratio>2.25||fill<0.40)continue;
+    const aspectScore=1-Math.min(1,Math.abs(ratio-1.50)/0.9);
+    const score=area*fill*(0.65+0.35*aspectScore);
+    if(score>bestScore){
+      bestScore=score;
+      best={area,minx,maxx,miny,maxy,sx,sy,sxx,syy,sxy,pix,ratio,fill,th};
+    }
+  }
+
+  if(!best){
+    const out=document.createElement('canvas');
+    const ow=1600,oh=Math.round(ow*img.naturalHeight/img.naturalWidth);
+    out.width=ow;out.height=oh;
+    out.getContext('2d').drawImage(img,0,0,ow,oh);
+    return {canvas:out,located:false,angle:0,threshold:th};
+  }
+
+  const n=best.area,cx=best.sx/n,cy=best.sy/n;
+  const cxx=best.sxx/n-cx*cx,cyy=best.syy/n-cy*cy,cxy=best.sxy/n-cx*cy;
+  let ang=0.5*Math.atan2(2*cxy,cxx-cyy);
+  if(ang>Math.PI/4)ang-=Math.PI/2;
+  if(ang<-Math.PI/4)ang+=Math.PI/2;
+  const ca=Math.cos(ang),sa=Math.sin(ang);
+  let minLX=1e9,maxLX=-1e9,minLY=1e9,maxLY=-1e9;
+  for(const idx of best.pix){
+    const y=(idx/w)|0,x=idx-y*w,dx=x-cx,dy=y-cy;
+    const lx=ca*dx+sa*dy,ly=-sa*dx+ca*dy;
+    if(lx<minLX)minLX=lx;if(lx>maxLX)maxLX=lx;
+    if(ly<minLY)minLY=ly;if(ly>maxLY)maxLY=ly;
+  }
+  const marginX=(maxLX-minLX)*0.025,marginY=(maxLY-minLY)*0.035;
+  minLX-=marginX;maxLX+=marginX;minLY-=marginY;maxLY+=marginY;
+
+  const inv=1/scale;
+  const cxO=cx*inv,cyO=cy*inv,minXO=minLX*inv,maxXO=maxLX*inv,minYO=minLY*inv,maxYO=maxLY*inv;
+  const localW=maxXO-minXO,localH=maxYO-minYO;
+  const outW=1600,outH=Math.max(650,Math.round(outW*localH/localW));
+  const out=document.createElement('canvas');out.width=outW;out.height=outH;
+  const o=out.getContext('2d',{willReadFrequently:true});
+  o.fillStyle='#fff';o.fillRect(0,0,outW,outH);
+  const s=outW/localW;
+  o.setTransform(
+    s*ca,-s*sa,
+    s*sa,s*ca,
+    s*(-ca*cxO-sa*cyO-minXO),
+    s*(sa*cxO-ca*cyO-minYO)
+  );
+  o.drawImage(img,0,0);
+  o.setTransform(1,0,0,1,0,0);
+  return {canvas:out,located:true,angle:ang*180/Math.PI,threshold:th};
+}
+
+function cropNorm(src,rx,ry,rw,rh,targetW=900,mode='contrast'){
+  const sx=Math.max(0,Math.round(src.width*rx)),sy=Math.max(0,Math.round(src.height*ry));
+  const sw=Math.min(src.width-sx,Math.round(src.width*rw)),sh=Math.min(src.height-sy,Math.round(src.height*rh));
+  const scale=targetW/sw,w=Math.max(1,Math.round(sw*scale)),h=Math.max(1,Math.round(sh*scale));
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(src,sx,sy,sw,sh,0,0,w,h);
   if(mode){
-    const im=ctx.getImageData(0,0,w,h), d=im.data;
+    const im=ctx.getImageData(0,0,w,h),d=im.data;
     for(let i=0;i<d.length;i+=4){
       const y=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-      let v;
-      if(mode==='binary') v=y>158?255:0;
-      else v=Math.max(0,Math.min(255,(y-128)*1.55+128));
+      let v=y;
+      if(mode==='contrast')v=Math.max(0,Math.min(255,(y-128)*1.6+128));
+      if(mode==='binary')v=y>150?255:0;
       d[i]=d[i+1]=d[i+2]=v;
     }
     ctx.putImageData(im,0,0);
@@ -122,237 +229,142 @@ function decodeJsQr(canvas){
     const ctx=canvas.getContext('2d',{willReadFrequently:true});
     const im=ctx.getImageData(0,0,canvas.width,canvas.height);
     const r=jsQR(im.data,canvas.width,canvas.height,{inversionAttempts:'attemptBoth'});
-    return r && r.data ? r.data.trim() : '';
+    return r&&r.data?r.data.trim():'';
   }catch(e){return ''}
 }
 
-function cropQrCanvas(img, rx, ry, rw, rh, targetWidth, mode){
-  const sx=Math.max(0,Math.round(img.naturalWidth*rx));
-  const sy=Math.max(0,Math.round(img.naturalHeight*ry));
-  const sw=Math.min(img.naturalWidth-sx,Math.round(img.naturalWidth*rw));
-  const sh=Math.min(img.naturalHeight-sy,Math.round(img.naturalHeight*rh));
-  const scale=Math.max(1,targetWidth/sw);
-  const w=Math.max(1,Math.round(sw*scale));
-  const h=Math.max(1,Math.round(sh*scale));
-  const c=document.createElement('canvas');
-  c.width=w;c.height=h;
-  const ctx=c.getContext('2d',{willReadFrequently:true});
-  ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(img,sx,sy,sw,sh,0,0,w,h);
-
-  if(mode){
-    const im=ctx.getImageData(0,0,w,h), d=im.data;
-    for(let i=0;i<d.length;i+=4){
-      const y=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-      let v=y;
-      if(mode==='contrast') v=Math.max(0,Math.min(255,(y-128)*1.8+128));
-      if(mode==='binary') v=y>150?255:0;
-      d[i]=d[i+1]=d[i+2]=v;
-    }
-    ctx.putImageData(im,0,0);
-  }
-  return c;
-}
-
-async function decodeQr(img){
-  if ('BarcodeDetector' in window){
-    try{
-      const bd=new BarcodeDetector({formats:['qr_code']});
-      const hits=await bd.detect(img);
-      if(hits && hits[0] && hits[0].rawValue) return hits[0].rawValue.trim();
-    }catch(e){}
-  }
-
-  // 1. 先掃整張，成功就立即返回。
-  let c=makeCanvas(img,1700,null);
-  let q=decodeJsQr(c);
-  if(q) return q;
-
-  c=makeCanvas(img,1900,'contrast');
-  q=decodeJsQr(c);
-  if(q) return q;
-
-  // 2. 標籤 QR 通常位於中下區；切小區域後放大，避免 QR 在整張照片中太小。
-  const regions=[
-    [0.18,0.28,0.64,0.62],
-    [0.08,0.38,0.84,0.58],
-    [0.25,0.35,0.50,0.48],
-    [0.00,0.28,0.60,0.65],
-    [0.40,0.28,0.60,0.65]
-  ];
-  for(const r of regions){
-    c=cropQrCanvas(img,r[0],r[1],r[2],r[3],1500,'contrast');
-    q=decodeJsQr(c);
-    if(q) return q;
-  }
-
-  // 3. 最後只對最可能區域做黑白強化，不讓正常照片多等太久。
-  const finalRegions=[
-    [0.18,0.32,0.64,0.58],
-    [0.05,0.45,0.90,0.50]
-  ];
-  for(const r of finalRegions){
-    c=cropQrCanvas(img,r[0],r[1],r[2],r[3],1600,'binary');
-    q=decodeJsQr(c);
-    if(q) return q;
-  }
-  return '';
-}
-
-function normalizeText(s){
-  return String(s||'')
-    .toUpperCase()
-    .replace(/[|]/g,'I')
-    .replace(/[ＯO](?=\d)/g,'0')
-    .replace(/[ＳS](?=\d)/g,'5');
-}
-
-function parseFields(text){
-  const raw=normalizeText(text);
-  const compact=raw.replace(/\s+/g,' ');
-  const tokens=compact.match(/[A-Z0-9_-]{5,}/g)||[];
-
-  let order='';
-  let bcode='';
-
-  const orderLabel=raw.match(/(?:單號|ORDER|ORD)\s*[:：#-]?\s*([0-9]{10,16})/i);
-  if(orderLabel) order=orderLabel[1];
-  if(!order){
-    const nums=tokens.map(x=>x.replace(/[^0-9]/g,'')).filter(x=>/^20\d{10,14}$/.test(x));
-    if(nums.length) order=nums.sort((a,b)=>b.length-a.length)[0];
-  }
-  if(!order){
-    const m=raw.match(/\b(20\d{10,14})\b/);
-    if(m) order=m[1];
-  }
-
-  const bm=raw.match(/\bB\s*[-:]?\s*([0-9]{8,12})\b/i);
-  if(bm) bcode='B'+bm[1];
-  if(!bcode){
-    const btoken=tokens.find(x=>/^B[0-9]{8,12}$/.test(x.replace(/[-_]/g,'')));
-    if(btoken) bcode=btoken.replace(/[-_]/g,'');
-  }
-  return {order,bcode,raw};
-}
-
-async function ocrPass(worker,canvas,psm='6'){
-  try{await worker.setParameters({tessedit_pageseg_mode:psm});}catch(e){}
+async function ocr(worker,canvas,whitelist,psm='7'){
+  try{
+    await worker.setParameters({
+      tessedit_pageseg_mode:psm,
+      tessedit_char_whitelist:whitelist,
+      preserve_interword_spaces:'1'
+    });
+  }catch(e){}
   const r=await worker.recognize(canvas);
-  return r && r.data ? r.data.text||'' : '';
-}
-
-async function readQrHumanNumber(worker,img){
-  // QR 下方的人眼碼通常在標籤中央偏下。只有 QR 圖形解碼失敗時才跑，
-  // 避免正常情況額外拖慢。
-  const regions=[
-    [0.30,0.34,0.40,0.42],
-    [0.22,0.28,0.56,0.50],
-    [0.36,0.38,0.28,0.32]
-  ];
-
-  const oldParams={
-    tessedit_pageseg_mode:'7',
-    tessedit_char_whitelist:'0123456789'
+  return {
+    text:r&&r.data?r.data.text||'':'',
+    confidence:r&&r.data&&typeof r.data.confidence==='number'?r.data.confidence:0
   };
+}
 
-  for(const r of regions){
-    const c=cropQrCanvas(img,r[0],r[1],r[2],r[3],1200,'contrast');
-    try{
-      await worker.setParameters(oldParams);
-      const out=await worker.recognize(c);
-      const text=(out&&out.data&&out.data.text?out.data.text:'').replace(/[^0-9]/g,' ');
-      const matches=text.match(/\b\d{7,10}\b/g)||[];
-      if(matches.length){
-        // 工件 QR 人眼碼以 8 碼最常見，優先 8 碼，否則取第一個合理長度。
-        const eight=matches.find(x=>x.length===8);
-        return eight||matches[0];
-      }
-    }catch(e){}
+function parseOrder(s){
+  const t=String(s||'').replace(/[^0-9]/g,' ');
+  const a=t.match(/\b20\d{10,14}\b/g)||[];
+  return a[0]||'';
+}
+function parseB(s){
+  const t=String(s||'').toUpperCase().replace(/[^B0-9]/g,'');
+  const m=t.match(/B\d{8,12}/);
+  return m?m[0]:'';
+}
+function parseQrHuman(s){
+  const a=(String(s||'').match(/\d{7,10}/g)||[]);
+  const eight=a.find(x=>x.length===8);
+  return eight||a[0]||'';
+}
+
+async function readAll(worker,label){
+  let qr='',qrSource='';
+  const qrRegion=cropNorm(label,0.32,0.43,0.37,0.42,1000,null);
+  qr=decodeJsQr(qrRegion);
+  if(!qr){
+    const q2=cropNorm(label,0.27,0.36,0.48,0.50,1200,'contrast');
+    qr=decodeJsQr(q2);
   }
-  return '';
+  if(qr)qrSource='QR圖形';
+
+  const orderRegion=cropNorm(label,0.015,0.005,0.47,0.15,1050,'contrast');
+  const bRegion=cropNorm(label,0.33,0.005,0.38,0.15,950,'contrast');
+
+  const orderOcr=await ocr(worker,orderRegion,'0123456789',7);
+  let order=parseOrder(orderOcr.text);
+
+  const bOcr=await ocr(worker,bRegion,'B0123456789',7);
+  let bcode=parseB(bOcr.text);
+
+  let qrHuman='',qrHumanConf=0;
+  if(!qr){
+    const humanRegion=cropNorm(label,0.37,0.67,0.28,0.15,900,'contrast');
+    const human=await ocr(worker,humanRegion,'0123456789',7);
+    qrHuman=parseQrHuman(human.text);qrHumanConf=human.confidence;
+    if(qrHuman){qr=qrHuman;qrSource='QR下方數字';}
+  }
+
+  // 只有缺欄位才掃較寬的頂部備援，避免每張都多跑。
+  let fallbackUsed=false;
+  if(!order||!bcode){
+    fallbackUsed=true;
+    const top=cropNorm(label,0.0,0.0,0.76,0.22,1200,'contrast');
+    const topOcr=await ocr(worker,top,'B0123456789',6);
+    if(!order)order=parseOrder(topOcr.text);
+    if(!bcode)bcode=parseB(topOcr.text);
+  }
+
+  return {
+    qr,order,bcode,qrSource,fallbackUsed,
+    confidence:{order:orderOcr.confidence,bcode:bOcr.confidence,qrHuman:qrHumanConf}
+  };
 }
 
-function setBox(boxId,val){
-  const box=$(boxId);
-  box.classList.remove('ok','warn');
-  box.classList.add(val ? 'ok' : 'warn');
+function setResult(boxId,id,val){
+  $(id).textContent=val||'未讀到';
+  $(boxId).classList.remove('ok','warn');
+  $(boxId).classList.add(val?'ok':'warn');
 }
-
 function reset(){
-  $('qr').textContent='－'; $('order').textContent='－'; $('bcode').textContent='－';
-  ['qrBox','orderBox','bBox'].forEach(id=>{$(id).classList.remove('ok','warn')});
-  $('timing').textContent='尚未測試';
-  $('preview').style.display='none';
-  $('preview').src='';
+  setResult('qrBox','qr','');setResult('orderBox','order','');setResult('bBox','bcode','');
+  $('qr').textContent='－';$('order').textContent='－';$('bcode').textContent='－';
+  ['qrBox','orderBox','bBox'].forEach(id=>$(id).classList.remove('ok','warn'));
+  $('preview').style.display='none';$('preview').src='';
+  $('timing').textContent='尚未測試';$('locBadge').textContent='尚未定位標籤';
 }
-
 $('clearBtn').addEventListener('click',reset);
 
-$('photo').addEventListener('change', async e=>{
-  const file=e.target.files&&e.target.files[0]; if(!file)return;
-  reset();
-  const t0=now();
-  $('status').textContent='📷 讀取照片…';
+$('photo').addEventListener('change',async e=>{
+  const file=e.target.files&&e.target.files[0];if(!file)return;
+  reset();const t0=now();
   try{
-    const img=await loadImage(file);
-    const t1=now();
-    $('preview').src=URL.createObjectURL(file);
+    $('status').textContent='📷 讀取照片…';
+    const img=await loadImage(file);const t1=now();
+
+    $('status').textContent='⬜ 自動找標籤並轉正…';
+    const norm=normalizeLabel(img);const t2=now();
+    $('locBadge').textContent=norm.located
+      ? '✅ 已鎖定標籤｜自動校正 '+Math.abs(norm.angle).toFixed(1)+'°'
+      : '⚠️ 未鎖定標籤｜使用整張照片備援';
+
+    $('preview').src=norm.canvas.toDataURL('image/jpeg',0.86);
     $('preview').style.display='block';
 
-    $('status').textContent='🔍 QR + 文字快速辨識…';
-    const worker=await warmWorker();
-    const tWarm=now();
+    const worker=await warmWorker();const t3=now();
+    $('status').textContent='🔍 讀取 QR碼、單號、B碼…';
+    const data=await readAll(worker,norm.canvas);const t4=now();
 
-    const qrPromise=decodeQr(img);
-    const quickCanvas=makeCanvas(img,1500,'contrast');
-    const ocrPromise=ocrPass(worker,quickCanvas,'6');
+    setResult('qrBox','qr',data.qr);
+    setResult('orderBox','order',data.order);
+    setResult('bBox','bcode',data.bcode);
 
-    let [qr,text1]=await Promise.all([qrPromise,ocrPromise]);
-    const t2=now();
+    const all=!!data.qr&&!!data.order&&!!data.bcode;
+    $('status').textContent=all
+      ? '✅ QR碼、單號、B碼都已辨識'
+      : '⚠️ 有欄位未讀到；系統已做備援，建議再拍一張比較穩定度';
 
-    let qrHuman='';
-    if(!qr){
-      $('status').textContent='🔢 QR 圖形未讀到，改讀 QR 下方數字…';
-      qrHuman=await readQrHumanNumber(worker,img);
-      if(qrHuman) qr=qrHuman;
-    }
-
-    let fields=parseFields(text1);
-    let text2='';
-    let usedSecond=false;
-
-    if(!fields.order || !fields.bcode){
-      usedSecond=true;
-      $('status').textContent='⚡ 缺少欄位，補強辨識一次…';
-      const c2=makeCanvas(img,1850,'binary');
-      text2=await ocrPass(worker,c2,'6');
-      const f2=parseFields(text1+'\n'+text2);
-      fields.order=fields.order||f2.order;
-      fields.bcode=fields.bcode||f2.bcode;
-    }
-    const t3=now();
-
-    $('qr').textContent=qr||'未讀到';
-    $('order').textContent=fields.order||'未讀到';
-    $('bcode').textContent=fields.bcode||'未讀到';
-    setBox('qrBox',qr);setBox('orderBox',fields.order);setBox('bBox',fields.bcode);
-
-    const all=!!qr&&!!fields.order&&!!fields.bcode;
-    $('status').textContent=all?'✅ QR碼、單號、B碼都已辨識':'⚠️ 有欄位未讀到，請確認或重拍';
-
-    $('timing').textContent =
-      '照片讀取：' + ms(t1-t0) + '\n' +
-      'OCR 預熱等待：' + ms(tWarm-t1) + '\n' +
-      'QR + 第1輪 OCR：' + ms(t2-tWarm) + '\n' +
-      (qrHuman ? 'QR備援：已改讀下方人眼碼 ' + qrHuman + '\n' : '') +
-      (usedSecond ? '第2輪補強 OCR：' + ms(t3-t2) + '\n' : '') +
-      '總耗時：' + ms(t3-t0) + '\n' +
-      '原圖尺寸：' + img.naturalWidth + ' × ' + img.naturalHeight;
+    $('timing').textContent=
+      '照片讀取：'+sec(t1-t0)+'\n'+
+      '標籤定位＋轉正：'+sec(t2-t1)+'\n'+
+      'OCR 預熱等待：'+sec(t3-t2)+'\n'+
+      '三欄辨識：'+sec(t4-t3)+'\n'+
+      '總耗時：'+sec(t4-t0)+'\n'+
+      '標籤定位：'+(norm.located?'成功':'備援')+'\n'+
+      '校正角度：'+norm.angle.toFixed(1)+'°\n'+
+      'QR來源：'+(data.qrSource||'未讀到')+'\n'+
+      '單號信心：'+Math.round(data.confidence.order)+'%\n'+
+      'B碼信心：'+Math.round(data.confidence.bcode)+'%\n'+
+      (data.fallbackUsed?'頂部備援：有啟動\n':'頂部備援：未啟動\n');
   }catch(err){
     $('status').textContent='❌ '+(err&&err.message?err.message:'辨識失敗');
-  }finally{
-    e.target.value='';
-  }
+  }finally{e.target.value='';}
 });
 </script>
 </body>
