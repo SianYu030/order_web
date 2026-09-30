@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>封邊標籤穩定辨識測試 v8</title>
+<title>封邊標籤穩定辨識測試 v9</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
@@ -26,7 +26,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>封邊標籤穩定辨識測試 v8</h1>
+    <h1>封邊標籤穩定辨識測試 v9</h1>
     <div class="muted">流程：優先用 QR 四角當定位錨點 → 推算整張標籤 → 透視拉正 → 固定讀單號、B碼。特別強化遠拍與斜拍。</div>
     <label class="capture">📸 拍標籤測試
       <input id="photo" type="file" accept="image/*" capture="environment">
@@ -410,10 +410,79 @@ async function ocr(worker,canvas,whitelist,psm='7'){
 }
 
 function parseOrder(s){
-  // 現場單號固定以 20 開頭、共 12 碼；嚴格格式可避免吃到其他尺寸/日期數字。
-  const t=String(s||'').replace(/[^0-9]/g,'');
-  const m=t.match(/20\d{10}/);
-  return m?m[0]:'';
+  // 單號固定為 20 開頭、共 12 碼。
+  // 不把不同列/不同區塊的數字全部串起來，避免產生假單號。
+  const raw=String(s||'').toUpperCase();
+  const lines=raw.split(/\r?\n/);
+
+  for(const line of lines){
+    const compact=line.replace(/[^0-9]/g,'');
+    const m=compact.match(/20\d{10}/);
+    if(m) return m[0];
+  }
+
+  const tokens=raw.match(/20[0-9\s._-]{10,20}/g)||[];
+  for(const token of tokens){
+    const digits=token.replace(/[^0-9]/g,'');
+    const m=digits.match(/^20\d{10}$/);
+    if(m) return m[0];
+  }
+  return '';
+}
+
+function chooseOrderCandidate(items){
+  const valid=(items||[])
+    .map(x=>({code:parseOrder(x.text),confidence:Number(x.confidence||0)}))
+    .filter(x=>/^20\d{10}$/.test(x.code));
+
+  if(!valid.length) return {code:'',confidence:0,votes:0,agreement:0,candidates:[]};
+
+  const groups={};
+  for(const x of valid){
+    if(!groups[x.code]) groups[x.code]={code:x.code,count:0,score:0,maxConf:0};
+    groups[x.code].count++;
+    groups[x.code].score += Math.max(15,x.confidence);
+    groups[x.code].maxConf=Math.max(groups[x.code].maxConf,x.confidence);
+  }
+
+  const ranked=Object.values(groups).sort((a,b)=>
+    (b.count-a.count) || (b.score-a.score) || (b.maxConf-a.maxConf)
+  );
+
+  let code=ranked[0].code;
+  let agreement=ranked[0].count/valid.length;
+
+  // 沒有完整碼共識時，逐位數做加權投票。
+  if(ranked[0].count<2 && valid.length>=2){
+    let out='';
+    let agreeSum=0;
+    for(let pos=0;pos<12;pos++){
+      const bucket={};
+      let total=0;
+      for(const x of valid){
+        const ch=x.code[pos];
+        const w=Math.max(20,x.confidence);
+        bucket[ch]=(bucket[ch]||0)+w;
+        total+=w;
+      }
+      const top=Object.entries(bucket).sort((a,b)=>b[1]-a[1])[0];
+      out+=top[0];
+      agreeSum+=total?top[1]/total:0;
+    }
+    if(/^20\d{10}$/.test(out)){
+      code=out;
+      agreement=agreeSum/12;
+    }
+  }
+
+  const avgConf=valid.reduce((s,x)=>s+x.confidence,0)/valid.length;
+  return {
+    code,
+    confidence:avgConf,
+    votes:valid.filter(x=>x.code===code).length,
+    agreement,
+    candidates:valid.map(x=>x.code)
+  };
 }
 function parseB(s){
   // 現場 B碼固定為 B + 9 位數。
@@ -506,14 +575,23 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
     cropNorm(label,0.005,0.000,0.36,0.105,1200,'contrast'),
     cropNorm(label,0.015,0.008,0.40,0.125,1200,'binary')
   ];
-  let order='',orderConf=0,orderRaw='';
-  for(const region of orderRegions){
-    const rr=await ocr(worker,region,'0123456789',7);
-    orderRaw += '\n'+rr.text;
-    if(rr.confidence>orderConf) orderConf=rr.confidence;
-    order=parseOrder(orderRaw);
-    if(order) break;
+  // 單號也改成多裁切、多預處理、多 PSM 交叉辨識。
+  const orderJobs=[
+    {c:cropNorm(label,0.005,0.000,0.34,0.090,1250,null),       psm:7},
+    {c:cropNorm(label,0.005,0.000,0.34,0.095,1250,'contrast'), psm:7},
+    {c:cropNorm(label,0.000,0.000,0.38,0.110,1350,'binary'),   psm:7},
+    {c:cropNorm(label,0.000,0.000,0.40,0.125,1400,'contrast'), psm:6},
+    {c:cropNorm(label,0.010,0.005,0.33,0.085,1250,'contrast'), psm:13}
+  ];
+  const orderReads=[];
+  for(const job of orderJobs){
+    const rr=await ocr(worker,job.c,'0123456789',job.psm);
+    orderReads.push(rr);
   }
+  const orderPick=chooseOrderCandidate(orderReads);
+  let order=orderPick.code;
+  let orderConf=orderPick.confidence;
+  let orderRaw=orderReads.map(x=>x.text).join('\n');
 
   // B碼改成多裁切、多預處理、多 PSM 交叉辨識。
   // 只多掃上方中央這一小塊，速度增加有限，但準確度會比單次 OCR 穩。
@@ -550,12 +628,19 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
   if(!order||!bcode){
     fallbackUsed=true;
 
-    // 單號備援：只讀左上更窄區域，做兩種二值化/排版模式。
+    // 單號備援：再用兩個更寬的左上區域補票，但不跨列拼接。
     if(!order){
-      const orderWide=cropNorm(label,0.0,0.0,0.46,0.16,1500,'contrast');
-      const rr=await ocr(worker,orderWide,'0123456789',6);
-      order=parseOrder(rr.text);
-      orderConf=Math.max(orderConf,rr.confidence||0);
+      const extra=[];
+      for(const spec of [
+        [0.0,0.0,0.42,0.14,1500,'contrast',6],
+        [0.0,0.0,0.39,0.12,1450,'binary',7]
+      ]){
+        const cc=cropNorm(label,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
+        extra.push(await ocr(worker,cc,'0123456789',spec[6]));
+      }
+      const pick=chooseOrderCandidate(extra);
+      order=pick.code;
+      orderConf=Math.max(orderConf,pick.confidence||0);
     }
 
     // B碼備援：再用更寬一點的中央區補一票，不掃右側直排文字。
@@ -577,6 +662,7 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
   return {
     qr,order,bcode,qrSource,fallbackUsed,
     confidence:{order:orderConf,bcode:bConf,qrHuman:qrHumanConf},
+    orderDiagnostics:{votes:orderPick.votes,agreement:orderPick.agreement,candidates:orderPick.candidates},
     bDiagnostics:{votes:bPick.votes,agreement:bPick.agreement,candidates:bPick.candidates}
   };
 }
@@ -648,6 +734,8 @@ $('photo').addEventListener('change',async e=>{
       '校正角度：'+norm.angle.toFixed(1)+'°\n'+
       'QR來源：'+(data.qrSource||'未讀到')+'\n'+
       '單號信心：'+Math.round(data.confidence.order)+'%\n'+
+      '單號候選：'+((data.orderDiagnostics&&data.orderDiagnostics.candidates)||[]).join(' / ')+'\n'+
+      '單號一致度：'+Math.round(((data.orderDiagnostics&&data.orderDiagnostics.agreement)||0)*100)+'%\n'+
       'B碼信心：'+Math.round(data.confidence.bcode)+'%\n'+
       'B碼候選：'+((data.bDiagnostics&&data.bDiagnostics.candidates)||[]).join(' / ')+'\n'+
       'B碼一致度：'+Math.round(((data.bDiagnostics&&data.bDiagnostics.agreement)||0)*100)+'%\n'+
