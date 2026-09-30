@@ -130,7 +130,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 .login-actions{display:grid;grid-template-columns:92px 1fr;gap:9px;margin-top:16px}.login-cancel,.login-submit{border:0;border-radius:14px;padding:13px 12px;font-weight:900;font-size:15px}
 .login-cancel{background:#eef3f8;color:#41586f}.login-submit{background:var(--navy);color:#fff}.login-error{margin-top:9px;color:#b42318;font-size:12px;font-weight:800;text-align:center}
 .login-demo{margin-top:12px;padding:9px 11px;border-radius:11px;background:#fff8e7;border:1px solid #f0d58d;color:#785b00;font-size:12px;line-height:1.5}
-.repair-loginbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding:9px 11px;border-radius:13px;background:#edf5fc;color:#234d73;font-size:12px;font-weight:800}.logout-btn{border:0;border-radius:10px;background:#fff;color:#31577c;padding:7px 10px;font-weight:850}
+.repair-loginbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding:9px 11px;border-radius:13px;background:#edf5fc;color:#234d73;font-size:12px;font-weight:800}.repair-login-actions{display:flex;gap:7px}.logout-btn,.password-btn{border:0;border-radius:10px;background:#fff;color:#31577c;padding:7px 10px;font-weight:850}.password-btn{background:#dfeefa;color:#164f82}.password-success{margin-top:9px;color:#14703d;font-size:12px;font-weight:850;text-align:center}
 @media(max-width:420px){.machine-grid{grid-template-columns:1fr}.person-grid{grid-template-columns:repeat(2,1fr)}.title{font-size:18px}.class-grid,.repair-status-grid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -218,7 +218,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 
     <div id="repairMode" class="hidden">
       <section class="card" id="repairListCard">
-        <div class="repair-loginbar"><span>🔐 已登入：<b id="repairLoginUser">機修</b></span><button class="logout-btn" id="repairLogoutBtn" type="button">登出</button></div>
+        <div class="repair-loginbar"><span>🔐 已登入：<b id="repairLoginUser">—</b></span><div class="repair-login-actions"><button class="password-btn" id="repairChangePasswordBtn" type="button">修改密碼</button><button class="logout-btn" id="repairLogoutBtn" type="button">登出</button></div></div>
         <h2>維修工單</h2>
         <div class="hint">待處理／處理中／待料／外修都屬於「未完成工單」，直到真正修復後才結案。</div>
         <div class="track-overview" id="trackOverview"></div>
@@ -472,10 +472,40 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
     <label class="login-label" for="repairLoginPassword">密碼</label>
     <input class="login-input" id="repairLoginPassword" type="password" autocomplete="current-password" placeholder="請輸入密碼">
     <div class="login-error hidden" id="repairLoginError">帳號或密碼錯誤，請重新輸入。</div>
-    <div class="login-demo">目前為介面測試帳號：<b>機修</b>　密碼：<b>1234</b><br>正式版會改由 Apps Script 後端驗證，不會把正式密碼放在網頁程式內。</div>
+    <div class="login-demo">測試帳號：<b>A1702／A2758／3109</b><br>三組初始密碼皆為：<b>1234</b><br>正式版會改由 Apps Script 後端驗證。</div>
+    <button class="password-btn" id="repairLoginChangePasswordBtn" type="button" style="width:100%;margin-top:12px;padding:11px">🔑 修改密碼</button>
     <div class="login-actions">
       <button class="login-cancel" id="repairLoginCancel" type="button">取消</button>
       <button class="login-submit" id="repairLoginSubmit" type="button">登入維修處理</button>
+    </div>
+  </div>
+</div>
+
+<div class="login-overlay hidden" id="repairPasswordModal">
+  <div class="login-card">
+    <div class="login-icon">🔑</div>
+    <h2>修改維修密碼</h2>
+    <div class="login-sub">請先確認原密碼，再設定新密碼。</div>
+
+    <label class="login-label" for="changePasswordAccount">帳號</label>
+    <input class="login-input" id="changePasswordAccount" autocomplete="username" placeholder="A1702 / A2758 / 3109">
+
+    <label class="login-label" for="changePasswordOld">目前密碼</label>
+    <input class="login-input" id="changePasswordOld" type="password" autocomplete="current-password" placeholder="請輸入目前密碼">
+
+    <label class="login-label" for="changePasswordNew">新密碼</label>
+    <input class="login-input" id="changePasswordNew" type="password" autocomplete="new-password" placeholder="至少 4 碼">
+
+    <label class="login-label" for="changePasswordConfirm">確認新密碼</label>
+    <input class="login-input" id="changePasswordConfirm" type="password" autocomplete="new-password" placeholder="再輸入一次新密碼">
+
+    <div class="login-error hidden" id="changePasswordError"></div>
+    <div class="password-success hidden" id="changePasswordSuccess">✅ 密碼已修改完成</div>
+    <div class="login-demo">測試版：新密碼只會儲存在目前這台裝置的瀏覽器。正式版接後端後會改成所有裝置同步。</div>
+
+    <div class="login-actions">
+      <button class="login-cancel" id="changePasswordCancel" type="button">取消</button>
+      <button class="login-submit" id="changePasswordSave" type="button">儲存新密碼</button>
     </div>
   </div>
 </div>
@@ -525,11 +555,23 @@ Object.keys(DATA).forEach(d=>{
   el("deptGrid").appendChild(button(d,"choice dept",()=>chooseDept(d)));
 });
 
-const TEST_REPAIR_ACCOUNT="機修";
-const TEST_REPAIR_PASSWORD="1234";
+
+const REPAIR_ACCOUNTS=["A1702","A2758","3109"];
+const DEFAULT_REPAIR_PASSWORD="1234";
 sessionStorage.removeItem("repairAuth");
 sessionStorage.removeItem("repairUser");
 let repairAuth=false;
+let currentRepairUser="";
+
+function repairPasswordKey(account){
+  return "repairPassword:"+account;
+}
+function getRepairPassword(account){
+  return localStorage.getItem(repairPasswordKey(account)) || DEFAULT_REPAIR_PASSWORD;
+}
+function isRepairAccount(account){
+  return REPAIR_ACCOUNTS.includes(account);
+}
 
 function showRepairLogin(){
   el("repairLoginError").classList.add("hidden");
@@ -538,31 +580,94 @@ function showRepairLogin(){
   setTimeout(()=>el("repairLoginAccount").focus(),80);
 }
 function hideRepairLogin(){ el("repairLoginModal").classList.add("hidden"); }
+
 function doRepairLogin(){
-  const account=el("repairLoginAccount").value.trim();
+  const account=el("repairLoginAccount").value.trim().toUpperCase();
   const password=el("repairLoginPassword").value;
-  if(account===TEST_REPAIR_ACCOUNT && password===TEST_REPAIR_PASSWORD){
+  if(isRepairAccount(account) && password===getRepairPassword(account)){
     repairAuth=true;
+    currentRepairUser=account;
     el("repairLoginUser").textContent=account;
     hideRepairLogin();
     switchMode("repair");
   }else{
+    el("repairLoginError").textContent="帳號或密碼錯誤，請重新輸入。";
     el("repairLoginError").classList.remove("hidden");
     el("repairLoginPassword").select();
   }
 }
 
-el("reportModeBtn").onclick=()=>{hideRepairLogin();switchMode("report");};
+function openChangePassword(prefillAccount=""){
+  el("changePasswordAccount").value=(prefillAccount||"").toUpperCase();
+  el("changePasswordAccount").disabled=!!prefillAccount;
+  el("changePasswordOld").value="";
+  el("changePasswordNew").value="";
+  el("changePasswordConfirm").value="";
+  el("changePasswordError").classList.add("hidden");
+  el("changePasswordSuccess").classList.add("hidden");
+  el("repairPasswordModal").classList.remove("hidden");
+  setTimeout(()=>prefillAccount?el("changePasswordOld").focus():el("changePasswordAccount").focus(),80);
+}
+function closeChangePassword(){
+  el("repairPasswordModal").classList.add("hidden");
+}
+function saveChangedPassword(){
+  const account=el("changePasswordAccount").value.trim().toUpperCase();
+  const oldPass=el("changePasswordOld").value;
+  const newPass=el("changePasswordNew").value;
+  const confirmPass=el("changePasswordConfirm").value;
+  const err=el("changePasswordError");
+
+  err.classList.add("hidden");
+  el("changePasswordSuccess").classList.add("hidden");
+
+  let msg="";
+  if(!isRepairAccount(account)) msg="找不到這個維修帳號。";
+  else if(oldPass!==getRepairPassword(account)) msg="目前密碼不正確。";
+  else if(newPass.length<4) msg="新密碼至少需要 4 碼。";
+  else if(newPass!==confirmPass) msg="兩次輸入的新密碼不一致。";
+
+  if(msg){
+    err.textContent=msg;
+    err.classList.remove("hidden");
+    return;
+  }
+
+  localStorage.setItem(repairPasswordKey(account),newPass);
+  el("changePasswordSuccess").classList.remove("hidden");
+  setTimeout(()=>{
+    closeChangePassword();
+    if(!repairAuth){
+      el("repairLoginAccount").value=account;
+      el("repairLoginPassword").value="";
+      showRepairLogin();
+    }
+  },700);
+}
+
+el("reportModeBtn").onclick=()=>{hideRepairLogin();closeChangePassword();switchMode("report");};
 el("repairModeBtn").onclick=()=>repairAuth?switchMode("repair"):showRepairLogin();
 el("repairLoginCancel").onclick=hideRepairLogin;
 el("repairLoginSubmit").onclick=doRepairLogin;
 el("repairLoginPassword").addEventListener("keydown",e=>{if(e.key==="Enter")doRepairLogin();});
 el("repairLoginAccount").addEventListener("keydown",e=>{if(e.key==="Enter")el("repairLoginPassword").focus();});
+
+el("repairLoginChangePasswordBtn").onclick=()=>{
+  const a=el("repairLoginAccount").value.trim().toUpperCase();
+  openChangePassword(isRepairAccount(a)?a:"");
+};
+el("repairChangePasswordBtn").onclick=()=>openChangePassword(currentRepairUser);
+el("changePasswordCancel").onclick=closeChangePassword;
+el("changePasswordSave").onclick=saveChangedPassword;
+el("changePasswordConfirm").addEventListener("keydown",e=>{if(e.key==="Enter")saveChangedPassword();});
+
 el("repairLogoutBtn").onclick=()=>{
   repairAuth=false;
+  currentRepairUser="";
+  el("repairLoginUser").textContent="—";
   switchMode("report");
 };
-el("repairLoginUser").textContent="機修";
+el("repairLoginUser").textContent="—";
 
 function switchMode(mode){
   if(mode==="repair" && !repairAuth){showRepairLogin();return;}
