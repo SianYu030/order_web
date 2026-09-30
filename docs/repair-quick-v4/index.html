@@ -46,6 +46,7 @@ button{cursor:pointer}
 .form-select{display:block;width:100%;min-height:54px;border:1.5px solid var(--line);border-radius:14px;background:#fff;color:#1f2c3a;padding:0 14px;font-size:16px;font-weight:750;line-height:1.3;outline:none}
 .form-select:focus{border-color:#4a91d9;box-shadow:0 0 0 3px rgba(74,145,217,.12)}
 .select-note{font-size:12px;color:var(--muted);line-height:1.5;margin:7px 2px 0}
+.repair-tech-box{border:1.5px solid #bfd4e8;background:#f2f8fd;color:#164f82;border-radius:14px;padding:14px;font-size:16px;font-weight:900}
 .twocol{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .stopbtn,.levelbtn{border:1.5px solid var(--line);background:#fff;border-radius:14px;min-height:54px;font-weight:850}
 .stopbtn.sel.yes{border-color:#d84a4a;background:#fff1f1;color:#bd2525}
@@ -145,7 +146,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <div class="title">🛠 系統櫃線上報修</div>
         <div class="subtitle">手機報修／維修處理</div>
       </div>
-      <div class="badge">測試版 V4.2.2</div>
+      <div class="badge">測試版 V4.3</div>
     </div>
     <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
   </header>
@@ -241,10 +242,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         </div>
         <div class="kv" id="repairKV"></div>
 
-        <div class="section-title">維修內容</div>
-        <textarea id="repairContent" placeholder="例如：更換皮帶、調整張力、清潔感測器…"></textarea>
-
-        <div class="section-title">維修類型</div>
+        <div class="section-title" id="repairTypeTitle">維修類型</div>
         <select id="repairTypeSelect" class="form-select">
           <option value="">請選擇維修類型</option>
           <option>故障維修</option>
@@ -254,7 +252,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
           <option>臨時作業</option>
         </select>
 
-        <div class="section-title">故障分類</div>
+        <div class="section-title" id="repairClassTitle">故障分類</div>
         <select id="repairClassSelect" class="form-select">
           <option value="">請選擇故障分類</option>
 
@@ -407,7 +405,14 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
             <option>【其他】其他</option>
           </optgroup>
         </select>
-        <div class="select-note">新版分類包含：電氣控制、軟體通訊、氣壓真空、液壓系統、傳動送料、鋸切、封邊、鑽孔／CNC、機構零件、集塵、冷卻、空壓、包裝組立、搬運車輛、安全保護、加工品質、其他。</div>
+        <div class="select-note" id="repairClassNote">新版分類包含：電氣控制、軟體通訊、氣壓真空、液壓系統、傳動送料、鋸切、封邊、鑽孔／CNC、機構零件、集塵、冷卻、空壓、包裝組立、搬運車輛、安全保護、加工品質、其他。</div>
+
+        <div class="section-title" id="repairTechTitle">機修處理人</div>
+        <div class="repair-tech-box" id="repairTechnician">—</div>
+        <div class="select-note">登入後自動帶入機修帳號，不需要重複選擇。</div>
+
+        <div class="section-title" id="repairContentTitle">維修內容</div>
+        <textarea id="repairContent" placeholder="例如：更換皮帶、調整張力、清潔感測器…"></textarea>
 
         <div class="section-title">維修時間</div>
         <div class="time-grid">
@@ -419,7 +424,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
           <div class="time-box">
             <small>完成時間</small>
             <div class="time-value" id="repairEnd">--:--</div>
-            <button class="time-action done" id="repairEndBtn">✓ 完成維修</button>
+            <button class="time-action done" id="repairEndBtn">⏸ 結束本次計時</button>
           </div>
         </div>
 
@@ -541,7 +546,7 @@ const REPAIR_STORE={};
 function storeFor(o){
   if(!REPAIR_STORE[o.no]){
     REPAIR_STORE[o.no]={
-      type:"",classification:"",content:"",note:"",status:o.status,followup:null,
+      type:"",classification:"",technician:"",content:"",note:"",status:o.status,followup:null,
       firstStart:null,end:null,activeStart:null,workMinutes:0,
       timeline:[{at:o.time,title:"建立報修工單",detail:"初始狀態："+o.status}]
     };
@@ -721,15 +726,30 @@ function openRepairOrder(o){
   el("repairStart").textContent=s.firstStart?formatHM(s.firstStart):"--:--";
   el("repairEnd").textContent=s.end?formatHM(s.end):"--:--";
   el("repairTypeSelect").value=s.type||"";el("repairClassSelect").value=s.classification;
+  el("repairTechnician").textContent=currentRepairUser||"—";
+  updateRepairTypeUI();
   el("saveRepairMsg").classList.add("hidden");el("followPanel").classList.add("hidden");
   el("completeRepairBtn").disabled=s.status==="已完成";
   buildRepairStatus();renderWork();renderTimeline();window.scrollTo({top:0,behavior:"smooth"});
 }
 el("repairBack").onclick=renderRepairOrders;
-el("repairTypeSelect").onchange=()=>{repairState.type=el("repairTypeSelect").value;};
+function updateRepairTypeUI(){
+  const isFault=el("repairTypeSelect").value==="故障維修";
+  el("repairClassTitle").classList.toggle("hidden",!isFault);
+  el("repairClassSelect").classList.toggle("hidden",!isFault);
+  el("repairClassNote").classList.toggle("hidden",!isFault);
+  if(!isFault){
+    el("repairClassSelect").value="";
+    repairState.classification="";
+  }
+}
+el("repairTypeSelect").onchange=()=>{
+  repairState.type=el("repairTypeSelect").value;
+  updateRepairTypeUI();
+};
 el("repairClassSelect").onchange=()=>{repairState.classification=el("repairClassSelect").value;};
 function buildRepairStatus(){
-  const list=["待處理","處理中","待料","外修"];
+  const list=["待處理","處理中","待料","外修","待觀察"];
   el("repairStatusGrid").innerHTML="";
   list.forEach(v=>{
     const b=button(v,"repair-status-btn",()=>chooseRepairStatus(v));
@@ -820,7 +840,7 @@ el("completeRepairBtn").onclick=()=>{
 };
 el("saveRepairBtn").onclick=()=>{
   const s=repairState.store;if(!s)return;
-  s.type=el("repairTypeSelect").value;s.classification=el("repairClassSelect").value;s.content=el("repairContent").value.trim();s.note=el("repairNote").value.trim();
+  s.type=el("repairTypeSelect").value;s.classification=el("repairClassSelect").value;s.technician=currentRepairUser;s.content=el("repairContent").value.trim();s.note=el("repairNote").value.trim();
   repairState.type=s.type;repairState.classification=s.classification;
   s.timeline.push({at:formatStamp(new Date()),title:"更新維修紀錄",detail:(s.type||"未選維修類型")+"｜"+(s.classification||"未分類")+(s.content?"｜"+s.content:"")});
   renderTimeline();el("saveRepairMsg").classList.remove("hidden");
