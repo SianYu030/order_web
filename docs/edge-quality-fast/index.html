@@ -241,6 +241,37 @@ async function ocrPass(worker,canvas,psm='6'){
   return r && r.data ? r.data.text||'' : '';
 }
 
+async function readQrHumanNumber(worker,img){
+  // QR 下方的人眼碼通常在標籤中央偏下。只有 QR 圖形解碼失敗時才跑，
+  // 避免正常情況額外拖慢。
+  const regions=[
+    [0.30,0.34,0.40,0.42],
+    [0.22,0.28,0.56,0.50],
+    [0.36,0.38,0.28,0.32]
+  ];
+
+  const oldParams={
+    tessedit_pageseg_mode:'7',
+    tessedit_char_whitelist:'0123456789'
+  };
+
+  for(const r of regions){
+    const c=cropQrCanvas(img,r[0],r[1],r[2],r[3],1200,'contrast');
+    try{
+      await worker.setParameters(oldParams);
+      const out=await worker.recognize(c);
+      const text=(out&&out.data&&out.data.text?out.data.text:'').replace(/[^0-9]/g,' ');
+      const matches=text.match(/\b\d{7,10}\b/g)||[];
+      if(matches.length){
+        // 工件 QR 人眼碼以 8 碼最常見，優先 8 碼，否則取第一個合理長度。
+        const eight=matches.find(x=>x.length===8);
+        return eight||matches[0];
+      }
+    }catch(e){}
+  }
+  return '';
+}
+
 function setBox(boxId,val){
   const box=$(boxId);
   box.classList.remove('ok','warn');
@@ -276,8 +307,16 @@ $('photo').addEventListener('change', async e=>{
     const quickCanvas=makeCanvas(img,1500,'contrast');
     const ocrPromise=ocrPass(worker,quickCanvas,'6');
 
-    const [qr,text1]=await Promise.all([qrPromise,ocrPromise]);
+    let [qr,text1]=await Promise.all([qrPromise,ocrPromise]);
     const t2=now();
+
+    let qrHuman='';
+    if(!qr){
+      $('status').textContent='🔢 QR 圖形未讀到，改讀 QR 下方數字…';
+      qrHuman=await readQrHumanNumber(worker,img);
+      if(qrHuman) qr=qrHuman;
+    }
+
     let fields=parseFields(text1);
     let text2='';
     let usedSecond=false;
@@ -305,6 +344,7 @@ $('photo').addEventListener('change', async e=>{
       '照片讀取：' + ms(t1-t0) + '\n' +
       'OCR 預熱等待：' + ms(tWarm-t1) + '\n' +
       'QR + 第1輪 OCR：' + ms(t2-tWarm) + '\n' +
+      (qrHuman ? 'QR備援：已改讀下方人眼碼 ' + qrHuman + '\n' : '') +
       (usedSecond ? '第2輪補強 OCR：' + ms(t3-t2) + '\n' : '') +
       '總耗時：' + ms(t3-t0) + '\n' +
       '原圖尺寸：' + img.naturalWidth + ' × ' + img.naturalHeight;
