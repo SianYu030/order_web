@@ -146,7 +146,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <div class="title">🛠 系統櫃線上報修</div>
         <div class="subtitle">手機報修／維修處理</div>
       </div>
-      <div class="badge">測試版 V4.3</div>
+      <div class="badge">測試版 V4.3.1</div>
     </div>
     <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
   </header>
@@ -414,6 +414,15 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <div class="section-title" id="repairContentTitle">維修內容</div>
         <textarea id="repairContent" placeholder="例如：更換皮帶、調整張力、清潔感測器…"></textarea>
 
+        <div class="section-title">維修狀態（未完成追蹤）</div>
+        <div class="repair-status-grid" id="repairStatusGrid"></div>
+        <div class="follow-panel hidden" id="followPanel">
+          <h3 id="followTitle">後續追蹤</h3>
+          <div id="followFields"></div>
+          <button class="follow-confirm" id="followConfirm">確認並建立追蹤</button>
+        </div>
+
+
         <div class="section-title">維修時間</div>
         <div class="time-grid">
           <div class="time-box">
@@ -429,14 +438,6 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         </div>
 
         <div class="work-box">自動維修工時：<b id="repairWork">0時00分</b><br><span style="font-size:12px">08:00–12:00、13:00–17:00，午休不計。</span></div>
-
-        <div class="section-title">維修狀態（未完成追蹤）</div>
-        <div class="repair-status-grid" id="repairStatusGrid"></div>
-        <div class="follow-panel hidden" id="followPanel">
-          <h3 id="followTitle">後續追蹤</h3>
-          <div id="followFields"></div>
-          <button class="follow-confirm" id="followConfirm">確認並建立追蹤</button>
-        </div>
 
         <div class="section-title">追蹤紀錄</div>
         <div class="timeline" id="repairTimeline"></div>
@@ -819,7 +820,7 @@ function renderTimeline(){
   el("repairTimeline").innerHTML=s.timeline.slice().reverse().map(x=>'<div class="timeline-item"><div class="timeline-time">'+esc(x.at)+'</div><div class="timeline-title">'+esc(x.title)+'</div><div class="timeline-detail">'+esc(x.detail||"")+'</div></div>').join("");
 }
 function renderTrackingOverview(){
-  const names=["待處理","處理中","待料","外修","已完成"];
+  const names=["待處理","處理中","待料","外修","待觀察","已完成"];
   const counts={};names.forEach(n=>counts[n]=0);MOCK_ORDERS.forEach(o=>counts[o.status]=(counts[o.status]||0)+1);
   el("trackOverview").innerHTML=names.map(n=>'<div class="track-box"><b>'+counts[n]+'</b><span>'+n+'</span></div>').join("");
 }
