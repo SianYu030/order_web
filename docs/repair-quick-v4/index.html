@@ -38,6 +38,9 @@ button{cursor:pointer}
 .machine-grid{grid-template-columns:1fr 1fr;max-height:400px;overflow:auto;padding-right:2px}
 .machine{border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:11px;text-align:left;min-height:58px;font-weight:750;line-height:1.3;color:#243141}
 .machine.sel{border-color:#4a91d9;background:var(--blue);color:var(--blueText)}
+.machine.special{border-color:#e3a23a;background:#fff8e8;color:#8a5200;font-weight:900;box-shadow:inset 0 0 0 1px #f5d898}
+.machine.special::before{content:"🧰 ";font-size:15px}
+.machine.special.sel{border-color:#c97900;background:#ffe5b5;color:#7a4300;box-shadow:inset 0 0 0 2px #f0b24f}
 .search{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;background:#fbfcfe;color:var(--text);outline:none;margin-bottom:10px}
 .search:focus,textarea:focus{border-color:#4a91d9;background:#fff}
 .form-select{display:block;width:100%;min-height:54px;border:1.5px solid var(--line);border-radius:14px;background:#fff;color:#1f2c3a;padding:0 14px;font-size:16px;font-weight:750;line-height:1.3;outline:none}
@@ -142,7 +145,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <div class="title">🛠 系統櫃線上報修</div>
         <div class="subtitle">手機報修／維修處理</div>
       </div>
-      <div class="badge">測試版 V4.1</div>
+      <div class="badge">測試版 V4.2.2</div>
     </div>
     <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
   </header>
@@ -872,7 +875,7 @@ function renderMachines(){
   const list=all.filter(x=>x.toLowerCase().includes(q));
   el("machineGrid").innerHTML="";
   list.forEach(m=>{
-    const b=button(m,"machine",()=>{
+    const b=button(m,m===SPECIAL_MACHINE?"machine special":"machine",()=>{
       state.machine=m;
       renderMachines();
       updateIssueMode();
