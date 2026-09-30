@@ -126,6 +126,34 @@ function decodeJsQr(canvas){
   }catch(e){return ''}
 }
 
+function cropQrCanvas(img, rx, ry, rw, rh, targetWidth, mode){
+  const sx=Math.max(0,Math.round(img.naturalWidth*rx));
+  const sy=Math.max(0,Math.round(img.naturalHeight*ry));
+  const sw=Math.min(img.naturalWidth-sx,Math.round(img.naturalWidth*rw));
+  const sh=Math.min(img.naturalHeight-sy,Math.round(img.naturalHeight*rh));
+  const scale=Math.max(1,targetWidth/sw);
+  const w=Math.max(1,Math.round(sw*scale));
+  const h=Math.max(1,Math.round(sh*scale));
+  const c=document.createElement('canvas');
+  c.width=w;c.height=h;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(img,sx,sy,sw,sh,0,0,w,h);
+
+  if(mode){
+    const im=ctx.getImageData(0,0,w,h), d=im.data;
+    for(let i=0;i<d.length;i+=4){
+      const y=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+      let v=y;
+      if(mode==='contrast') v=Math.max(0,Math.min(255,(y-128)*1.8+128));
+      if(mode==='binary') v=y>150?255:0;
+      d[i]=d[i+1]=d[i+2]=v;
+    }
+    ctx.putImageData(im,0,0);
+  }
+  return c;
+}
+
 async function decodeQr(img){
   if ('BarcodeDetector' in window){
     try{
@@ -134,11 +162,41 @@ async function decodeQr(img){
       if(hits && hits[0] && hits[0].rawValue) return hits[0].rawValue.trim();
     }catch(e){}
   }
-  let c=makeCanvas(img,1400,null);
+
+  // 1. 先掃整張，成功就立即返回。
+  let c=makeCanvas(img,1700,null);
   let q=decodeJsQr(c);
   if(q) return q;
+
   c=makeCanvas(img,1900,'contrast');
-  return decodeJsQr(c);
+  q=decodeJsQr(c);
+  if(q) return q;
+
+  // 2. 標籤 QR 通常位於中下區；切小區域後放大，避免 QR 在整張照片中太小。
+  const regions=[
+    [0.18,0.28,0.64,0.62],
+    [0.08,0.38,0.84,0.58],
+    [0.25,0.35,0.50,0.48],
+    [0.00,0.28,0.60,0.65],
+    [0.40,0.28,0.60,0.65]
+  ];
+  for(const r of regions){
+    c=cropQrCanvas(img,r[0],r[1],r[2],r[3],1500,'contrast');
+    q=decodeJsQr(c);
+    if(q) return q;
+  }
+
+  // 3. 最後只對最可能區域做黑白強化，不讓正常照片多等太久。
+  const finalRegions=[
+    [0.18,0.32,0.64,0.58],
+    [0.05,0.45,0.90,0.50]
+  ];
+  for(const r of finalRegions){
+    c=cropQrCanvas(img,r[0],r[1],r[2],r[3],1600,'binary');
+    q=decodeJsQr(c);
+    if(q) return q;
+  }
+  return '';
 }
 
 function normalizeText(s){
