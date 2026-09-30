@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>封邊標籤穩定辨識測試 v7</title>
+<title>封邊標籤穩定辨識測試 v8</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
@@ -26,7 +26,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>封邊標籤穩定辨識測試 v7</h1>
+    <h1>封邊標籤穩定辨識測試 v8</h1>
     <div class="muted">流程：優先用 QR 四角當定位錨點 → 推算整張標籤 → 透視拉正 → 固定讀單號、B碼。特別強化遠拍與斜拍。</div>
     <label class="capture">📸 拍標籤測試
       <input id="photo" type="file" accept="image/*" capture="environment">
@@ -416,10 +416,71 @@ function parseOrder(s){
   return m?m[0]:'';
 }
 function parseB(s){
-  // 現場 B碼固定為 B + 9 位數。即使 OCR 尾端多吃到其他數字，也只取正確長度。
+  // 現場 B碼固定為 B + 9 位數。
   const t=String(s||'').toUpperCase().replace(/[^B0-9]/g,'');
   const m=t.match(/B\d{9}/);
   return m?m[0]:'';
+}
+
+function chooseBCodeCandidate(items){
+  // 多個 OCR 版本同時判讀 B碼，避免單次誤把 5/7、0/2、3/8 看錯。
+  const valid=(items||[])
+    .map(x=>({code:parseB(x.text),confidence:Number(x.confidence||0)}))
+    .filter(x=>/^B\d{9}$/.test(x.code));
+
+  if(!valid.length) return {code:'',confidence:0,votes:0,agreement:0,candidates:[]};
+
+  // 先做完整候選碼投票。
+  const groups={};
+  for(const x of valid){
+    if(!groups[x.code]) groups[x.code]={code:x.code,count:0,score:0,maxConf:0};
+    groups[x.code].count++;
+    groups[x.code].score += Math.max(15,x.confidence);
+    groups[x.code].maxConf=Math.max(groups[x.code].maxConf,x.confidence);
+  }
+  let ranked=Object.values(groups).sort((a,b)=>
+    (b.count-a.count) || (b.score-a.score) || (b.maxConf-a.maxConf)
+  );
+
+  // 若沒有明顯完整碼共識，再做逐字元加權投票。
+  let code=ranked[0].code;
+  let votes=ranked[0].count;
+  let charAgreement=0;
+
+  if(ranked[0].count<2 && valid.length>=2){
+    let out='B';
+    let agreeSum=0;
+    for(let pos=1;pos<10;pos++){
+      const bucket={};
+      let total=0;
+      for(const x of valid){
+        const ch=x.code[pos];
+        const w=Math.max(20,x.confidence);
+        bucket[ch]=(bucket[ch]||0)+w;
+        total+=w;
+      }
+      const top=Object.entries(bucket).sort((a,b)=>b[1]-a[1])[0];
+      out+=top[0];
+      agreeSum += total ? top[1]/total : 0;
+    }
+    const voted=parseB(out);
+    if(voted){
+      code=voted;
+      charAgreement=agreeSum/9;
+      votes=valid.filter(x=>x.code===voted).length;
+    }
+  } else {
+    charAgreement=ranked[0].count/valid.length;
+  }
+
+  const avgConf=valid.reduce((s,x)=>s+x.confidence,0)/valid.length;
+  return {
+    code,
+    confidence:avgConf,
+    votes,
+    agreement:charAgreement,
+    candidates:valid.map(x=>x.code)
+  };
 }
 function parseQrHuman(s){
   const a=(String(s||'').match(/\d{7,10}/g)||[]);
@@ -445,11 +506,6 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
     cropNorm(label,0.005,0.000,0.36,0.105,1200,'contrast'),
     cropNorm(label,0.015,0.008,0.40,0.125,1200,'binary')
   ];
-  const bRegions=[
-    cropNorm(label,0.34,0.000,0.26,0.105,1050,'contrast'),
-    cropNorm(label,0.31,0.005,0.31,0.125,1050,'binary')
-  ];
-
   let order='',orderConf=0,orderRaw='';
   for(const region of orderRegions){
     const rr=await ocr(worker,region,'0123456789',7);
@@ -459,14 +515,24 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
     if(order) break;
   }
 
-  let bcode='',bConf=0,bRaw='';
-  for(const region of bRegions){
-    const rr=await ocr(worker,region,'B0123456789',7);
-    bRaw += '\n'+rr.text;
-    if(rr.confidence>bConf) bConf=rr.confidence;
-    bcode=parseB(bRaw);
-    if(bcode) break;
+  // B碼改成多裁切、多預處理、多 PSM 交叉辨識。
+  // 只多掃上方中央這一小塊，速度增加有限，但準確度會比單次 OCR 穩。
+  const bJobs=[
+    {c:cropNorm(label,0.315,0.000,0.285,0.105,1200,null),       psm:7},
+    {c:cropNorm(label,0.315,0.000,0.285,0.105,1200,'contrast'), psm:7},
+    {c:cropNorm(label,0.305,0.000,0.315,0.120,1300,'contrast'), psm:6},
+    {c:cropNorm(label,0.325,0.005,0.265,0.095,1200,'binary'),   psm:7},
+    {c:cropNorm(label,0.285,0.000,0.350,0.135,1350,'contrast'), psm:13}
+  ];
+  const bReads=[];
+  for(const job of bJobs){
+    const rr=await ocr(worker,job.c,'B0123456789',job.psm);
+    bReads.push(rr);
   }
+  const bPick=chooseBCodeCandidate(bReads);
+  let bcode=bPick.code;
+  let bConf=bPick.confidence;
+  let bRaw=bReads.map(x=>x.text).join('\n');
 
   const orderOcr={confidence:orderConf,text:orderRaw};
   const bOcr={confidence:bConf,text:bRaw};
@@ -492,18 +558,26 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
       orderConf=Math.max(orderConf,rr.confidence||0);
     }
 
-    // B碼備援：只讀上方中央，不再掃到右側直排文字。
+    // B碼備援：再用更寬一點的中央區補一票，不掃右側直排文字。
     if(!bcode){
-      const bWide=cropNorm(label,0.28,0.0,0.36,0.16,1300,'contrast');
-      const rr=await ocr(worker,bWide,'B0123456789',6);
-      bcode=parseB(rr.text);
-      bConf=Math.max(bConf,rr.confidence||0);
+      const extra=[];
+      for(const spec of [
+        [0.27,0.0,0.38,0.15,1450,'contrast',6],
+        [0.29,0.0,0.34,0.13,1400,'binary',7]
+      ]){
+        const cc=cropNorm(label,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
+        extra.push(await ocr(worker,cc,'B0123456789',spec[6]));
+      }
+      const pick=chooseBCodeCandidate(extra);
+      bcode=pick.code;
+      bConf=Math.max(bConf,pick.confidence||0);
     }
   }
 
   return {
     qr,order,bcode,qrSource,fallbackUsed,
-    confidence:{order:orderConf,bcode:bConf,qrHuman:qrHumanConf}
+    confidence:{order:orderConf,bcode:bConf,qrHuman:qrHumanConf},
+    bDiagnostics:{votes:bPick.votes,agreement:bPick.agreement,candidates:bPick.candidates}
   };
 }
 
@@ -575,6 +649,8 @@ $('photo').addEventListener('change',async e=>{
       'QR來源：'+(data.qrSource||'未讀到')+'\n'+
       '單號信心：'+Math.round(data.confidence.order)+'%\n'+
       'B碼信心：'+Math.round(data.confidence.bcode)+'%\n'+
+      'B碼候選：'+((data.bDiagnostics&&data.bDiagnostics.candidates)||[]).join(' / ')+'\n'+
+      'B碼一致度：'+Math.round(((data.bDiagnostics&&data.bDiagnostics.agreement)||0)*100)+'%\n'+
       (data.fallbackUsed?'頂部備援：有啟動\n':'頂部備援：未啟動\n');
   }catch(err){
     $('status').textContent='❌ '+(err&&err.message?err.message:'辨識失敗');
