@@ -622,7 +622,7 @@ function saveChangedPassword(){
   el("changePasswordSuccess").classList.add("hidden");
 
   let msg="";
-  if(!isRepairAccount(account)) msg="找不到這個維修帳號。";
+  if(!isRepairAccount(account)) msg="找不到這個機修帳號。";
   else if(oldPass!==getRepairPassword(account)) msg="目前密碼不正確。";
   else if(newPass.length<4) msg="新密碼至少需要 4 碼。";
   else if(newPass!==confirmPass) msg="兩次輸入的新密碼不一致。";
