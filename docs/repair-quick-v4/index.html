@@ -142,7 +142,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <div class="title">🛠 系統櫃線上報修</div>
         <div class="subtitle">手機報修／維修處理</div>
       </div>
-      <div class="badge">測試版 V4</div>
+      <div class="badge">測試版 V4.1</div>
     </div>
     <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
   </header>
@@ -197,8 +197,8 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
     </section>
 
     <section class="card hidden" id="issueCard">
-      <h2>⑥ 機台異常描述</h2>
-      <div class="hint">簡單描述看到的問題即可</div>
+      <h2 id="issueTitle">⑥ 機台異常描述</h2>
+      <div class="hint" id="issueHint">簡單描述看到的問題即可</div>
       <textarea id="issue" placeholder="例如：機台啟動後出現警報，無法正常加工…"></textarea>
       <div class="voice-row single">
         <button class="smallbtn" id="clearIssue" type="button">清除描述</button>
@@ -512,19 +512,20 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 
 <script>
 const DATA = {
-"E3":{"people":["王川茂","郭凱倫","李灌育"],"areas":{
+"E3":{"people":["王川茂","郭凱倫","李灌育","楊添志","蘇育德","王顯籲"],"areas":{
 "E3主區":["380裁板機","330裁板機","液壓升降平台(380專用)","液壓升降平台(330專用)","直線封邊機","軟成型封邊機","六面無縫封邊機","窄邊封邊機","斜背封邊機","鉸鏈孔加工機","CNC","異形封邊機(柯耐)","半自動手工封邊機(豪美)","半自動手工封邊機2(洪業)","六面鑽單機(恩德)"],
 "手工造型門板區":["立芯機","銑溝機(1號)","銑溝機(2號)","銑溝機(3號)","分隔引孔機(1號)","分隔引孔機(2號)","修邊機","雙軌多角度切斷機"],
 "鋁框區":["雙軌多角度切斷機","750數控鑽銑機","MS35F雙刀45度裁切機","伺服上下自動鋸台10W500","雙桶式工業用集塵機","手動鑽床鑽孔機(1號)","手動鑽床鑽孔機(2號)","手動鑽床鑽孔機(3號)"]}},
-"E4":{"people":["鍾政良"],"areas":{"E4":["330裁板機","液壓升降平台(330專用)","長風裁板機","液壓升降平台(長風專用)","雙桶式工業用集塵機","Nesting10號機","液壓升降平台(Nesting10號專用)","Nesting20號機","液壓升降平台(Nesting20號專用)","機械手臂(Nesting專用)","直線封邊機1號","直線封邊機2號","直線封邊機3號","ABD鑽孔機","CNC","六面鑽單機","工作站單機1號","工作站單機2號","工作站單機3號","工作站單機4號","機械手臂(六面鑽工作站專用)","手拉式電動拖板車"]}},
-"E5":{"people":["許竣凱"],"areas":{"E5":["分料機(1號)","分料機(2號)","邊條打洞機","550單頭鋸","重型單頭鋸","拔筋機(崁把手研磨)","柴油動力堆高機1號","柴油動力堆高機2號","柴油動力堆高機3號","柴油動力堆高機4號(W8)","白鐵管金工切斷機","研磨機"]}},
-"W8":{"people":["薛凱澤","張志賢","方迋栩"],"areas":{"W8":["330裁板機","液壓升降平台(330專用)","邰展裁板機","液壓升降平台(邰展專用)","Nesting10號機","Nesting20號機","機械手臂(Nesting專用)","直線封邊機1號","直線封邊機2號","直線封邊機3號","直線封邊機4號","液壓升降平台(直線封邊機3號專用)","液壓升降平台(直線封邊機4號專用)","ABD鑽孔機","CNC","六面鑽單機","六面工作站1號","六面工作站2號","六面工作站3號","六面工作站4號","機械手臂(六面工作站專用)","研磨機","站立式電動拖板車2號"]}},
-"W8整修&組立":{"people":["張育齊"],"areas":{
+"E4":{"people":["鍾政良","楊添志","蘇育德","王顯籲"],"areas":{"E4":["330裁板機","液壓升降平台(330專用)","長風裁板機","液壓升降平台(長風專用)","雙桶式工業用集塵機","Nesting10號機","液壓升降平台(Nesting10號專用)","Nesting20號機","液壓升降平台(Nesting20號專用)","機械手臂(Nesting專用)","直線封邊機1號","直線封邊機2號","直線封邊機3號","ABD鑽孔機","CNC","六面鑽單機","工作站單機1號","工作站單機2號","工作站單機3號","工作站單機4號","機械手臂(六面鑽工作站專用)","手拉式電動拖板車"]}},
+"E5":{"people":["許竣凱","楊添志","蘇育德","王顯籲"],"areas":{"E5":["分料機(1號)","分料機(2號)","邊條打洞機","550單頭鋸","重型單頭鋸","拔筋機(崁把手研磨)","柴油動力堆高機1號","柴油動力堆高機2號","柴油動力堆高機3號","柴油動力堆高機4號(W8)","白鐵管金工切斷機","研磨機"]}},
+"W8":{"people":["薛凱澤","張志賢","方迋栩","楊添志","蘇育德","王顯籲"],"areas":{"W8":["330裁板機","液壓升降平台(330專用)","邰展裁板機","液壓升降平台(邰展專用)","Nesting10號機","Nesting20號機","機械手臂(Nesting專用)","直線封邊機1號","直線封邊機2號","直線封邊機3號","直線封邊機4號","液壓升降平台(直線封邊機3號專用)","液壓升降平台(直線封邊機4號專用)","ABD鑽孔機","CNC","六面鑽單機","六面工作站1號","六面工作站2號","六面工作站3號","六面工作站4號","機械手臂(六面工作站專用)","研磨機","站立式電動拖板車2號"]}},
+"W8整修&組立":{"people":["張育齊","楊添志","蘇育德","王顯籲"],"areas":{
 "組立區":["SCM組立機(1號機)","自動包膜機(1號機)","低位自動打包機(1號機)","自動打包機(小)","SCM組立機(2號機)","自動包膜機(2號機)","低位自動打包機(2號機)","站立式電動拖板車(3號)","雙軌多角度切斷機","雙桶式工業用集塵機","背板銑溝機","門板銑溝機(立芯機)","底板銑溝機(立芯機)","移動式鋸台","手動式沖床","手拉式拖板車"],
 "整修區":["電動拋光機","門式打包機","自動打包機(小)","自動磨刀機"]}},
-"空壓機室":{"people":["楊添志"],"areas":{"空壓機室":["空壓機(1號)","空壓機(2號)","乾燥機(1號)","乾燥機(2號)","抽水機(1號)","抽水機(2號)","抽水機(3號)","抽水機(4號)"]}}
+"空壓機室":{"people":["楊添志","蘇育德","王顯籲"],"areas":{"空壓機室":["空壓機(1號)","空壓機(2號)","乾燥機(1號)","乾燥機(2號)","抽水機(1號)","抽水機(2號)","抽水機(3號)","抽水機(4號)"]}}
 };
 
+const SPECIAL_MACHINE="現場人員臨時需求以及特殊作業";
 const state={dept:"",person:"",area:"",machine:"",stop:"",level:""};
 const repairState={order:null,type:"",classification:"",start:"",end:"",status:"",store:null,pendingStatus:""};
 const MOCK_ORDERS=[
@@ -856,12 +857,29 @@ function showMachines(){
   el("machineSearch").value="";
   renderMachines();
 }
+function updateIssueMode(){
+  const special=state.machine===SPECIAL_MACHINE;
+  el("issueTitle").textContent=special?"⑥ 現場人員臨時作業需求（描述）":"⑥ 機台異常描述";
+  el("issueHint").textContent=special?"請填寫臨時需求／特殊作業的原因與內容":"簡單描述看到的問題即可";
+  el("issue").placeholder=special
+    ?"例如：臨時安裝照明、協助加工、設備移位、現場改善作業…"
+    :"例如：機台啟動後出現警報，無法正常加工…";
+}
 function renderMachines(){
   const q=el("machineSearch").value.trim().toLowerCase();
-  const list=(DATA[state.dept].areas[state.area]||[]).filter(x=>x.toLowerCase().includes(q));
+  const normal=DATA[state.dept].areas[state.area]||[];
+  const all=[SPECIAL_MACHINE,...normal.filter(x=>x!==SPECIAL_MACHINE)];
+  const list=all.filter(x=>x.toLowerCase().includes(q));
   el("machineGrid").innerHTML="";
   list.forEach(m=>{
-    const b=button(m,"machine",()=>{state.machine=m;renderMachines();el("statusCard").classList.remove("hidden");el("issueCard").classList.remove("hidden");update();});
+    const b=button(m,"machine",()=>{
+      state.machine=m;
+      renderMachines();
+      updateIssueMode();
+      el("statusCard").classList.remove("hidden");
+      el("issueCard").classList.remove("hidden");
+      update();
+    });
     if(state.machine===m)b.classList.add("sel");
     el("machineGrid").appendChild(b);
   });
@@ -899,7 +917,7 @@ function update(){
       "<strong>機台：</strong>"+esc(state.machine)+"<br>"+
       "<strong>是否停機：</strong>"+esc(state.stop)+"<br>"+
       "<strong>緊急程度：</strong>"+esc(state.level)+"<br>"+
-      "<strong>異常描述：</strong>"+esc(issue);
+      (state.machine===SPECIAL_MACHINE?"<strong>需求原因：</strong>":"<strong>異常描述：</strong>")+esc(issue);
   }else el("summaryCard").classList.add("hidden");
   const score=[state.dept,state.person,state.area,state.machine,(state.stop&&state.level&&issue)].filter(Boolean).length;
   document.querySelectorAll("#progress span").forEach((s,i)=>s.classList.toggle("on",i<Math.max(1,score)));
@@ -914,7 +932,7 @@ el("againBtn").onclick=()=>{el("success").classList.add("hidden");reset();};
 el("resetBtn").onclick=reset;
 function reset(){
   Object.keys(state).forEach(k=>state[k]="");
-  el("issue").value="";el("machineSearch").value="";el("photo").value="";el("photoPreview").style.display="none";
+  el("issue").value="";el("machineSearch").value="";el("photo").value="";el("photoPreview").style.display="none";updateIssueMode();
   document.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));
   cards.forEach(id=>el(id).classList.add("hidden"));
   el("submitBtn").disabled=true;update();
