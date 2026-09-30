@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8"><title>Apps Script RPC probe</title>
+<pre id="out">running…</pre>
+<script>
+(async()=>{
+ const base='https://script.google.com/macros/s/AKfycby7w11utJGHOc23gMkA20WX32M5pSsUEG9FDLiS7NISOjsKQhguaU7JEMjD1E7Z-AY1/callback';
+ const variants=[
+  ["getInitialData","[]",null,[0],null,null,1,0],
+  ["getInitialData","[]",null,[0],null,null,true,0]
+ ];
+ const results=[];
+ for(let i=0;i<variants.length;i++){
+  const payload=variants[i];
+  try{
+   const body=new URLSearchParams({request:JSON.stringify(payload)});
+   const r=await fetch(base+'?nocache_id='+Date.now()+i,{method:'POST',body,credentials:'omit'});
+   results.push({variant:i+1,status:r.status,type:r.type,url:r.url,body:(await r.text()).slice(0,12000)});
+  }catch(e){results.push({variant:i+1,error:String(e)})}
+ }
+ document.getElementById('out').textContent=JSON.stringify(results,null,2);
+})();
+</script>
