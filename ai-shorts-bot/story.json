@@ -1,16 +1,232 @@
 {
-  "story_id": "20260928-catloop",
-  "title": "The Cat Fell for It",
-  "description": "An original fast visual cat comedy loop.",
-  "hashtags": ["#shorts", "#cat", "#funnyanimals", "#comedy"],
+  "story_id": "20261001-raccoon-red-ball",
+  "title": "He Stole the Red Ball… for THIS",
+  "description": "Original 42-second visual animal rescue story with a misdirection, emotional reveal, and loop ending.",
+  "hashtags": [
+    "#shorts",
+    "#animalstory",
+    "#raccoon",
+    "#aishorts"
+  ],
   "category_id": "15",
   "made_for_kids": false,
-  "synthetic_media": false,
-  "content_format": "relatable_comedy",
-  "duration_seconds": 6,
+  "synthetic_media": true,
+  "content_format": "mini_rescue",
+  "duration_seconds": 42,
+  "hook": "A raccoon grabs a bright red ball from a dog in the first frame and races toward a rain gutter.",
+  "retention_beats": [
+    "0-3s immediate grab and chase",
+    "3-8s raccoon keeps looking toward the gutter",
+    "8-13s ball enters rushing water",
+    "13-18s apparent loss creates misdirection",
+    "18-24s red flashes below hint at purpose",
+    "24-30s duckling reveal",
+    "30-36s cooperative retrieval",
+    "36-40s emotional payoff",
+    "40-42s ball-to-lens loop"
+  ],
+  "rewatch_trigger": "A tiny yellow reflection appears in the puddle during scene 2, foreshadowing the duckling reveal.",
+  "loop_bridge": "The red ball fills the final frame at the same scale and direction as the opening ball, with a matching squeak.",
   "scenes": [
-    {"background":"home","caption":"HE SAW A TREAT","actors":[{"type":"cat","x":0.5,"y":0.66,"scale":0.92,"emotion":"surprised"}]},
-    {"background":"home","caption":"WATCH THE PAWS","actors":[{"type":"cat","x":0.5,"y":0.66,"scale":1.02,"emotion":"surprised"}]},
-    {"background":"home","caption":"IT WAS A TOY","actors":[{"type":"cat","x":0.5,"y":0.66,"scale":0.96,"emotion":"calm"}]}
+    {
+      "background": "rain",
+      "caption": "WHY TAKE IT?",
+      "retention_purpose": "hook",
+      "camera": "extreme close-up, whip-pan",
+      "action": "Raccoon grabs the dog's red ball and runs.",
+      "actors": [
+        {
+          "type": "raccoon",
+          "x": 0.48,
+          "y": 0.66,
+          "scale": 0.9,
+          "emotion": "urgent"
+        },
+        {
+          "type": "dog",
+          "x": 0.7,
+          "y": 0.68,
+          "scale": 0.82,
+          "emotion": "shocked"
+        }
+      ]
+    },
+    {
+      "background": "rain",
+      "caption": "HE LOOKS BACK",
+      "retention_purpose": "escalation",
+      "camera": "low tracking push-in",
+      "action": "Raccoon runs toward the gutter while a tiny yellow reflection briefly appears in a puddle.",
+      "actors": [
+        {
+          "type": "raccoon",
+          "x": 0.5,
+          "y": 0.65,
+          "scale": 0.92,
+          "emotion": "worried"
+        },
+        {
+          "type": "dog",
+          "x": 0.76,
+          "y": 0.68,
+          "scale": 0.7,
+          "emotion": "confused"
+        }
+      ]
+    },
+    {
+      "background": "street",
+      "caption": "NOT THE DRAIN…",
+      "retention_purpose": "escalation",
+      "camera": "overhead tilt then snap push",
+      "action": "Raccoon sets the ball into flowing gutter water.",
+      "actors": [
+        {
+          "type": "raccoon",
+          "x": 0.38,
+          "y": 0.62,
+          "scale": 0.86,
+          "emotion": "focused"
+        },
+        {
+          "type": "dog",
+          "x": 0.72,
+          "y": 0.65,
+          "scale": 0.78,
+          "emotion": "alarmed"
+        }
+      ]
+    },
+    {
+      "background": "rain",
+      "caption": "IT'S GONE",
+      "retention_purpose": "misdirection",
+      "camera": "follow the ball then reaction close-up",
+      "action": "Ball disappears from view; raccoon immediately follows the channel.",
+      "actors": [
+        {
+          "type": "dog",
+          "x": 0.52,
+          "y": 0.64,
+          "scale": 1.02,
+          "emotion": "sad"
+        },
+        {
+          "type": "raccoon",
+          "x": 0.82,
+          "y": 0.63,
+          "scale": 0.58,
+          "emotion": "urgent"
+        }
+      ]
+    },
+    {
+      "background": "rain",
+      "caption": "WAIT…",
+      "retention_purpose": "micro-payoff",
+      "camera": "fast lateral tracking",
+      "action": "Red flashes appear through drain openings as raccoon follows above.",
+      "actors": [
+        {
+          "type": "raccoon",
+          "x": 0.52,
+          "y": 0.63,
+          "scale": 0.9,
+          "emotion": "focused"
+        },
+        {
+          "type": "dog",
+          "x": 0.78,
+          "y": 0.66,
+          "scale": 0.68,
+          "emotion": "curious"
+        }
+      ]
+    },
+    {
+      "background": "street",
+      "caption": "THAT'S WHY",
+      "retention_purpose": "reveal",
+      "camera": "rack focus from red ball to duckling",
+      "action": "Reveal a duckling on a safe ledge; the floating ball reaches it as a bright guide and support.",
+      "actors": [
+        {
+          "type": "raccoon",
+          "x": 0.28,
+          "y": 0.48,
+          "scale": 0.58,
+          "emotion": "worried"
+        }
+      ]
+    },
+    {
+      "background": "rain",
+      "caption": "PULL!",
+      "retention_purpose": "escalation",
+      "camera": "rapid action-match cuts",
+      "action": "Raccoon guides a vine through the opening and the dog helps pull it back.",
+      "actors": [
+        {
+          "type": "raccoon",
+          "x": 0.38,
+          "y": 0.64,
+          "scale": 0.82,
+          "emotion": "determined"
+        },
+        {
+          "type": "dog",
+          "x": 0.68,
+          "y": 0.66,
+          "scale": 0.86,
+          "emotion": "determined"
+        }
+      ]
+    },
+    {
+      "background": "street",
+      "caption": "SAFE ❤️",
+      "retention_purpose": "reveal",
+      "camera": "quick close-up, rain softens",
+      "action": "Duckling emerges safely beside the ball; dog nuzzles it and raccoon relaxes.",
+      "actors": [
+        {
+          "type": "raccoon",
+          "x": 0.32,
+          "y": 0.67,
+          "scale": 0.75,
+          "emotion": "relieved"
+        },
+        {
+          "type": "dog",
+          "x": 0.68,
+          "y": 0.66,
+          "scale": 0.8,
+          "emotion": "happy"
+        }
+      ]
+    },
+    {
+      "background": "street",
+      "caption": "",
+      "retention_purpose": "loop",
+      "camera": "ball rolls straight into lens",
+      "action": "Duckling nudges the red ball toward camera until it fills the frame.",
+      "actors": [
+        {
+          "type": "raccoon",
+          "x": 0.3,
+          "y": 0.64,
+          "scale": 0.65,
+          "emotion": "happy"
+        },
+        {
+          "type": "dog",
+          "x": 0.72,
+          "y": 0.64,
+          "scale": 0.68,
+          "emotion": "happy"
+        }
+      ]
+    }
   ]
 }
