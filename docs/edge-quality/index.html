@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>封邊標籤辨識｜跨手機強化版 v10</title>
+<title>封邊標籤辨識｜實拍校正版 v11</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
@@ -26,8 +26,8 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>封邊標籤辨識｜跨手機強化版</h1>
-    <div class="muted">流程：先統一 iPhone／Android 照片方向與尺寸 → 原生條碼引擎＋jsQR 多尺度辨識 → QR 錨點定位 → 透視拉正 → 固定讀單號、B碼。</div>
+    <h1>封邊標籤辨識｜實拍校正版</h1>
+    <div class="muted">流程：iPhone／Android 照片標準化 → QR 多引擎定位 → 依現場實拍重新校正標籤四角 → 第一列一次讀取單號＋B碼。</div>
     <label class="capture">📸 拍標籤辨識
       <input id="photo" type="file" accept="image/*" capture="environment">
     </label>
@@ -51,7 +51,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 </div>
 
 <script>
-// v10 2026-10-01：iPhone / Android 跨手機照片方向、解析度、原生條碼＋jsQR 多尺度強化
+// v11 2026-10-01：依現場錄影重新校正 QR→標籤幾何；修正頂列被裁切，並減少 OCR 次數
 const $=id=>document.getElementById(id);
 let workerPromise=null;
 const now=()=>performance.now();
@@ -440,11 +440,13 @@ async function normalizeByQrAnchor(img){
   if(qSize<5)return null;
 
   const p0=tl;
+  // 依 2026-10-01 現場錄影重新量測：
+  // 舊值把標籤上緣切掉約 14px，導致單號/B碼第一列被截字。
   let quad=[
-    addVec(p0,u,-3.55,v,-3.05),
-    addVec(p0,u, 4.35,v,-3.05),
-    addVec(p0,u, 4.35,v, 2.65),
-    addVec(p0,u,-3.55,v, 2.65)
+    addVec(p0,u,-3.50,v,-3.35),
+    addVec(p0,u, 4.80,v,-3.35),
+    addVec(p0,u, 4.80,v, 2.15),
+    addVec(p0,u,-3.50,v, 2.15)
   ];
 
   quad=quad.map(p=>({
@@ -657,6 +659,7 @@ function parseQrHuman(s){
 
 async function readAll(worker,label,seedQr='',seedQrSource=''){
   let qr=seedQr||'',qrSource=seedQrSource||'';
+
   if(!qr){
     const qrRegion=cropNorm(label,0.32,0.43,0.37,0.42,1000,null);
     qr=await decodeQrCanvasRobust(qrRegion);
@@ -667,71 +670,41 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
     if(qr)qrSource='QR圖形';
   }
 
-  // 頂端欄位改成精準窄區域：左上單號、上方偏中 B碼。
-  // 避免右側 ER3078 / 尺寸數字被 OCR 一起吃進去。
-  const orderRegions=[
-    cropNorm(label,0.005,0.000,0.36,0.105,1200,'contrast'),
-    cropNorm(label,0.015,0.008,0.40,0.125,1200,'binary')
+  // v11：實拍標籤的單號與 B碼在同一個第一列。
+  // 一次讀完整頂列，再分別抽出 12位單號與 B+9位數字，避免各掃 5 次造成慢又容易裁字。
+  const topJobs=[
+    {c:cropNorm(label,0.000,0.018,0.70,0.115,1500,null),       psm:7},
+    {c:cropNorm(label,0.000,0.012,0.70,0.125,1500,'contrast'), psm:7},
+    {c:cropNorm(label,0.000,0.008,0.72,0.135,1550,'binary'),   psm:7}
   ];
-  // 單號也改成多裁切、多預處理、多 PSM 交叉辨識。
-  const orderJobs=[
-    {c:cropNorm(label,0.005,0.000,0.34,0.090,1250,null),       psm:7},
-    {c:cropNorm(label,0.005,0.000,0.34,0.095,1250,'contrast'), psm:7},
-    {c:cropNorm(label,0.000,0.000,0.38,0.110,1350,'binary'),   psm:7},
-    {c:cropNorm(label,0.000,0.000,0.40,0.125,1400,'contrast'), psm:6},
-    {c:cropNorm(label,0.010,0.005,0.33,0.085,1250,'contrast'), psm:13}
-  ];
-  const orderReads=[];
-  for(const job of orderJobs){
-    const rr=await ocr(worker,job.c,'0123456789',job.psm);
-    orderReads.push(rr);
+  const topReads=[];
+  for(const job of topJobs){
+    topReads.push(await ocr(worker,job.c,'B0123456789',job.psm));
   }
-  const orderPick=chooseOrderCandidate(orderReads);
-  let order=orderPick.code;
-  let orderConf=orderPick.confidence;
-  let orderRaw=orderReads.map(x=>x.text).join('\n');
 
-  // B碼改成多裁切、多預處理、多 PSM 交叉辨識。
-  // 只多掃上方中央這一小塊，速度增加有限，但準確度會比單次 OCR 穩。
-  const bJobs=[
-    {c:cropNorm(label,0.315,0.000,0.285,0.105,1200,null),       psm:7},
-    {c:cropNorm(label,0.315,0.000,0.285,0.105,1200,'contrast'), psm:7},
-    {c:cropNorm(label,0.305,0.000,0.315,0.120,1300,'contrast'), psm:6},
-    {c:cropNorm(label,0.325,0.005,0.265,0.095,1200,'binary'),   psm:7},
-    {c:cropNorm(label,0.285,0.000,0.350,0.135,1350,'contrast'), psm:13}
-  ];
-  const bReads=[];
-  for(const job of bJobs){
-    const rr=await ocr(worker,job.c,'B0123456789',job.psm);
-    bReads.push(rr);
-  }
-  const bPick=chooseBCodeCandidate(bReads);
-  let bcode=bPick.code;
-  let bConf=bPick.confidence;
-  let bRaw=bReads.map(x=>x.text).join('\n');
-
-  const orderOcr={confidence:orderConf,text:orderRaw};
-  const bOcr={confidence:bConf,text:bRaw};
+  const orderPick=chooseOrderCandidate(topReads);
+  const bPick=chooseBCodeCandidate(topReads);
+  let order=orderPick.code, orderConf=orderPick.confidence;
+  let bcode=bPick.code, bConf=bPick.confidence;
 
   let qrHuman='',qrHumanConf=0;
   if(!qr){
     const humanRegion=cropNorm(label,0.37,0.67,0.28,0.15,900,'contrast');
     const human=await ocr(worker,humanRegion,'0123456789',7);
-    qrHuman=parseQrHuman(human.text);qrHumanConf=human.confidence;
+    qrHuman=parseQrHuman(human.text); qrHumanConf=human.confidence;
     if(qrHuman){qr=qrHuman;qrSource='QR下方數字';}
   }
 
-  // 只有缺欄位才掃較寬的頂部備援，避免每張都多跑。
+  // 只有共享頂列沒有讀到時才做欄位專用補讀。
   let fallbackUsed=false;
   if(!order||!bcode){
     fallbackUsed=true;
 
-    // 單號備援：再用兩個更寬的左上區域補票，但不跨列拼接。
     if(!order){
       const extra=[];
       for(const spec of [
-        [0.0,0.0,0.42,0.14,1500,'contrast',6],
-        [0.0,0.0,0.39,0.12,1450,'binary',7]
+        [0.000,0.000,0.46,0.145,1500,'contrast',7],
+        [0.000,0.000,0.48,0.155,1550,'binary',6]
       ]){
         const cc=cropNorm(label,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
         extra.push(await ocr(worker,cc,'0123456789',spec[6]));
@@ -741,12 +714,11 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
       orderConf=Math.max(orderConf,pick.confidence||0);
     }
 
-    // B碼備援：再用更寬一點的中央區補一票，不掃右側直排文字。
     if(!bcode){
       const extra=[];
       for(const spec of [
-        [0.27,0.0,0.38,0.15,1450,'contrast',6],
-        [0.29,0.0,0.34,0.13,1400,'binary',7]
+        [0.330,0.000,0.39,0.145,1450,'contrast',7],
+        [0.315,0.000,0.42,0.155,1500,'binary',6]
       ]){
         const cc=cropNorm(label,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
         extra.push(await ocr(worker,cc,'B0123456789',spec[6]));
@@ -764,7 +736,6 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
     bDiagnostics:{votes:bPick.votes,agreement:bPick.agreement,candidates:bPick.candidates}
   };
 }
-
 function setResult(boxId,id,val){
   $(id).textContent=val||'未讀到';
   $(boxId).classList.remove('ok','warn');
@@ -837,7 +808,7 @@ $('photo').addEventListener('change',async e=>{
       'B碼信心：'+Math.round(data.confidence.bcode)+'%\n'+
       'B碼候選：'+((data.bDiagnostics&&data.bDiagnostics.candidates)||[]).join(' / ')+'\n'+
       'B碼一致度：'+Math.round(((data.bDiagnostics&&data.bDiagnostics.agreement)||0)*100)+'%\n'+
-      (data.fallbackUsed?'頂部備援：有啟動\n':'頂部備援：未啟動\n');
+      (data.fallbackUsed?'欄位備援：有啟動\n':'欄位備援：未啟動\n');
   }catch(err){
     $('status').textContent='❌ '+(err&&err.message?err.message:'辨識失敗');
   }finally{e.target.value='';}
