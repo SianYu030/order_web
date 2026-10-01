@@ -146,7 +146,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <div class="title">🛠 系統櫃線上報修</div>
         <div class="subtitle">手機報修／維修處理</div>
       </div>
-      <div class="badge">測試版 V4.4-sync</div>
+      <div class="badge">測試版 V4.4-sync LIVE</div>
     </div>
     <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
   </header>
@@ -537,7 +537,7 @@ const DATA = {
 const SPECIAL_MACHINE="現場人員臨時需求以及特殊作業";
 const state={dept:"",person:"",area:"",machine:"",stop:"",level:""};
 const repairState={order:null,type:"",classification:"",start:"",end:"",status:"",store:null,pendingStatus:""};
-const SYNC_API_URL=""; // 部署 Apps Script Web App 後由我填入
+const SYNC_API_URL="https://script.google.com/macros/s/AKfycbwwQ5sOosDNpmejBsubHincyGTflmsNlwDGTLVIu3HhEyLQa85CeCBtXm62R-HlIOhW/exec";
 let LIVE_ORDERS=[];
 function currentOrders(){ return (SYNC_API_URL && LIVE_ORDERS.length) ? LIVE_ORDERS : MOCK_ORDERS; }
 function jsonp_(action,params={}){
