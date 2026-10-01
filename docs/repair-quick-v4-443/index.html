@@ -146,7 +146,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <div class="title">🛠 系統櫃線上報修</div>
         <div class="subtitle">手機報修／維修處理</div>
       </div>
-      <div class="badge">測試版 V4.4.3-sync LIVE（新網址）</div>
+      <div class="badge">測試版 V4.4.4-sync LIVE（修正）</div>
     </div>
     <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
   </header>
@@ -807,38 +807,43 @@ el("repairTypeSelect").onchange=()=>{
 el("repairClassSelect").onchange=()=>{repairState.classification=el("repairClassSelect").value;};
 function buildRepairStatus(){
   const list=["待處理","處理中","待料","外修","待觀察","已完成"];
+  const selectedStatus=repairState.pendingStatus || repairState.status || "";
   el("repairStatusGrid").innerHTML="";
   list.forEach(v=>{
     const label=v==="已完成"?"✅ 已完成":v;
     const b=button(label,"repair-status-btn",()=>chooseRepairStatus(v));
-    if(repairState.status===v || repairState.pendingStatus===v)b.classList.add("sel");
+    if(selectedStatus===v)b.classList.add("sel");
     el("repairStatusGrid").appendChild(b);
   });
 }
 function chooseRepairStatus(v){
   const s=repairState.store;
+
   if(v==="已完成"){
+    // 已完成只是先「選取」，顯示藍色；
+    // 真正結案必須再按下方綠色「維修完成・結案」。
     el("followPanel").classList.add("hidden");
-    repairState.pendingStatus="";
+    repairState.pendingStatus="已完成";
     buildRepairStatus();
-    if(!confirm("確定設備已維修完成並結案？"))return;
-    el("completeRepairBtn").click();
     return;
   }
+
   if(v==="待料"||v==="外修"){
     repairState.pendingStatus=v;
     buildRepairStatus();
     showFollowPanel(v);
     return;
   }
-  // 切到一般狀態時，關閉先前待料／外修表單，避免畫面殘留
+
+  // 一般狀態直接套用，且只保留一個藍色選取狀態。
   el("followPanel").classList.add("hidden");
   repairState.pendingStatus="";
-  // 已經是同一狀態就不重複寫追蹤紀錄
+
   if(s && s.status===v){
     buildRepairStatus();
     return;
   }
+
   applyRepairStatus(v,v==="處理中"?"開始／恢復維修":"狀態更新");
 }
 function showFollowPanel(v){
@@ -908,17 +913,44 @@ el("repairStartBtn").onclick=()=>applyRepairStatus("處理中","按下開始維�
 el("repairEndBtn").onclick=()=>{repairState.end=nowHM();el("repairEnd").textContent=repairState.end;};
 el("completeRepairBtn").onclick=()=>{
   const s=repairState.store;if(!s)return;
+
+  if(repairState.pendingStatus!=="已完成" && s.status!=="已完成"){
+    alert("請先在「維修狀態」選擇「✅ 已完成」，再按「維修完成・結案」。");
+    return;
+  }
+
   if(!s.firstStart){alert("尚未開始維修，不能直接結案");return;}
+
+  if(!confirm("確定設備已維修完成並結案？"))return;
+
   closeActive(s);
-  const now=new Date();s.end=now;s.status="已完成";repairState.status="已完成";repairState.order.status="已完成";
+  const now=new Date();
+  s.end=now;
+  s.status="已完成";
+  repairState.status="已完成";
+  repairState.pendingStatus="";
+  repairState.order.status="已完成";
+
   s.timeline.push({at:formatStamp(now),title:"已完成",detail:"維修完成・工單結案"});
   el("repairEnd").textContent=formatHM(now);
   renderWork();renderTimeline();buildRepairStatus();renderTrackingOverview();
+
   el("completeRepairBtn").disabled=true;
   el("saveRepairMsg").textContent=SYNC_API_URL?"⏳ 正在同步結案…":"✅ 工單已模擬結案（未寫入正式資料）";
   el("saveRepairMsg").classList.remove("hidden");
+
   if(SYNC_API_URL && repairState.order?._live){
-    syncPost_({action:"closeRepair",orderNo:repairState.order.no,technician:currentRepairUser,repairType:s.type,classification:s.classification,content:s.content,note:s.note}).then(()=>{el("saveRepairMsg").textContent="✅ 已同步至電腦「機修維修單」";}).catch(err=>alert("結案同步失敗："+err.message));
+    syncPost_({
+      action:"closeRepair",
+      orderNo:repairState.order.no,
+      technician:currentRepairUser,
+      repairType:s.type,
+      classification:s.classification,
+      content:s.content,
+      note:s.note
+    }).then(()=>{
+      el("saveRepairMsg").textContent="✅ 已同步至電腦「機修維修單」";
+    }).catch(err=>alert("結案同步失敗："+err.message));
   }
 };
 el("saveRepairBtn").onclick=()=>{
