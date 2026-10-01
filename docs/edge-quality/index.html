@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>封邊標籤辨識｜實拍校正版 v11</title>
+<title>封邊標籤辨識｜實拍校正版 v12 v12</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
@@ -51,7 +51,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 </div>
 
 <script>
-// v11 2026-10-01：依現場錄影重新校正 QR→標籤幾何；修正頂列被裁切，並減少 OCR 次數
+// v12 2026-10-01：保留 v11 幾何校正；B碼改回專用窄區域多票辨識，避免整列 OCR 被單號污染
 const $=id=>document.getElementById(id);
 let workerPromise=null;
 const now=()=>performance.now();
@@ -683,8 +683,21 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
   }
 
   const orderPick=chooseOrderCandidate(topReads);
-  const bPick=chooseBCodeCandidate(topReads);
   let order=orderPick.code, orderConf=orderPick.confidence;
+
+  // v12：B碼固定在頂列中央，不能和整列一起投票。
+  // v11 實拍顯示整列 OCR 會把左側單號數字混進 B碼，產生像 B002605221 的假值。
+  // 改用專用窄區域 3 票辨識，只看 B碼本身。
+  const bJobs=[
+    {c:cropNorm(label,0.315,0.000,0.285,0.105,1250,null),       psm:7},
+    {c:cropNorm(label,0.315,0.000,0.285,0.110,1300,'contrast'), psm:7},
+    {c:cropNorm(label,0.300,0.000,0.320,0.120,1350,'binary'),   psm:7}
+  ];
+  const bReads=[];
+  for(const job of bJobs){
+    bReads.push(await ocr(worker,job.c,'B0123456789',job.psm));
+  }
+  const bPick=chooseBCodeCandidate(bReads);
   let bcode=bPick.code, bConf=bPick.confidence;
 
   let qrHuman='',qrHumanConf=0;
@@ -717,8 +730,8 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
     if(!bcode){
       const extra=[];
       for(const spec of [
-        [0.330,0.000,0.39,0.145,1450,'contrast',7],
-        [0.315,0.000,0.42,0.155,1500,'binary',6]
+        [0.300,0.000,0.34,0.135,1450,'contrast',7],
+        [0.315,0.000,0.31,0.125,1500,'binary',7]
       ]){
         const cc=cropNorm(label,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
         extra.push(await ocr(worker,cc,'B0123456789',spec[6]));
