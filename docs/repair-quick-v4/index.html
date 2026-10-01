@@ -95,7 +95,6 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 .class-grid,.repair-status-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .class-btn,.repair-status-btn{border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:10px;font-weight:800}
 .class-btn.sel,.repair-status-btn.sel{border-color:#4a91d9;background:var(--blue);color:var(--blueText)}
-.repair-status-btn.complete{border-color:#43a46d;background:#eefaf3;color:#14703d}.repair-status-btn.complete.sel{border-color:#16804a;background:#dff4e8;color:#0b6b3a;box-shadow:inset 0 0 0 1px #78c497}
 .time-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .time-box{background:#f7f9fc;border-radius:14px;padding:11px}
 .time-box small{display:block;color:var(--muted);margin-bottom:5px}
@@ -147,7 +146,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <div class="title">🛠 系統櫃線上報修</div>
         <div class="subtitle">手機報修／維修處理</div>
       </div>
-      <div class="badge">測試版 V4.4.2-sync LIVE</div>
+      <div class="badge">測試版 V4.4.3-sync LIVE</div>
     </div>
     <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
   </header>
@@ -579,9 +578,9 @@ async function syncPost_(payload){
     headers:{"Content-Type":"text/plain;charset=utf-8"},
     body:JSON.stringify(payload)
   });
-  await new Promise(r=>setTimeout(r,1200));
-  // 背景重新讀資料，但維持目前工單畫面，不自動跳回工單列表
-  await loadLiveOrders(false);
+  // 寫入後不重載工單列表，避免維修中被自動帶回列表。
+  // 使用者按「← 工單列表」或重新進入維修處理時才重新讀取最新資料。
+  await new Promise(r=>setTimeout(r,700));
   return true;
 }
 
@@ -790,7 +789,7 @@ function openRepairOrder(o){
   el("completeRepairBtn").disabled=s.status==="已完成";
   buildRepairStatus();renderWork();renderTimeline();window.scrollTo({top:0,behavior:"smooth"});
 }
-el("repairBack").onclick=renderRepairOrders;
+el("repairBack").onclick=()=>{ if(SYNC_API_URL){loadLiveOrders(true).catch(()=>renderRepairOrders());}else{renderRepairOrders();} };
 function updateRepairTypeUI(){
   const isFault=el("repairTypeSelect").value==="故障維修";
   el("repairClassTitle").classList.toggle("hidden",!isFault);
@@ -812,8 +811,7 @@ function buildRepairStatus(){
   list.forEach(v=>{
     const label=v==="已完成"?"✅ 已完成":v;
     const b=button(label,"repair-status-btn",()=>chooseRepairStatus(v));
-    if(v==="已完成")b.classList.add("complete");
-    if(repairState.status===v)b.classList.add("sel");
+    if(repairState.status===v || repairState.pendingStatus===v)b.classList.add("sel");
     el("repairStatusGrid").appendChild(b);
   });
 }
@@ -822,12 +820,14 @@ function chooseRepairStatus(v){
   if(v==="已完成"){
     el("followPanel").classList.add("hidden");
     repairState.pendingStatus="";
+    buildRepairStatus();
     if(!confirm("確定設備已維修完成並結案？"))return;
     el("completeRepairBtn").click();
     return;
   }
   if(v==="待料"||v==="外修"){
     repairState.pendingStatus=v;
+    buildRepairStatus();
     showFollowPanel(v);
     return;
   }
@@ -855,6 +855,7 @@ el("followConfirm").onclick=()=>{
   const summary=v==="待料" ? "待料："+a+(c?"｜預計 "+c+" 到貨":"") : "外修："+a+(c?"｜預計 "+c+" 回廠":"");
   repairState.store.followup={type:v,a,b,c,d,summary};
   el("followPanel").classList.add("hidden");
+  repairState.pendingStatus="";
   applyRepairStatus(v,summary+(d?"｜"+d:""));
 };
 function formatHM(d){const x=new Date(d),p=n=>String(n).padStart(2,"0");return p(x.getHours())+":"+p(x.getMinutes());}
