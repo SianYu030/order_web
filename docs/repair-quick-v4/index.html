@@ -862,7 +862,7 @@ function applyRepairStatus(v,detail){
   el("repairEnd").textContent=s.end?formatHM(s.end):"--:--";
   buildRepairStatus();renderWork();renderTimeline();renderTrackingOverview();
   if(SYNC_API_URL && repairState.order?._live){
-    syncPost_({action:"setStatus",orderNo:repairState.order.no,status:v,technician:currentRepairUser,detail:detail||"狀態更新"}).catch(err=>alert("狀態同步失敗："+err.message));
+    syncPost_({action:"setStatus",orderNo:repairState.order.no,status:v,technician:currentRepairUser,detail:detail||"狀態更新",nextDate:(repairState.store?.followup?.c||"")}).catch(err=>alert("狀態同步失敗："+err.message));
   }
 }
 function renderWork(){
