@@ -146,7 +146,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <div class="title">🛠 系統櫃線上報修</div>
         <div class="subtitle">手機報修／維修處理</div>
       </div>
-      <div class="badge">測試版 V4.4.5-sync LIVE（單選修正）</div>
+      <div class="badge">測試版 V4.4.6-sync LIVE（計時修正）</div>
     </div>
     <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
   </header>
@@ -922,8 +922,45 @@ function renderTrackingOverview(){
   el("trackOverview").innerHTML=names.map(n=>'<div class="track-box"><b>'+counts[n]+'</b><span>'+n+'</span></div>').join("");
 }
 function overlap(a,b,s,e){return Math.max(0,Math.min(b,e)-Math.max(a,s));}
-el("repairStartBtn").onclick=()=>applyRepairStatus("處理中","按下開始維修");
-el("repairEndBtn").onclick=()=>{repairState.end=nowHM();el("repairEnd").textContent=repairState.end;};
+el("repairStartBtn").onclick=()=>{
+  const s=repairState.store;
+  if(!s)return;
+  if(s.activeStart){
+    alert("目前已經在計時中。");
+    return;
+  }
+  applyRepairStatus("處理中","按下開始維修");
+};
+
+el("repairEndBtn").onclick=()=>{
+  const s=repairState.store;
+  if(!s)return;
+
+  if(!s.activeStart){
+    alert("目前沒有進行中的維修計時。");
+    return;
+  }
+
+  const now=new Date();
+
+  // 累加本次實際工作時間並停止目前計時，但不代表工單結案。
+  closeActive(s);
+  s.end=now;
+  repairState.end=now;
+
+  el("repairEnd").textContent=formatHM(now);
+  renderWork();
+
+  s.timeline.push({
+    at:formatStamp(now),
+    title:"結束本次計時",
+    detail:"本次維修計時已停止；工單尚未結案。"
+  });
+  renderTimeline();
+
+  // 狀態維持「處理中」，之後按「開始維修」可繼續累加工時。
+  setRepairStatusVisual_(repairState.pendingStatus || s.status || "處理中");
+};
 el("completeRepairBtn").onclick=()=>{
   const s=repairState.store;if(!s)return;
 
