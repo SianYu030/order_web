@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>封邊標籤辨識｜正式版</title>
+<title>封邊標籤辨識｜跨手機強化版 v10</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
@@ -26,8 +26,8 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>封邊標籤辨識</h1>
-    <div class="muted">流程：優先用 QR 四角當定位錨點 → 推算整張標籤 → 透視拉正 → 固定讀單號、B碼。特別強化遠拍與斜拍。</div>
+    <h1>封邊標籤辨識｜跨手機強化版</h1>
+    <div class="muted">流程：先統一 iPhone／Android 照片方向與尺寸 → 原生條碼引擎＋jsQR 多尺度辨識 → QR 錨點定位 → 透視拉正 → 固定讀單號、B碼。</div>
     <label class="capture">📸 拍標籤辨識
       <input id="photo" type="file" accept="image/*" capture="environment">
     </label>
@@ -46,11 +46,12 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
   <div class="card">
     <b>速度／穩定度紀錄</b>
     <div id="timing" class="timing">尚未測試</div>
-    <div class="small">拍攝不必完全正上方，但請讓整張白色標籤都在畫面內。系統會先找標籤並轉正，再讀固定欄位。</div>
+    <div class="small">請讓整張白色標籤都在畫面內、避免反光與嚴重模糊。不同 iPhone／Android 會先自動統一方向與解析度，再進行辨識。</div>
   </div>
 </div>
 
 <script>
+// v10 2026-10-01：iPhone / Android 跨手機照片方向、解析度、原生條碼＋jsQR 多尺度強化
 const $=id=>document.getElementById(id);
 let workerPromise=null;
 const now=()=>performance.now();
@@ -81,9 +82,31 @@ window.addEventListener('load',()=>{
   else setTimeout(()=>warmWorker(),150);
 });
 
-function loadImage(file){
+async function loadImage(file){
+  // v10：先把不同 iPhone／Android 的 EXIF 方向、超高解析照片統一成穩定的瀏覽器影像。
+  // createImageBitmap 支援時優先使用；不支援或 HEIC 解碼失敗時退回傳統 Image。
+  try{
+    if('createImageBitmap' in window){
+      const bmp=await createImageBitmap(file,{imageOrientation:'from-image'});
+      const srcW=bmp.width,srcH=bmp.height;
+      const maxSide=3200;
+      const scale=Math.min(1,maxSide/Math.max(srcW,srcH));
+      const w=Math.max(1,Math.round(srcW*scale)),h=Math.max(1,Math.round(srcH*scale));
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      cv.getContext('2d',{alpha:false}).drawImage(bmp,0,0,w,h);
+      if(bmp.close)bmp.close();
+      const img=new Image();
+      await new Promise((resolve,reject)=>{
+        img.onload=resolve;
+        img.onerror=()=>reject(new Error('照片標準化失敗'));
+        img.src=cv.toDataURL('image/jpeg',0.94);
+      });
+      return img;
+    }
+  }catch(e){}
+
   return new Promise((resolve,reject)=>{
-    const url=URL.createObjectURL(file), img=new Image();
+    const url=URL.createObjectURL(file),img=new Image();
     img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};
     img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('照片讀取失敗'))};
     img.src=url;
@@ -174,7 +197,7 @@ function warpQuad(img,quad,outW){
 
 function normalizeLabel(img){
   // v6：小標籤/遠拍也要能鎖定，所以分析寬度提高、最小面積門檻降低。
-  const maxW=640;
+  const maxW=900;
   const scale=Math.min(1,maxW/img.naturalWidth);
   const w=Math.max(1,Math.round(img.naturalWidth*scale));
   const h=Math.max(1,Math.round(img.naturalHeight*scale));
@@ -297,36 +320,113 @@ function addVec(p,u,ux,v,vy){
   return {x:p.x+u.x*ux+v.x*vy,y:p.y+u.y*ux+v.y*vy};
 }
 
-function normalizeByQrAnchor(img){
-  // 你的標籤版型固定，且 QR 比白紙邊界更容易在遠拍/斜拍時被穩定抓到。
-  // 因此直接利用 QR 四角建立局部座標，再外推整張標籤。
-  const sc=scaledCanvas(img,1800);
-  let hit=decodeJsQrDetailed(sc.canvas);
-
-  if(!hit){
-    // 再做一個對比強化版本。
-    const cc=document.createElement('canvas');cc.width=sc.canvas.width;cc.height=sc.canvas.height;
-    const ctx=cc.getContext('2d',{willReadFrequently:true});
-    ctx.drawImage(sc.canvas,0,0);
-    const im=ctx.getImageData(0,0,cc.width,cc.height),d=im.data;
-    for(let i=0;i<d.length;i+=4){
-      const y=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-      const v=Math.max(0,Math.min(255,(y-128)*1.55+128));
-      d[i]=d[i+1]=d[i+2]=v;
-    }
-    ctx.putImageData(im,0,0);
-    hit=decodeJsQrDetailed(cc);
+function qrContrastCanvas(src,gain=1.55,binary=false){
+  const c=document.createElement('canvas');c.width=src.width;c.height=src.height;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(src,0,0);
+  const im=ctx.getImageData(0,0,c.width,c.height),d=im.data;
+  let mean=0,n=0;
+  for(let i=0;i<d.length;i+=4){
+    mean+=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];n++;
   }
-  if(!hit)return null;
+  mean/=Math.max(1,n);
+  const threshold=Math.max(110,Math.min(190,mean*0.92));
+  for(let i=0;i<d.length;i+=4){
+    const y=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    let v=binary?(y>threshold?255:0):Math.max(0,Math.min(255,(y-128)*gain+128));
+    d[i]=d[i+1]=d[i+2]=v;
+  }
+  ctx.putImageData(im,0,0);
+  return c;
+}
+
+async function decodeNativeQr(canvas){
+  if(!('BarcodeDetector' in window))return null;
+  try{
+    let detector;
+    try{detector=new BarcodeDetector({formats:['qr_code']});}
+    catch(e){detector=new BarcodeDetector();}
+    const hits=await detector.detect(canvas);
+    const hit=hits&&hits[0];
+    if(!hit||!hit.rawValue)return null;
+
+    let pts=(hit.cornerPoints||[]).map(p=>({x:p.x,y:p.y}));
+    if(pts.length<4 && hit.boundingBox){
+      const b=hit.boundingBox;
+      pts=[
+        {x:b.x,y:b.y},
+        {x:b.x+b.width,y:b.y},
+        {x:b.x+b.width,y:b.y+b.height},
+        {x:b.x,y:b.y+b.height}
+      ];
+    }
+    return {data:String(hit.rawValue).trim(),points:pts.length>=4?pts.slice(0,4):null};
+  }catch(e){return null}
+}
+
+function nativePointsToJsQrLocation(points){
+  if(!points||points.length<4)return null;
+  // BarcodeDetector 的 cornerPoints 規格為順時針；大多裝置從左上角開始。
+  return {
+    topLeftCorner:points[0],
+    topRightCorner:points[1],
+    bottomRightCorner:points[2],
+    bottomLeftCorner:points[3]
+  };
+}
+
+async function robustQrHitFromImage(img){
+  // 先用各平台原生條碼引擎；Android Chrome 常能明顯提高成功率。
+  for(const maxW of [1800,2300,1300]){
+    const sc=scaledCanvas(img,maxW);
+
+    const native=await decodeNativeQr(sc.canvas);
+    if(native){
+      const loc=nativePointsToJsQrLocation(native.points);
+      if(loc)return {data:native.data,location:loc,scale:sc.scale,engine:'原生條碼'};
+    }
+
+    let hit=decodeJsQrDetailed(sc.canvas);
+    if(hit)return {...hit,scale:sc.scale,engine:'jsQR原圖'};
+
+    const contrast=qrContrastCanvas(sc.canvas,1.55,false);
+    hit=decodeJsQrDetailed(contrast);
+    if(hit)return {...hit,scale:sc.scale,engine:'jsQR對比'};
+
+    // 只有前兩種都失敗才做黑白化，避免不必要的耗時。
+    const binary=qrContrastCanvas(sc.canvas,1.0,true);
+    hit=decodeJsQrDetailed(binary);
+    if(hit)return {...hit,scale:sc.scale,engine:'jsQR黑白'};
+  }
+  return null;
+}
+
+async function decodeQrCanvasRobust(canvas){
+  const native=await decodeNativeQr(canvas);
+  if(native&&native.data)return native.data;
+
+  let hit=decodeJsQrDetailed(canvas);
+  if(hit)return hit.data;
+
+  hit=decodeJsQrDetailed(qrContrastCanvas(canvas,1.55,false));
+  if(hit)return hit.data;
+
+  hit=decodeJsQrDetailed(qrContrastCanvas(canvas,1.0,true));
+  return hit?hit.data:'';
+}
+
+async function normalizeByQrAnchor(img){
+  // v10：跨 iPhone／Android 使用原生 BarcodeDetector（可用時）＋ jsQR 多尺度備援。
+  const hit=await robustQrHitFromImage(img);
+  if(!hit||!hit.location)return null;
 
   const L=hit.location;
-  const inv=1/sc.scale;
+  const inv=1/hit.scale;
   const tl={x:L.topLeftCorner.x*inv,y:L.topLeftCorner.y*inv};
   const tr={x:L.topRightCorner.x*inv,y:L.topRightCorner.y*inv};
   const br={x:L.bottomRightCorner.x*inv,y:L.bottomRightCorner.y*inv};
   const bl={x:L.bottomLeftCorner.x*inv,y:L.bottomLeftCorner.y*inv};
 
-  // 取 QR 上下邊、左右邊平均，建立一格 QR 的水平/垂直向量。
   const u={
     x:((tr.x-tl.x)+(br.x-bl.x))/2,
     y:((tr.y-tl.y)+(br.y-bl.y))/2
@@ -339,15 +439,12 @@ function normalizeByQrAnchor(img){
   const qSize=(Math.hypot(u.x,u.y)+Math.hypot(v.x,v.y))/2;
   if(qSize<5)return null;
 
-  // 由現場這款固定標籤版型校正：
-  // QR 左上點約位於標籤寬 45%、高 54% 附近。
-  // 以 QR 自身寬高作單位向四周外推，可抵抗距離、旋轉與一般斜拍。
   const p0=tl;
   let quad=[
-    addVec(p0,u,-3.55,v,-3.05), // label TL
-    addVec(p0,u, 4.35,v,-3.05), // label TR
-    addVec(p0,u, 4.35,v, 2.65), // label BR
-    addVec(p0,u,-3.55,v, 2.65)  // label BL
+    addVec(p0,u,-3.55,v,-3.05),
+    addVec(p0,u, 4.35,v,-3.05),
+    addVec(p0,u, 4.35,v, 2.65),
+    addVec(p0,u,-3.55,v, 2.65)
   ];
 
   quad=quad.map(p=>({
@@ -364,6 +461,7 @@ function normalizeByQrAnchor(img){
     angle,
     perspective:true,
     qr:hit.data,
+    qrEngine:hit.engine||'',
     aspect:warped.aspect
   };
 }
@@ -561,10 +659,10 @@ async function readAll(worker,label,seedQr='',seedQrSource=''){
   let qr=seedQr||'',qrSource=seedQrSource||'';
   if(!qr){
     const qrRegion=cropNorm(label,0.32,0.43,0.37,0.42,1000,null);
-    qr=decodeJsQr(qrRegion);
+    qr=await decodeQrCanvasRobust(qrRegion);
     if(!qr){
       const q2=cropNorm(label,0.27,0.36,0.48,0.50,1200,'contrast');
-      qr=decodeJsQr(q2);
+      qr=await decodeQrCanvasRobust(q2);
     }
     if(qr)qrSource='QR圖形';
   }
@@ -689,7 +787,7 @@ $('photo').addEventListener('change',async e=>{
     const img=await loadImage(file);const t1=now();
 
     $('status').textContent='🎯 先用 QR 當定位錨點…';
-    let norm=normalizeByQrAnchor(img);
+    let norm=await normalizeByQrAnchor(img);
     let locateMode='QR錨點';
 
     if(!norm){
@@ -732,7 +830,7 @@ $('photo').addEventListener('change',async e=>{
       '總耗時：'+sec(t4-t0)+'\n'+
       '定位方式：'+locateMode+'\n'+
       '校正角度：'+norm.angle.toFixed(1)+'°\n'+
-      'QR來源：'+(data.qrSource||'未讀到')+'\n'+
+      'QR來源：'+(data.qrSource||'未讀到')+(norm.qrEngine?'｜'+norm.qrEngine:'')+'\n'+
       '單號信心：'+Math.round(data.confidence.order)+'%\n'+
       '單號候選：'+((data.orderDiagnostics&&data.orderDiagnostics.candidates)||[]).join(' / ')+'\n'+
       '單號一致度：'+Math.round(((data.orderDiagnostics&&data.orderDiagnostics.agreement)||0)*100)+'%\n'+
