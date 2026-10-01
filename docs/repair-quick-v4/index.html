@@ -146,7 +146,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
         <div class="title">🛠 系統櫃線上報修</div>
         <div class="subtitle">手機報修／維修處理</div>
       </div>
-      <div class="badge">測試版 V4.3.1</div>
+      <div class="badge">測試版 V4.4-sync</div>
     </div>
     <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
   </header>
@@ -537,6 +537,49 @@ const DATA = {
 const SPECIAL_MACHINE="現場人員臨時需求以及特殊作業";
 const state={dept:"",person:"",area:"",machine:"",stop:"",level:""};
 const repairState={order:null,type:"",classification:"",start:"",end:"",status:"",store:null,pendingStatus:""};
+const SYNC_API_URL=""; // 部署 Apps Script Web App 後由我填入
+let LIVE_ORDERS=[];
+function currentOrders(){ return (SYNC_API_URL && LIVE_ORDERS.length) ? LIVE_ORDERS : MOCK_ORDERS; }
+function jsonp_(action,params={}){
+  return new Promise((resolve,reject)=>{
+    if(!SYNC_API_URL){ reject(new Error("尚未設定同步 API")); return; }
+    const cb="repairSyncCb_"+Date.now()+"_"+Math.floor(Math.random()*10000);
+    const script=document.createElement("script");
+    const timer=setTimeout(()=>{ cleanup(); reject(new Error("同步逾時")); },12000);
+    function cleanup(){ clearTimeout(timer); try{delete window[cb];}catch(e){} if(script.parentNode)script.parentNode.removeChild(script); }
+    window[cb]=(data)=>{ cleanup(); if(data&&data.ok===false)reject(new Error(data.error||"同步失敗")); else resolve(data||{}); };
+    const q=new URLSearchParams({action,callback:cb,...params});
+    script.src=SYNC_API_URL+(SYNC_API_URL.includes("?")?"&":"?")+q.toString();
+    script.onerror=()=>{ cleanup(); reject(new Error("無法連線同步 API")); };
+    document.body.appendChild(script);
+  });
+}
+async function loadLiveOrders(){
+  if(!SYNC_API_URL){ renderRepairOrders(); return; }
+  const data=await jsonp_("listTestOrders");
+  LIVE_ORDERS=(data.orders||[]).map(o=>({
+    no:o.no,time:o.time,person:o.person,dept:o.dept,machine:o.machine,stop:o.stop,
+    issue:o.issue,level:o.level,status:o.status||"待處理",type:o.type||"",
+    classification:o.classification||"",technician:o.technician||"",content:o.content||"",
+    note:o.note||"",start:o.start||"",end:o.end||"",work:o.work||"",
+    followupSummary:o.followupSummary||"",nextFollow:o.nextFollow||"",lastFollow:o.lastFollow||"",
+    trackCount:o.trackCount||0,_live:true
+  }));
+  renderRepairOrders();
+}
+async function syncPost_(payload){
+  if(!SYNC_API_URL) return false;
+  await fetch(SYNC_API_URL,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify(payload)
+  });
+  await new Promise(r=>setTimeout(r,900));
+  await loadLiveOrders();
+  return true;
+}
+
 const MOCK_ORDERS=[
   {no:"MR2026092901",time:"2026/09/29 下午13:10",person:"王川茂",dept:"E3",machine:"380裁板機",stop:"是",issue:"鋸片馬達異聲",level:"緊急",status:"待處理"},
   {no:"MR2026092902",time:"2026/09/29 下午13:22",person:"鍾政良",dept:"E4",machine:"直線封邊機2號",stop:"是",issue:"送帶無法連同開機",level:"停線",status:"待處理"},
@@ -547,10 +590,18 @@ const REPAIR_STORE={};
 function storeFor(o){
   if(!REPAIR_STORE[o.no]){
     REPAIR_STORE[o.no]={
-      type:"",classification:"",technician:"",content:"",note:"",status:o.status,followup:null,
+      type:o.type||"",classification:o.classification||"",technician:o.technician||"",
+      content:o.content||"",note:o.note||"",status:o.status||"待處理",
+      followup:o.followupSummary?{summary:o.followupSummary}:null,
       firstStart:null,end:null,activeStart:null,workMinutes:0,
-      timeline:[{at:o.time,title:"建立報修工單",detail:"初始狀態："+o.status}]
+      timeline:[{at:o.time,title:"建立報修工單",detail:"初始狀態："+(o.status||"待處理")}]
     };
+  }else if(o._live){
+    const s=REPAIR_STORE[o.no];
+    s.type=o.type||s.type||"";s.classification=o.classification||s.classification||"";
+    s.technician=o.technician||s.technician||"";s.content=o.content||s.content||"";
+    s.note=o.note||s.note||"";s.status=o.status||s.status||"待處理";
+    if(o.followupSummary)s.followup={summary:o.followupSummary};
   }
   return REPAIR_STORE[o.no];
 }
@@ -687,7 +738,7 @@ function switchMode(mode){
   el("reportBottom").classList.toggle("hidden",!isReport);
   el("reportModeBtn").classList.toggle("active",isReport);
   el("repairModeBtn").classList.toggle("active",!isReport);
-  if(!isReport){ renderRepairOrders(); }
+  if(!isReport){ if(SYNC_API_URL){loadLiveOrders().catch(err=>{alert("同步讀取失敗："+err.message);renderRepairOrders();});}else{renderRepairOrders();} }
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -697,8 +748,9 @@ function renderRepairOrders(){
   renderTrackingOverview();
   el("repairOrderList").innerHTML="";
   el("repairHistoryList").innerHTML="";
-  const openOrders=MOCK_ORDERS.filter(o=>o.status!=="已完成");
-  const doneOrders=MOCK_ORDERS.filter(o=>o.status==="已完成");
+  const sourceOrders=currentOrders();
+  const openOrders=sourceOrders.filter(o=>o.status!=="已完成");
+  const doneOrders=sourceOrders.filter(o=>o.status==="已完成");
   openOrders.forEach(o=>{
     const b=button("","order-card",()=>openRepairOrder(o));
     const cls=o.level==="停線"?"red":o.level==="緊急"?"yellow":"green";
@@ -809,6 +861,9 @@ function applyRepairStatus(v,detail){
   el("repairStart").textContent=s.firstStart?formatHM(s.firstStart):"--:--";
   el("repairEnd").textContent=s.end?formatHM(s.end):"--:--";
   buildRepairStatus();renderWork();renderTimeline();renderTrackingOverview();
+  if(SYNC_API_URL && repairState.order?._live){
+    syncPost_({action:"setStatus",orderNo:repairState.order.no,status:v,technician:currentRepairUser,detail:detail||"狀態更新"}).catch(err=>alert("狀態同步失敗："+err.message));
+  }
 }
 function renderWork(){
   const s=repairState.store;if(!s)return;
@@ -821,7 +876,7 @@ function renderTimeline(){
 }
 function renderTrackingOverview(){
   const names=["待處理","處理中","待料","外修","待觀察","已完成"];
-  const counts={};names.forEach(n=>counts[n]=0);MOCK_ORDERS.forEach(o=>counts[o.status]=(counts[o.status]||0)+1);
+  const counts={};names.forEach(n=>counts[n]=0);currentOrders().forEach(o=>counts[o.status]=(counts[o.status]||0)+1);
   el("trackOverview").innerHTML=names.map(n=>'<div class="track-box"><b>'+counts[n]+'</b><span>'+n+'</span></div>').join("");
 }
 function overlap(a,b,s,e){return Math.max(0,Math.min(b,e)-Math.max(a,s));}
@@ -836,15 +891,28 @@ el("completeRepairBtn").onclick=()=>{
   el("repairEnd").textContent=formatHM(now);
   renderWork();renderTimeline();buildRepairStatus();renderTrackingOverview();
   el("completeRepairBtn").disabled=true;
-  el("saveRepairMsg").textContent="✅ 工單已模擬結案（未寫入正式資料）";
+  el("saveRepairMsg").textContent=SYNC_API_URL?"⏳ 正在同步結案…":"✅ 工單已模擬結案（未寫入正式資料）";
   el("saveRepairMsg").classList.remove("hidden");
+  if(SYNC_API_URL && repairState.order?._live){
+    syncPost_({action:"closeRepair",orderNo:repairState.order.no,technician:currentRepairUser,repairType:s.type,classification:s.classification,content:s.content,note:s.note}).then(()=>{el("saveRepairMsg").textContent="✅ 已同步至電腦「機修維修單」";}).catch(err=>alert("結案同步失敗："+err.message));
+  }
 };
 el("saveRepairBtn").onclick=()=>{
   const s=repairState.store;if(!s)return;
   s.type=el("repairTypeSelect").value;s.classification=el("repairClassSelect").value;s.technician=currentRepairUser;s.content=el("repairContent").value.trim();s.note=el("repairNote").value.trim();
   repairState.type=s.type;repairState.classification=s.classification;
   s.timeline.push({at:formatStamp(new Date()),title:"更新維修紀錄",detail:(s.type||"未選維修類型")+"｜"+(s.classification||"未分類")+(s.content?"｜"+s.content:"")});
-  renderTimeline();el("saveRepairMsg").classList.remove("hidden");
+  renderTimeline();
+  if(SYNC_API_URL && repairState.order?._live){
+    el("saveRepairMsg").textContent="⏳ 正在同步至電腦…";
+    el("saveRepairMsg").classList.remove("hidden");
+    syncPost_({action:"saveRepair",orderNo:repairState.order.no,technician:currentRepairUser,repairType:s.type,classification:s.classification,content:s.content,note:s.note})
+      .then(()=>{el("saveRepairMsg").textContent="✅ 已同步至電腦「機修維修單」";})
+      .catch(err=>alert("儲存同步失敗："+err.message));
+  }else{
+    el("saveRepairMsg").textContent="✅ 測試儲存成功（未寫入正式資料）";
+    el("saveRepairMsg").classList.remove("hidden");
+  }
 };
 
 function chooseDept(d){
