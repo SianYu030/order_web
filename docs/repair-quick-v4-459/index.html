@@ -1,0 +1,1417 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b3f70">
+<title>系統櫃線上報修｜測試版</title>
+<style>
+:root{--navy:#0b3f70;--navy2:#154f82;--bg:#f3f6fa;--card:#fff;--text:#17212b;--muted:#697586;--line:#dbe3ec;--blue:#eaf3ff;--blueText:#0a5db5;--green:#0e8a4a;--yellow:#d88a00;--red:#cf2f2f;--shadow:0 10px 28px rgba(17,45,78,.09)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",Arial,sans-serif;color:var(--text)}
+body{min-height:100vh}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.app{max-width:720px;margin:0 auto;padding-bottom:112px}
+.hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:18px 16px 16px;position:sticky;top:0;z-index:20;box-shadow:0 6px 18px rgba(10,50,90,.16)}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.title{font-weight:900;font-size:20px;letter-spacing:.2px}
+.badge{font-size:12px;font-weight:800;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2)}
+.subtitle{margin-top:4px;font-size:12px;opacity:.82}
+.progress{display:flex;gap:6px;margin-top:13px}
+.progress span{height:5px;flex:1;background:rgba(255,255,255,.22);border-radius:999px;transition:.2s}
+.progress span.on{background:#fff}
+.container{padding:14px}
+.notice{background:#fff9e8;border:1px solid #f1d897;color:#7b5b00;border-radius:14px;padding:11px 13px;font-size:13px;line-height:1.5;margin-bottom:12px}
+.card{background:var(--card);border:1px solid #e7edf3;border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h2{font-size:16px;margin:0 0 3px}.hint{color:var(--muted);font-size:12px;margin-bottom:11px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.dept-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.choice{border:1.5px solid var(--line);background:#fff;border-radius:14px;min-height:54px;padding:11px 10px;font-weight:800;color:#1f2c3a;text-align:center;transition:.12s}
+.choice:active{transform:scale(.98)}
+.choice.sel{border-color:#4a91d9;background:var(--blue);color:var(--blueText);box-shadow:inset 0 0 0 1px #9dc9f3}
+.choice.dept{min-height:64px;font-size:16px}
+.person-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.machine-grid{grid-template-columns:1fr 1fr;max-height:400px;overflow:auto;padding-right:2px}
+.machine{border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:11px;text-align:left;min-height:58px;font-weight:750;line-height:1.3;color:#243141}
+.machine.sel{border-color:#4a91d9;background:var(--blue);color:var(--blueText)}
+.machine.special{border-color:#e3a23a;background:#fff8e8;color:#8a5200;font-weight:900;box-shadow:inset 0 0 0 1px #f5d898}
+.machine.special::before{content:"🧰 ";font-size:15px}
+.machine.special.sel{border-color:#c97900;background:#ffe5b5;color:#7a4300;box-shadow:inset 0 0 0 2px #f0b24f}
+.search{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;background:#fbfcfe;color:var(--text);outline:none;margin-bottom:10px}
+.search:focus,textarea:focus{border-color:#4a91d9;background:#fff}
+.form-select{display:block;width:100%;min-height:54px;border:1.5px solid var(--line);border-radius:14px;background:#fff;color:#1f2c3a;padding:0 14px;font-size:16px;font-weight:750;line-height:1.3;outline:none}
+.form-select:focus{border-color:#4a91d9;box-shadow:0 0 0 3px rgba(74,145,217,.12)}
+.select-note{font-size:12px;color:var(--muted);line-height:1.5;margin:7px 2px 0}
+.repair-tech-box{border:1.5px solid #bfd4e8;background:#f2f8fd;color:#164f82;border-radius:14px;padding:14px;font-size:16px;font-weight:900}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stopbtn,.levelbtn{border:1.5px solid var(--line);background:#fff;border-radius:14px;min-height:54px;font-weight:850}
+.stopbtn.sel.yes{border-color:#d84a4a;background:#fff1f1;color:#bd2525}
+.stopbtn.sel.no{border-color:#3b9c68;background:#eefaf3;color:#187a45}
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.levelbtn.sel[data-v="一般"]{border-color:#4ca06f;background:#edf9f2;color:#14703d}
+.levelbtn.sel[data-v="緊急"]{border-color:#e1a13a;background:#fff7e9;color:#a96300}
+.levelbtn.sel[data-v="停線"]{border-color:#d84a4a;background:#fff0f0;color:#b51f1f}
+textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--line);border-radius:14px;padding:13px 14px;background:#fbfcfe;outline:none;line-height:1.5}
+.voice-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px;margin-bottom:10px;width:100%}
+.voice-row.single{grid-template-columns:1fr}
+.smallbtn{border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:11px 13px;font-weight:750;color:#31577c;flex:1}
+.filebox{display:block;width:100%;clear:both;margin:0;border:1.5px dashed #9fb5ca;border-radius:14px;padding:13px 12px;text-align:center;background:#f8fbfe;color:#31577c;font-weight:750;line-height:1.35}
+.filebox input{display:none}
+.preview{margin-top:9px;display:none}
+.preview img{max-width:100%;max-height:220px;border-radius:12px;border:1px solid var(--line)}
+.summary{background:#f7f9fc;border-radius:14px;padding:12px 13px;line-height:1.65;font-size:13px;color:#435064}
+.summary strong{color:#1b2937}
+.hidden{display:none!important}
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+.bottom-in{max-width:696px;margin:auto;display:flex;gap:9px}
+.reset{width:86px;border:1.5px solid var(--line);background:#fff;border-radius:15px;font-weight:800;color:#546273}
+.submit{flex:1;border:0;background:var(--navy);color:#fff;border-radius:15px;padding:15px;font-size:17px;font-weight:900;box-shadow:0 5px 14px rgba(11,63,112,.24)}
+.submit:disabled{background:#aab8c7;box-shadow:none}
+.success{position:fixed;inset:0;background:rgba(10,24,40,.5);z-index:100;display:grid;place-items:center;padding:18px}
+.modal{width:min(92vw,430px);background:#fff;border-radius:22px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.22);text-align:center}
+.check{width:64px;height:64px;border-radius:50%;background:#eaf8ef;color:#0b8b48;display:grid;place-items:center;font-size:34px;margin:0 auto 12px}
+.order{font-size:24px;font-weight:950;letter-spacing:.6px;margin:7px 0}
+.modal p{color:#647184;font-size:13px;line-height:1.6}
+.modal button{border:0;border-radius:14px;background:var(--navy);color:white;padding:13px 18px;font-weight:850;width:100%}
+.mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+.mode-btn{border:1.5px solid var(--line);background:#fff;border-radius:16px;padding:14px 10px;font-weight:900;font-size:16px;color:#31465b}
+.mode-btn.active{background:var(--navy);border-color:var(--navy);color:#fff}
+.order-list{display:grid;gap:9px}
+.order-card-wrap{position:relative}
+.order-card{width:100%;border:1.5px solid var(--line);background:#fff;border-radius:15px;padding:12px;text-align:left}
+.order-card-wrap.has-delete .order-card{padding-bottom:50px}
+.order-delete{position:absolute;right:12px;bottom:10px;border:1.5px solid #e8b3b3;background:#fff6f6;color:#b42323;border-radius:10px;padding:7px 10px;font-size:12px;font-weight:900}
+.order-delete:disabled{opacity:.55}
+.order-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.order-no{font-weight:950;font-size:15px}
+.order-meta{font-size:12px;color:var(--muted);line-height:1.5;margin-top:5px}
+.order-status-line{display:flex;align-items:center;gap:6px;margin-top:3px;color:#435064}
+.order-status-label{font-weight:800;color:#52606f}
+.order-status-value{font-weight:900;color:#0a5db5}
+.tag{font-size:11px;font-weight:850;border-radius:999px;padding:5px 8px;background:#eef3f7;color:#52606f}
+.tag.red{background:#fff0f0;color:#b51f1f}.tag.yellow{background:#fff7e8;color:#a96300}.tag.green{background:#edf9f2;color:#14703d}
+.detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.backbtn{border:0;background:#eef3f8;color:#31577c;border-radius:12px;padding:9px 11px;font-weight:800}
+.kv{display:grid;grid-template-columns:90px 1fr;gap:7px 9px;font-size:13px;line-height:1.45;margin-top:12px}
+.kv .k{color:var(--muted)}
+.section-title{font-size:13px;font-weight:900;color:#314254;margin:14px 0 8px}
+.class-grid,.repair-status-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.class-btn,.repair-status-btn{border:1.5px solid var(--line);background:#fff;border-radius:13px;padding:10px;font-weight:800}
+.class-btn.sel,.repair-status-btn.sel{border-color:#4a91d9;background:var(--blue);color:var(--blueText)}
+.current-status-box{border:1.5px solid #bfd4e8;background:#f4f9fe;border-radius:15px;padding:12px 14px;margin-bottom:10px}
+.current-status-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.current-status-label{font-size:12px;color:var(--muted);font-weight:800}
+.current-status-value{font-size:18px;color:#0a5db5;font-weight:950}
+.current-status-hint{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.45}
+.pause-title{font-size:12px;color:#52606f;font-weight:850;margin:8px 0 7px}
+.repair-status-grid{grid-template-columns:repeat(3,1fr)}
+.repair-status-btn{min-height:48px}
+.repair-status-btn.sel{box-shadow:inset 0 0 0 1px #9dc9f3}
+.time-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.time-box{background:#f7f9fc;border-radius:14px;padding:11px}
+.time-box small{display:block;color:var(--muted);margin-bottom:5px}
+.time-value{font-size:18px;font-weight:950}
+.time-action{width:100%;margin-top:8px;border:0;border-radius:11px;background:var(--navy);color:#fff;padding:10px;font-weight:850}
+.time-action.done{background:#187a45}
+.work-box{margin-top:10px;background:#eef6ff;border:1px solid #c9dff5;color:#164f82;border-radius:14px;padding:12px;font-size:13px}
+.work-box b{font-size:18px}
+.complete-repair-btn{width:100%;border:0;border-radius:14px;background:#16804a;color:#fff;padding:14px;font-size:16px;font-weight:950;margin-top:10px;box-shadow:0 5px 14px rgba(22,128,74,.18)}
+.complete-repair-btn:disabled{background:#aab8c7;box-shadow:none}
+.complete-note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:7px}
+.history-title{font-size:13px;font-weight:900;color:#314254;margin:14px 0 8px}
+.history-empty{font-size:12px;color:var(--muted);padding:10px 0}
+.save-repair{width:100%;border:0;border-radius:14px;background:var(--navy);color:#fff;padding:14px;font-size:16px;font-weight:900;margin-top:12px}
+.save-msg{margin-top:9px;font-size:13px;color:#14703d;font-weight:800;text-align:center}
+.track-overview{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0 12px}
+.track-box{background:#f7f9fc;border:1px solid var(--line);border-radius:13px;padding:9px 7px;text-align:center}
+.track-box b{display:block;font-size:18px;color:#203247}.track-box span{font-size:11px;color:var(--muted)}
+.follow-panel{margin-top:10px;border:1px solid #d7e2ed;background:#f8fbfe;border-radius:15px;padding:12px}
+.follow-panel h3{font-size:14px;margin:0 0 8px}
+.follow-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.follow-panel input,.follow-panel textarea{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;background:#fff;outline:none}
+.follow-panel textarea{min-height:74px;margin-top:8px}
+.follow-confirm{width:100%;border:0;border-radius:12px;background:var(--navy);color:#fff;padding:11px;font-weight:850;margin-top:8px}
+.timeline{margin-top:8px;border-left:3px solid #cbd8e5;padding-left:12px}
+.timeline-item{position:relative;padding:0 0 13px 4px}
+.timeline-item:before{content:"";position:absolute;width:9px;height:9px;border-radius:50%;background:var(--navy);left:-18px;top:4px}
+.timeline-time{font-size:11px;color:var(--muted)}.timeline-title{font-size:13px;font-weight:850;margin-top:2px}.timeline-detail{font-size:12px;color:#566473;line-height:1.45;margin-top:2px}
+.pause-note{font-size:12px;color:#7b5b00;background:#fff9e8;border:1px solid #eed38c;border-radius:12px;padding:9px;margin-top:8px}
+.login-overlay{position:fixed;inset:0;background:rgba(10,24,40,.58);z-index:220;display:grid;place-items:center;padding:18px}
+.login-card{width:min(92vw,420px);background:#fff;border-radius:22px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.28)}
+.login-icon{width:58px;height:58px;border-radius:18px;background:#eaf3fb;color:var(--navy);display:grid;place-items:center;font-size:29px;margin:0 auto 12px}
+.login-card h2{margin:0;text-align:center;font-size:20px}.login-sub{text-align:center;color:var(--muted);font-size:13px;line-height:1.55;margin:7px 0 16px}
+.login-label{display:block;font-size:13px;font-weight:850;color:#33485d;margin:10px 0 6px}
+.login-input{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:14px;background:#fff;padding:14px;font-size:16px;outline:none}
+.login-input:focus{border-color:#4a91d9;box-shadow:0 0 0 3px rgba(74,145,217,.12)}
+.login-actions{display:grid;grid-template-columns:92px 1fr;gap:9px;margin-top:16px}.login-cancel,.login-submit{border:0;border-radius:14px;padding:13px 12px;font-weight:900;font-size:15px}
+.login-cancel{background:#eef3f8;color:#41586f}.login-submit{background:var(--navy);color:#fff}.login-error{margin-top:9px;color:#b42318;font-size:12px;font-weight:800;text-align:center}
+.login-demo{margin-top:12px;padding:9px 11px;border-radius:11px;background:#fff8e7;border:1px solid #f0d58d;color:#785b00;font-size:12px;line-height:1.5}
+.repair-loginbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding:9px 11px;border-radius:13px;background:#edf5fc;color:#234d73;font-size:12px;font-weight:800}.repair-login-actions{display:flex;gap:7px}.logout-btn,.password-btn{border:0;border-radius:10px;background:#fff;color:#31577c;padding:7px 10px;font-weight:850}.password-btn{background:#dfeefa;color:#164f82}.password-success{margin-top:9px;color:#14703d;font-size:12px;font-weight:850;text-align:center}
+@media(max-width:420px){.machine-grid{grid-template-columns:1fr}.person-grid{grid-template-columns:repeat(2,1fr)}.title{font-size:18px}.class-grid,.repair-status-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero">
+    <div class="topline">
+      <div>
+        <div class="title">🛠 系統櫃線上報修</div>
+        <div class="subtitle">手機報修／維修處理</div>
+      </div>
+      <div class="badge">測試版 V4.4.19-sync LIVE（工單流水號修正）</div>
+    </div>
+    <div class="progress" id="progress"><span class="on"></span><span></span><span></span><span></span><span></span></div>
+  </header>
+
+  <main class="container">
+    <div class="notice">目前為同步測試版：手機報修會寫入「機修維修單」；LINE 通知仍暫停，待流程確認後再開啟。</div>
+
+    <div class="mode-switch">
+      <button class="mode-btn active" id="reportModeBtn">📱 報修</button>
+      <button class="mode-btn" id="repairModeBtn">🔧 維修處理</button>
+    </div>
+
+    <div id="reportMode">
+    <section class="card" id="deptCard">
+      <h2>① 選擇部門</h2>
+      <div class="hint">先點你目前報修的廠區／部門</div>
+      <div class="grid dept-grid" id="deptGrid"></div>
+    </section>
+
+    <section class="card hidden" id="personCard">
+      <h2>② 報修人</h2>
+      <div class="hint" id="personHint">選擇報修人</div>
+      <div class="grid person-grid" id="personGrid"></div>
+    </section>
+
+    <section class="card hidden" id="areaCard">
+      <h2>③ 選擇區域</h2>
+      <div class="hint">有分區的部門先選區域</div>
+      <div class="grid" id="areaGrid"></div>
+    </section>
+
+    <section class="card hidden" id="machineCard">
+      <h2>④ 選擇機台</h2>
+      <div class="hint">可以直接點，也可以搜尋機台名稱</div>
+      <input class="search" id="machineSearch" placeholder="🔎 搜尋機台名稱">
+      <div class="grid machine-grid" id="machineGrid"></div>
+    </section>
+
+    <section class="card hidden" id="statusCard">
+      <h2>⑤ 報修狀況</h2>
+      <div class="hint">是否停機與緊急程度</div>
+      <div class="twocol">
+        <button class="stopbtn yes" data-stop="是">🛑 是，已停機</button>
+        <button class="stopbtn no" data-stop="否">✅ 否，可運轉</button>
+      </div>
+      <div style="height:11px"></div>
+      <div class="levels">
+        <button class="levelbtn" data-v="一般">🟢 一般</button>
+        <button class="levelbtn" data-v="緊急">🟡 緊急</button>
+        <button class="levelbtn" data-v="停線">🔴 停線</button>
+      </div>
+    </section>
+
+    <section class="card hidden" id="issueCard">
+      <h2 id="issueTitle">⑥ 機台異常描述</h2>
+      <div class="hint" id="issueHint">簡單描述看到的問題即可</div>
+      <textarea id="issue" placeholder="例如：機台啟動後出現警報，無法正常加工…"></textarea>
+      <div class="voice-row single">
+        <button class="smallbtn" id="clearIssue" type="button">清除描述</button>
+      </div>
+      <label class="filebox">📷 拍照／選照片（選填）
+        <input id="photo" type="file" accept="image/*" capture="environment">
+      </label>
+      <div class="preview" id="photoPreview"><img alt="照片預覽"></div>
+    </section>
+
+    <section class="card hidden" id="summaryCard">
+      <h2>送出前確認</h2>
+      <div class="hint">確認沒問題就按下方「送出測試報修」</div>
+      <div class="summary" id="summary"></div>
+    </section>
+    </div>
+
+    <div id="repairMode" class="hidden">
+      <section class="card" id="repairListCard">
+        <div class="repair-loginbar"><span>🔐 已登入：<b id="repairLoginUser">—</b></span><div class="repair-login-actions"><button class="password-btn" id="repairRefreshBtn" type="button">↻ 更新</button><button class="password-btn" id="repairChangePasswordBtn" type="button">修改密碼</button><button class="logout-btn" id="repairLogoutBtn" type="button">登出</button></div></div>
+        <h2>維修工單</h2>
+        <div class="hint">待處理／處理中／待料／外修都屬於「未完成工單」，直到真正修復後才結案。</div>
+        <div class="track-overview" id="trackOverview"></div>
+        <div class="section-title">未完成工單</div>
+        <div class="order-list" id="repairOrderList"></div>
+        <div class="history-title">已完成歷史</div>
+        <div class="order-list" id="repairHistoryList"></div>
+      </section>
+
+      <section class="card hidden" id="repairDetailCard">
+        <div class="detail-head">
+          <div>
+            <div class="order-no" id="repairNo" style="font-size:18px"></div>
+            <div class="hint" id="repairMeta" style="margin:4px 0 0"></div>
+          </div>
+          <button class="backbtn" id="repairBack">← 工單列表</button>
+        </div>
+        <div class="kv" id="repairKV"></div>
+
+        <div class="section-title" id="repairTypeTitle">維修類型</div>
+        <select id="repairTypeSelect" class="form-select">
+          <option value="">請選擇維修類型</option>
+          <option>故障維修</option>
+          <option>設備改善</option>
+          <option>預防保養</option>
+          <option>巡檢處理</option>
+          <option>臨時作業</option>
+        </select>
+
+        <div class="section-title" id="repairClassTitle">故障分類</div>
+        <select id="repairClassSelect" class="form-select">
+          <option value="">請選擇故障分類</option>
+
+          <optgroup label="電氣控制">
+            <option>【電氣控制】電控異常</option>
+            <option>【電氣控制】伺服異常</option>
+            <option>【電氣控制】變頻器異常</option>
+            <option>【電氣控制】電源異常</option>
+            <option>【電氣控制】馬達異常</option>
+            <option>【電氣控制】感應器異常</option>
+            <option>【電氣控制】繼電器／接觸器異常</option>
+            <option>【電氣控制】線路／接點異常</option>
+          </optgroup>
+
+          <optgroup label="軟體通訊">
+            <option>【軟體通訊】軟體異常</option>
+            <option>【軟體通訊】通訊異常</option>
+            <option>【軟體通訊】原點異常</option>
+            <option>【軟體通訊】定位異常</option>
+            <option>【軟體通訊】參數異常</option>
+            <option>【軟體通訊】電腦／工控機異常</option>
+          </optgroup>
+
+          <optgroup label="氣壓真空">
+            <option>【氣壓真空】氣壓異常</option>
+            <option>【氣壓真空】漏氣</option>
+            <option>【氣壓真空】電磁閥異常</option>
+            <option>【氣壓真空】氣缸異常</option>
+            <option>【氣壓真空】真空異常</option>
+            <option>【氣壓真空】吸盤異常</option>
+            <option>【氣壓真空】真空泵異常</option>
+          </optgroup>
+
+          <optgroup label="液壓系統">
+            <option>【液壓系統】液壓壓力異常</option>
+            <option>【液壓系統】油壓缸異常</option>
+            <option>【液壓系統】油管漏油</option>
+            <option>【液壓系統】液壓泵異常</option>
+            <option>【液壓系統】升降異常</option>
+          </optgroup>
+
+          <optgroup label="傳動送料">
+            <option>【傳動送料】送料異常</option>
+            <option>【傳動送料】夾料異常</option>
+            <option>【傳動送料】滑軌異常</option>
+            <option>【傳動送料】鏈條異常</option>
+            <option>【傳動送料】皮帶異常</option>
+            <option>【傳動送料】滾輪異常</option>
+            <option>【傳動送料】卡料</option>
+          </optgroup>
+
+          <optgroup label="鋸切系統">
+            <option>【鋸切系統】鋸座異常</option>
+            <option>【鋸切系統】鋸片異常</option>
+            <option>【鋸切系統】升降異常</option>
+            <option>【鋸切系統】角度異常</option>
+            <option>【鋸切系統】切斷尺寸異常</option>
+          </optgroup>
+
+          <optgroup label="封邊系統">
+            <option>【封邊系統】封邊異常</option>
+            <option>【封邊系統】送帶異常</option>
+            <option>【封邊系統】膠鍋／上膠異常</option>
+            <option>【封邊系統】預銑異常</option>
+            <option>【封邊系統】修邊異常</option>
+            <option>【封邊系統】刮邊異常</option>
+            <option>【封邊系統】拋光異常</option>
+            <option>【封邊系統】壓貼異常</option>
+          </optgroup>
+
+          <optgroup label="鑽孔／CNC加工">
+            <option>【鑽孔／CNC加工】鑽孔異常</option>
+            <option>【鑽孔／CNC加工】側孔異常</option>
+            <option>【鑽孔／CNC加工】刀具異常</option>
+            <option>【鑽孔／CNC加工】主軸異常</option>
+            <option>【鑽孔／CNC加工】換刀異常</option>
+            <option>【鑽孔／CNC加工】加工尺寸異常</option>
+            <option>【鑽孔／CNC加工】加工位置異常</option>
+          </optgroup>
+
+          <optgroup label="機構零件">
+            <option>【機構零件】軸承異常</option>
+            <option>【機構零件】螺絲／固定件異常</option>
+            <option>【機構零件】潤滑異常</option>
+            <option>【機構零件】機構鬆動</option>
+            <option>【機構零件】異音</option>
+            <option>【機構零件】震動</option>
+          </optgroup>
+
+          <optgroup label="集塵／吸塵">
+            <option>【集塵／吸塵】吸力不足</option>
+            <option>【集塵／吸塵】管路堵塞</option>
+            <option>【集塵／吸塵】集塵異常</option>
+            <option>【集塵／吸塵】集塵馬達異常</option>
+            <option>【集塵／吸塵】集塵桶／濾網異常</option>
+          </optgroup>
+
+          <optgroup label="冷卻／溫度">
+            <option>【冷卻／溫度】過熱</option>
+            <option>【冷卻／溫度】冷卻異常</option>
+            <option>【冷卻／溫度】風扇異常</option>
+            <option>【冷卻／溫度】溫控異常</option>
+          </optgroup>
+
+          <optgroup label="空壓／乾燥／抽水">
+            <option>【空壓／乾燥／抽水】壓力異常</option>
+            <option>【空壓／乾燥／抽水】排水異常</option>
+            <option>【空壓／乾燥／抽水】乾燥異常</option>
+            <option>【空壓／乾燥／抽水】溫度異常</option>
+            <option>【空壓／乾燥／抽水】抽水異常</option>
+            <option>【空壓／乾燥／抽水】漏水</option>
+          </optgroup>
+
+          <optgroup label="包裝／組立">
+            <option>【包裝／組立】打包異常</option>
+            <option>【包裝／組立】送帶異常</option>
+            <option>【包裝／組立】包膜異常</option>
+            <option>【包裝／組立】夾持異常</option>
+            <option>【包裝／組立】組立異常</option>
+          </optgroup>
+
+          <optgroup label="搬運／車輛">
+            <option>【搬運／車輛】行走異常</option>
+            <option>【搬運／車輛】升降異常</option>
+            <option>【搬運／車輛】煞車異常</option>
+            <option>【搬運／車輛】轉向異常</option>
+            <option>【搬運／車輛】電瓶／充電異常</option>
+            <option>【搬運／車輛】引擎異常</option>
+          </optgroup>
+
+          <optgroup label="安全保護">
+            <option>【安全保護】急停觸發</option>
+            <option>【安全保護】安全門異常</option>
+            <option>【安全保護】護罩異常</option>
+            <option>【安全保護】安全感應異常</option>
+          </optgroup>
+
+          <optgroup label="加工品質">
+            <option>【加工品質】尺寸異常</option>
+            <option>【加工品質】位置偏移</option>
+            <option>【加工品質】崩邊</option>
+            <option>【加工品質】刮傷</option>
+            <option>【加工品質】表面品質異常</option>
+          </optgroup>
+
+          <optgroup label="其他">
+            <option>【其他】無法啟動</option>
+            <option>【其他】間歇性異常</option>
+            <option>【其他】不明原因</option>
+            <option>【其他】其他</option>
+          </optgroup>
+        </select>
+        <div class="select-note" id="repairClassNote">新版分類包含：電氣控制、軟體通訊、氣壓真空、液壓系統、傳動送料、鋸切、封邊、鑽孔／CNC、機構零件、集塵、冷卻、空壓、包裝組立、搬運車輛、安全保護、加工品質、其他。</div>
+
+        <div class="section-title" id="repairTechTitle">機修處理人</div>
+        <div class="repair-tech-box" id="repairTechnician">—</div>
+        <div class="select-note">登入後自動帶入機修帳號，不需要重複選擇。</div>
+
+        <div class="section-title" id="repairContentTitle">維修內容</div>
+        <textarea id="repairContent" placeholder="例如：更換皮帶、調整張力、清潔感測器…"></textarea>
+
+        <div class="section-title">維修狀態</div>
+        <div class="current-status-box">
+          <div class="current-status-row">
+            <span class="current-status-label">目前狀態</span>
+            <strong class="current-status-value" id="repairCurrentStatus">待處理</strong>
+          </div>
+          <div class="current-status-hint" id="repairStatusHint">新工單等待機修人員開始維修。</div>
+        </div>
+        <div class="pause-title">維修途中需要暫停時才選：</div>
+        <div class="repair-status-grid" id="repairStatusGrid"></div>
+        <div class="follow-panel hidden" id="followPanel">
+          <h3 id="followTitle">後續追蹤</h3>
+          <div id="followFields"></div>
+          <button class="follow-confirm" id="followConfirm">確認並建立追蹤</button>
+        </div>
+
+
+        <div class="section-title">維修時間</div>
+        <div class="time-grid">
+          <div class="time-box">
+            <small>開始維修時間</small>
+            <div class="time-value" id="repairStart">--:--</div>
+            <button class="time-action" id="repairStartBtn">▶ 開始維修</button>
+          </div>
+          <div class="time-box">
+            <small>完成時間</small>
+            <div class="time-value" id="repairEnd">--:--</div>
+            <button class="time-action done" id="repairEndBtn">⏸ 結束本次計時</button>
+          </div>
+        </div>
+
+        <div class="work-box">自動維修工時：<b id="repairWork">0時00分</b><br><span style="font-size:12px">08:00–12:00、13:00–17:00，午休不計。</span></div>
+
+        <div class="section-title">追蹤紀錄</div>
+        <div class="timeline" id="repairTimeline"></div>
+
+        <button class="complete-repair-btn" id="completeRepairBtn">✅ 維修完成・結案</button>
+        <div class="complete-note">確認設備已修復後直接按這裡；系統會自動停止計時並把狀態改成「已完成」。不需要先手動選「已完成」。</div>
+
+        <div class="section-title">備註</div>
+        <textarea id="repairNote" placeholder="例如：高速皮帶106J*1，已請購2條…"></textarea>
+        <button class="save-repair" id="saveRepairBtn">儲存測試維修</button>
+        <div class="save-msg hidden" id="saveRepairMsg">✅ 測試儲存成功（未寫入正式資料）</div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="bottom" id="reportBottom">
+  <div class="bottom-in">
+    <button class="reset" id="resetBtn">重選</button>
+    <button class="submit" id="submitBtn" disabled>送出同步測試報修</button>
+  </div>
+</div>
+
+<div class="success hidden" id="success">
+  <div class="modal">
+    <div class="check">✓</div>
+    <h2 style="margin:0">測試送出成功</h2>
+    <div class="order" id="orderNo"></div>
+    <p id="successText">測試報修將直接寫入正式「機修維修單」；本階段暫不發送 LINE。</p>
+    <button id="againBtn">再測一筆</button>
+  </div>
+</div>
+
+<div class="login-overlay hidden" id="repairLoginModal">
+  <div class="login-card">
+    <div class="login-icon">🔐</div>
+    <h2>機修人員登入</h2>
+    <div class="login-sub">「維修處理」僅限授權人員使用。<br>登入後才可查看與處理維修工單。</div>
+    <label class="login-label" for="repairLoginAccount">帳號</label>
+    <input class="login-input" id="repairLoginAccount" autocomplete="username" placeholder="請輸入帳號">
+    <label class="login-label" for="repairLoginPassword">密碼</label>
+    <input class="login-input" id="repairLoginPassword" type="password" autocomplete="current-password" placeholder="請輸入密碼">
+    <div class="login-error hidden" id="repairLoginError">帳號或密碼錯誤，請重新輸入。</div>
+    <div class="login-demo">測試帳號：<b>A1702／A2758／3109</b><br>三組初始密碼皆為：<b>1234</b><br>正式版會改由 Apps Script 後端驗證。</div>
+    <button class="password-btn" id="repairLoginChangePasswordBtn" type="button" style="width:100%;margin-top:12px;padding:11px">🔑 修改密碼</button>
+    <div class="login-actions">
+      <button class="login-cancel" id="repairLoginCancel" type="button">取消</button>
+      <button class="login-submit" id="repairLoginSubmit" type="button">登入維修處理</button>
+    </div>
+  </div>
+</div>
+
+<div class="login-overlay hidden" id="repairPasswordModal">
+  <div class="login-card">
+    <div class="login-icon">🔑</div>
+    <h2>修改維修密碼</h2>
+    <div class="login-sub">請先確認原密碼，再設定新密碼。</div>
+
+    <label class="login-label" for="changePasswordAccount">帳號</label>
+    <input class="login-input" id="changePasswordAccount" autocomplete="username" placeholder="A1702 / A2758 / 3109">
+
+    <label class="login-label" for="changePasswordOld">目前密碼</label>
+    <input class="login-input" id="changePasswordOld" type="password" autocomplete="current-password" placeholder="請輸入目前密碼">
+
+    <label class="login-label" for="changePasswordNew">新密碼</label>
+    <input class="login-input" id="changePasswordNew" type="password" autocomplete="new-password" placeholder="至少 4 碼">
+
+    <label class="login-label" for="changePasswordConfirm">確認新密碼</label>
+    <input class="login-input" id="changePasswordConfirm" type="password" autocomplete="new-password" placeholder="再輸入一次新密碼">
+
+    <div class="login-error hidden" id="changePasswordError"></div>
+    <div class="password-success hidden" id="changePasswordSuccess">✅ 密碼已修改完成</div>
+    <div class="login-demo">測試版：新密碼只會儲存在目前這台裝置的瀏覽器。正式版接後端後會改成所有裝置同步。</div>
+
+    <div class="login-actions">
+      <button class="login-cancel" id="changePasswordCancel" type="button">取消</button>
+      <button class="login-submit" id="changePasswordSave" type="button">儲存新密碼</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = {
+"E3":{"people":["王川茂","郭凱倫","李灌育","楊添志","蘇育德","王顯籲"],"areas":{
+"E3主區":["380裁板機","330裁板機","液壓升降平台(380專用)","液壓升降平台(330專用)","直線封邊機","軟成型封邊機","六面無縫封邊機","窄邊封邊機","斜背封邊機","鉸鏈孔加工機","CNC","異形封邊機(柯耐)","半自動手工封邊機(豪美)","半自動手工封邊機2(洪業)","六面鑽單機(恩德)"],
+"手工造型門板區":["立芯機","銑溝機(1號)","銑溝機(2號)","銑溝機(3號)","分隔引孔機(1號)","分隔引孔機(2號)","修邊機","雙軌多角度切斷機"],
+"鋁框區":["雙軌多角度切斷機","750數控鑽銑機","MS35F雙刀45度裁切機","伺服上下自動鋸台10W500","雙桶式工業用集塵機","手動鑽床鑽孔機(1號)","手動鑽床鑽孔機(2號)","手動鑽床鑽孔機(3號)"]}},
+"E4":{"people":["鍾政良","楊添志","蘇育德","王顯籲"],"areas":{"E4":["330裁板機","液壓升降平台(330專用)","長風裁板機","液壓升降平台(長風專用)","雙桶式工業用集塵機","Nesting10號機","液壓升降平台(Nesting10號專用)","Nesting20號機","液壓升降平台(Nesting20號專用)","機械手臂(Nesting專用)","直線封邊機1號","直線封邊機2號","直線封邊機3號","ABD鑽孔機","CNC","六面鑽單機","工作站單機1號","工作站單機2號","工作站單機3號","工作站單機4號","機械手臂(六面鑽工作站專用)","手拉式電動拖板車"]}},
+"E5":{"people":["許竣凱","楊添志","蘇育德","王顯籲"],"areas":{"E5":["分料機(1號)","分料機(2號)","邊條打洞機","550單頭鋸","重型單頭鋸","拔筋機(崁把手研磨)","柴油動力堆高機1號","柴油動力堆高機2號","柴油動力堆高機3號","柴油動力堆高機4號(W8)","白鐵管金工切斷機","研磨機"]}},
+"W8":{"people":["薛凱澤","張志賢","方迋栩","楊添志","蘇育德","王顯籲"],"areas":{"W8":["330裁板機","液壓升降平台(330專用)","邰展裁板機","液壓升降平台(邰展專用)","Nesting10號機","Nesting20號機","機械手臂(Nesting專用)","直線封邊機1號","直線封邊機2號","直線封邊機3號","直線封邊機4號","液壓升降平台(直線封邊機3號專用)","液壓升降平台(直線封邊機4號專用)","ABD鑽孔機","CNC","六面鑽單機","六面工作站1號","六面工作站2號","六面工作站3號","六面工作站4號","機械手臂(六面工作站專用)","研磨機","站立式電動拖板車2號"]}},
+"W8整修&組立":{"people":["張育齊","楊添志","蘇育德","王顯籲"],"areas":{
+"組立區":["SCM組立機(1號機)","自動包膜機(1號機)","低位自動打包機(1號機)","自動打包機(小)","SCM組立機(2號機)","自動包膜機(2號機)","低位自動打包機(2號機)","站立式電動拖板車(3號)","雙軌多角度切斷機","雙桶式工業用集塵機","背板銑溝機","門板銑溝機(立芯機)","底板銑溝機(立芯機)","移動式鋸台","手動式沖床","手拉式拖板車"],
+"整修區":["電動拋光機","門式打包機","自動打包機(小)","自動磨刀機"]}},
+"空壓機室":{"people":["楊添志","蘇育德","王顯籲"],"areas":{"空壓機室":["空壓機(1號)","空壓機(2號)","乾燥機(1號)","乾燥機(2號)","抽水機(1號)","抽水機(2號)","抽水機(3號)","抽水機(4號)"]}}
+};
+
+const SPECIAL_MACHINE="現場人員臨時需求以及特殊作業";
+const SPECIAL_MACHINE_DEPTS=["E3","E4","E5","W8整修&組立","空壓機室"];
+const SPECIAL_MACHINE_PEOPLE=["楊添志","蘇育德","王顯籲"];
+function canUseSpecialMachine_(){
+  return SPECIAL_MACHINE_DEPTS.includes(state.dept) && SPECIAL_MACHINE_PEOPLE.includes(state.person);
+}
+const state={dept:"",person:"",area:"",machine:"",stop:"",level:"",requestId:""};
+const repairState={order:null,type:"",classification:"",start:"",end:"",status:"",store:null,pendingStatus:""};
+const SYNC_API_URL="https://script.google.com/macros/s/AKfycbwwQ5sOosDNpmejBsubHincyGTflmsNlwDGTLVIu3HhEyLQa85CeCBtXm62R-HlIOhW/exec";
+const EXPECTED_SPREADSHEET_ID="13qpQWg3tKOXd1BC0XPsK7DsIxG1sBaVI6-yRpERIRMQ";
+const EXPECTED_BACKEND_VERSION="V8-sequencefix-20261002";
+let LIVE_ORDERS=[];
+let LIVE_ORDERS_LAST_SYNC=0;
+const LIVE_CACHE_KEY="repairOrdersCacheV8";
+
+function restoreLiveOrdersCache_(){
+  try{
+    const raw=localStorage.getItem(LIVE_CACHE_KEY);
+    if(!raw)return;
+    const data=JSON.parse(raw);
+    if(Array.isArray(data.orders)){
+      LIVE_ORDERS=data.orders;
+      LIVE_ORDERS_LAST_SYNC=Number(data.savedAt||0);
+    }
+  }catch(e){}
+}
+
+function saveLiveOrdersCache_(){
+  try{
+    localStorage.setItem(LIVE_CACHE_KEY,JSON.stringify({
+      savedAt:Date.now(),
+      orders:LIVE_ORDERS
+    }));
+    LIVE_ORDERS_LAST_SYNC=Date.now();
+  }catch(e){}
+}
+
+restoreLiveOrdersCache_();
+
+function currentOrders(){ return SYNC_API_URL ? LIVE_ORDERS : MOCK_ORDERS; }
+function jsonp_(action,params={},timeoutMs=12000){
+  return new Promise((resolve,reject)=>{
+    if(!SYNC_API_URL){ reject(new Error("尚未設定同步 API")); return; }
+    const cb="repairSyncCb_"+Date.now()+"_"+Math.floor(Math.random()*10000);
+    const script=document.createElement("script");
+    const timer=setTimeout(()=>{ cleanup(); reject(new Error("同步逾時")); },timeoutMs);
+    function cleanup(){ clearTimeout(timer); try{delete window[cb];}catch(e){} if(script.parentNode)script.parentNode.removeChild(script); }
+    window[cb]=(data)=>{ cleanup(); if(data&&data.ok===false)reject(new Error(data.error||"同步失敗")); else resolve(data||{}); };
+    const q=new URLSearchParams({action,callback:cb,...params});
+    script.src=SYNC_API_URL+(SYNC_API_URL.includes("?")?"&":"?")+q.toString();
+    script.onerror=()=>{ cleanup(); reject(new Error("無法連線同步 API")); };
+    document.body.appendChild(script);
+  });
+}
+async function loadLiveOrders(renderList=true){
+  if(!SYNC_API_URL){
+    if(renderList)renderRepairOrders();
+    return;
+  }
+  const data=await jsonp_("listTestOrders",{},30000);
+
+  if(!data.spreadsheetId){
+    throw new Error("後端版本尚未更新，請重新部署最新 Webhook.gs");
+  }
+  if(data.spreadsheetId!==EXPECTED_SPREADSHEET_ID){
+    throw new Error("後端連到不同的試算表，已停止載入避免資料錯置");
+  }
+  if(data.backendVersion!==EXPECTED_BACKEND_VERSION){
+    throw new Error("Apps Script 後端不是最新 V8，請更新部署後再試");
+  }
+
+  LIVE_ORDERS=(data.orders||[]).map(o=>({
+    no:o.no,time:o.time,person:o.person,dept:o.dept,machine:o.machine,stop:o.stop,
+    issue:o.issue,level:o.level,status:o.status||"待處理",type:o.type||"",
+    classification:o.classification||"",technician:o.technician||"",content:o.content||"",
+    note:o.note||"",start:o.start||"",end:o.end||"",work:o.work||"",
+    followupSummary:o.followupSummary||"",nextFollow:o.nextFollow||"",lastFollow:o.lastFollow||"",
+    trackCount:o.trackCount||0,deletable:!!o.deletable,_live:true
+  }));
+  saveLiveOrdersCache_();
+  if(renderList)renderRepairOrders();
+}
+
+async function refreshLiveOrdersInBackground_(force=false){
+  if(!SYNC_API_URL)return;
+  if(!force && LIVE_ORDERS_LAST_SYNC && (Date.now()-LIVE_ORDERS_LAST_SYNC)<30000)return;
+
+  try{
+    await loadLiveOrders(false);
+    if(!el("repairListCard").classList.contains("hidden")){
+      renderRepairOrders();
+    }
+  }catch(err){
+    const list=el("repairOrderList");
+    if(list && !LIVE_ORDERS.length){
+      list.innerHTML='<div class="history-empty">目前無法更新工單資料：'+esc(err.message||"同步失敗")+'</div>';
+    }
+  }
+}
+async function syncPost_(payload){
+  if(!SYNC_API_URL) return false;
+  await fetch(SYNC_API_URL,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify(payload)
+  });
+  // 寫入後不重載工單列表，避免維修中被自動帶回列表。
+  // 使用者按「← 工單列表」或重新進入維修處理時才重新讀取最新資料。
+  await new Promise(r=>setTimeout(r,700));
+  return true;
+}
+
+const MOCK_ORDERS=[
+  {no:"MR2026092901",time:"2026/09/29 下午13:10",person:"王川茂",dept:"E3",machine:"380裁板機",stop:"是",issue:"鋸片馬達異聲",level:"緊急",status:"待處理"},
+  {no:"MR2026092902",time:"2026/09/29 下午13:22",person:"鍾政良",dept:"E4",machine:"直線封邊機2號",stop:"是",issue:"送帶無法連同開機",level:"停線",status:"待處理"},
+  {no:"MR2026092903",time:"2026/09/29 下午13:31",person:"薛凱澤",dept:"W8",machine:"六面工作站1號",stop:"否",issue:"電腦系統備份",level:"一般",status:"處理中"},
+  {no:"MR2026092904",time:"2026/09/29 下午13:44",person:"張育齊",dept:"W8整修&組立",machine:"自動打包機(小)",stop:"否",issue:"打包帶偶發卡帶",level:"一般",status:"待料"}
+];
+const REPAIR_STORE={};
+function storeFor(o){
+  if(!REPAIR_STORE[o.no]){
+    REPAIR_STORE[o.no]={
+      type:o.type||"",classification:o.classification||"",technician:o.technician||"",
+      content:o.content||"",note:o.note||"",status:o.status||"待處理",
+      followup:o.followupSummary?{summary:o.followupSummary}:null,
+      firstStart:null,end:null,activeStart:null,workMinutes:0,
+      timeline:[{at:o.time,title:"建立報修工單",detail:"初始狀態："+(o.status||"待處理")}]
+    };
+  }else if(o._live){
+    const s=REPAIR_STORE[o.no];
+    s.type=o.type||s.type||"";s.classification=o.classification||s.classification||"";
+    s.technician=o.technician||s.technician||"";s.content=o.content||s.content||"";
+    s.note=o.note||s.note||"";s.status=o.status||s.status||"待處理";
+    if(o.followupSummary)s.followup={summary:o.followupSummary};
+  }
+  return REPAIR_STORE[o.no];
+}
+const el=id=>document.getElementById(id);
+const cards=["personCard","areaCard","machineCard","statusCard","issueCard","summaryCard"];
+
+function button(text,cls,onClick){
+  const b=document.createElement("button");
+  b.className=cls;b.textContent=text;b.type="button";b.onclick=onClick;return b;
+}
+Object.keys(DATA).forEach(d=>{
+  el("deptGrid").appendChild(button(d,"choice dept",()=>chooseDept(d)));
+});
+
+
+const REPAIR_ACCOUNTS=["A1702","A2758","3109"];
+const DEFAULT_REPAIR_PASSWORD="1234";
+sessionStorage.removeItem("repairAuth");
+sessionStorage.removeItem("repairUser");
+let repairAuth=false;
+let currentRepairUser="";
+
+function repairPasswordKey(account){
+  return "repairPassword:"+account;
+}
+function getRepairPassword(account){
+  return localStorage.getItem(repairPasswordKey(account)) || DEFAULT_REPAIR_PASSWORD;
+}
+function isRepairAccount(account){
+  return REPAIR_ACCOUNTS.includes(account);
+}
+
+function showRepairLogin(){
+  el("repairLoginError").classList.add("hidden");
+  el("repairLoginPassword").value="";
+  el("repairLoginModal").classList.remove("hidden");
+  setTimeout(()=>el("repairLoginAccount").focus(),80);
+}
+function hideRepairLogin(){ el("repairLoginModal").classList.add("hidden"); }
+
+function doRepairLogin(){
+  const account=el("repairLoginAccount").value.trim().toUpperCase();
+  const password=el("repairLoginPassword").value;
+  if(isRepairAccount(account) && password===getRepairPassword(account)){
+    repairAuth=true;
+    currentRepairUser=account;
+    el("repairLoginUser").textContent=account;
+    hideRepairLogin();
+    switchMode("repair");
+  }else{
+    el("repairLoginError").textContent="帳號或密碼錯誤，請重新輸入。";
+    el("repairLoginError").classList.remove("hidden");
+    el("repairLoginPassword").select();
+  }
+}
+
+function openChangePassword(prefillAccount=""){
+  el("changePasswordAccount").value=(prefillAccount||"").toUpperCase();
+  el("changePasswordAccount").disabled=!!prefillAccount;
+  el("changePasswordOld").value="";
+  el("changePasswordNew").value="";
+  el("changePasswordConfirm").value="";
+  el("changePasswordError").classList.add("hidden");
+  el("changePasswordSuccess").classList.add("hidden");
+  el("repairPasswordModal").classList.remove("hidden");
+  setTimeout(()=>prefillAccount?el("changePasswordOld").focus():el("changePasswordAccount").focus(),80);
+}
+function closeChangePassword(){
+  el("repairPasswordModal").classList.add("hidden");
+}
+function saveChangedPassword(){
+  const account=el("changePasswordAccount").value.trim().toUpperCase();
+  const oldPass=el("changePasswordOld").value;
+  const newPass=el("changePasswordNew").value;
+  const confirmPass=el("changePasswordConfirm").value;
+  const err=el("changePasswordError");
+
+  err.classList.add("hidden");
+  el("changePasswordSuccess").classList.add("hidden");
+
+  let msg="";
+  if(!isRepairAccount(account)) msg="找不到這個機修帳號。";
+  else if(oldPass!==getRepairPassword(account)) msg="目前密碼不正確。";
+  else if(newPass.length<4) msg="新密碼至少需要 4 碼。";
+  else if(newPass!==confirmPass) msg="兩次輸入的新密碼不一致。";
+
+  if(msg){
+    err.textContent=msg;
+    err.classList.remove("hidden");
+    return;
+  }
+
+  localStorage.setItem(repairPasswordKey(account),newPass);
+  el("changePasswordSuccess").classList.remove("hidden");
+  setTimeout(()=>{
+    closeChangePassword();
+    if(!repairAuth){
+      el("repairLoginAccount").value=account;
+      el("repairLoginPassword").value="";
+      showRepairLogin();
+    }
+  },700);
+}
+
+el("reportModeBtn").onclick=()=>{hideRepairLogin();closeChangePassword();switchMode("report");};
+el("repairModeBtn").onclick=()=>repairAuth?switchMode("repair"):showRepairLogin();
+el("repairLoginCancel").onclick=hideRepairLogin;
+el("repairLoginSubmit").onclick=doRepairLogin;
+el("repairLoginPassword").addEventListener("keydown",e=>{if(e.key==="Enter")doRepairLogin();});
+el("repairLoginAccount").addEventListener("keydown",e=>{if(e.key==="Enter")el("repairLoginPassword").focus();});
+
+el("repairLoginChangePasswordBtn").onclick=()=>{
+  const a=el("repairLoginAccount").value.trim().toUpperCase();
+  openChangePassword(isRepairAccount(a)?a:"");
+};
+el("repairRefreshBtn").onclick=async()=>{
+  const b=el("repairRefreshBtn");
+  const old=b.textContent;
+  b.disabled=true;
+  b.textContent="更新中…";
+  try{ await refreshLiveOrdersInBackground_(true); }
+  finally{ b.disabled=false; b.textContent=old; }
+};
+el("repairChangePasswordBtn").onclick=()=>openChangePassword(currentRepairUser);
+el("changePasswordCancel").onclick=closeChangePassword;
+el("changePasswordSave").onclick=saveChangedPassword;
+el("changePasswordConfirm").addEventListener("keydown",e=>{if(e.key==="Enter")saveChangedPassword();});
+
+el("repairLogoutBtn").onclick=()=>{
+  repairAuth=false;
+  currentRepairUser="";
+  el("repairLoginUser").textContent="—";
+  switchMode("report");
+};
+el("repairLoginUser").textContent="—";
+
+function switchMode(mode){
+  if(mode==="repair" && !repairAuth){showRepairLogin();return;}
+  const isReport=mode==="report";
+  el("reportMode").classList.toggle("hidden",!isReport);
+  el("repairMode").classList.toggle("hidden",isReport);
+  el("reportBottom").classList.toggle("hidden",!isReport);
+  el("reportModeBtn").classList.toggle("active",isReport);
+  el("repairModeBtn").classList.toggle("active",!isReport);
+  if(!isReport){
+    renderRepairOrders();
+    if(SYNC_API_URL) refreshLiveOrdersInBackground_();
+  }
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function urgencyLabel_(level){
+  if(level==="停線")return "🔴 停線";
+  if(level==="緊急")return "🟡 緊急";
+  return "🟢 一般";
+}
+
+async function deleteLiveOrder_(o,btn){
+  if(!o || !o.no)return;
+
+  if(!confirm("確定刪除未完成工單「"+o.no+"」？\n\n此操作會同時刪除「機修維修單」與該工單的追蹤紀錄，且無法復原。")){
+    return;
+  }
+
+  const oldText=btn?btn.textContent:"";
+  if(btn){
+    btn.disabled=true;
+    btn.textContent="刪除中…";
+  }
+
+  try{
+    // V7：改用 JSONP GET 直接取得刪除結果。
+    // 不再先 POST 再重新讀整份工單，因此速度更快，也不會因第二次同步失敗而誤報刪除失敗。
+    const data=await jsonp_("deleteUnfinishedMobileOrder",{
+      orderNo:o.no,
+      confirmOrderNo:o.no,
+      technician:currentRepairUser
+    },30000);
+
+    if(!data || !data.ok || !data.deleted){
+      throw new Error((data&&data.error)||"後端沒有完成刪除");
+    }
+
+    LIVE_ORDERS=LIVE_ORDERS.filter(x=>x.no!==o.no);
+    delete REPAIR_STORE[o.no];
+    saveLiveOrdersCache_();
+    renderRepairOrders();
+
+    alert("✅ 已刪除工單："+o.no);
+
+    // 背景再更新一次，但不阻塞使用者。
+    setTimeout(()=>refreshLiveOrdersInBackground_(true),800);
+  }catch(err){
+    alert("刪除失敗："+err.message);
+    if(btn){
+      btn.disabled=false;
+      btn.textContent=oldText;
+    }
+  }
+}
+
+function renderRepairOrders(){
+  el("repairListCard").classList.remove("hidden");
+  el("repairDetailCard").classList.add("hidden");
+  renderTrackingOverview();
+  el("repairOrderList").innerHTML="";
+  el("repairHistoryList").innerHTML="";
+  const sourceOrders=currentOrders();
+  const openOrders=sourceOrders.filter(o=>o.status!=="已完成");
+  const doneOrders=sourceOrders.filter(o=>o.status==="已完成");
+  if(openOrders.length===0){
+    el("repairOrderList").innerHTML='<div class="history-empty">'+(SYNC_API_URL?'目前沒有未完成工單，或正在同步資料…':'目前沒有未完成工單')+'</div>';
+  }
+  openOrders.forEach(o=>{
+    const wrap=document.createElement("div");
+    wrap.className="order-card-wrap"+(o.deletable?" has-delete":"");
+
+    const b=button("","order-card",()=>openRepairOrder(o));
+    const cls=o.level==="停線"?"red":o.level==="緊急"?"yellow":"green";
+    b.innerHTML='<div class="order-top"><div class="order-no">'+o.no+'</div><span class="tag '+cls+'">'+urgencyLabel_(o.level)+'</span></div>'+
+      '<div class="order-meta">'+o.dept+'｜'+o.machine+'｜'+o.person+'<br>'+o.issue+
+      '<div class="order-status-line"><span class="order-status-label">目前狀態：</span><span class="order-status-value">'+esc(o.status||"待處理")+'</span></div>'+
+      (storeFor(o).followup?'<div>追蹤：'+esc(storeFor(o).followup.summary)+'</div>':'')+'</div>';
+
+    wrap.appendChild(b);
+
+    if(o.deletable){
+      const del=button("🗑 刪除工單","order-delete",()=>deleteLiveOrder_(o,del));
+      wrap.appendChild(del);
+    }
+
+    el("repairOrderList").appendChild(wrap);
+  });
+  if(doneOrders.length===0){
+    el("repairHistoryList").innerHTML='<div class="history-empty">目前沒有已完成工單</div>';
+  }else{
+    doneOrders.forEach(o=>{
+      const b=button("","order-card",()=>openRepairOrder(o));
+      const cls=o.level==="停線"?"red":o.level==="緊急"?"yellow":"green";
+      b.innerHTML='<div class="order-top"><div class="order-no">'+o.no+'</div><span class="tag '+cls+'">'+urgencyLabel_(o.level)+'</span></div>'+
+        '<div class="order-meta">'+o.dept+'｜'+o.machine+'｜'+o.person+'<br>'+o.issue+
+        '<div class="order-status-line"><span class="order-status-label">目前狀態：</span><span class="order-status-value">已完成</span></div></div>';
+      el("repairHistoryList").appendChild(b);
+    });
+  }
+}
+function openRepairOrder(o){
+  const s=storeFor(o);
+  repairState.order=o;repairState.store=s;repairState.type=s.type;repairState.classification=s.classification;repairState.status=s.status;repairState.pendingStatus="";
+  el("repairListCard").classList.add("hidden");el("repairDetailCard").classList.remove("hidden");
+  el("repairNo").textContent=o.no;el("repairMeta").textContent=o.dept+"｜"+o.machine;
+  el("repairKV").innerHTML='<div class="k">報修時間</div><div>'+o.time+'</div><div class="k">報修人</div><div>'+o.person+'</div><div class="k">是否停機</div><div>'+o.stop+'</div><div class="k">緊急程度</div><div>'+o.level+'</div><div class="k">異常描述</div><div>'+o.issue+'</div>';
+  el("repairContent").value=s.content;el("repairNote").value=s.note;
+  el("repairStart").textContent=s.firstStart?formatHM(s.firstStart):"--:--";
+  el("repairEnd").textContent=s.end?formatHM(s.end):"--:--";
+  el("repairTypeSelect").value=s.type||"";el("repairClassSelect").value=s.classification;
+  el("repairTechnician").textContent=currentRepairUser||"—";
+  updateRepairTypeUI();
+  el("saveRepairMsg").classList.add("hidden");el("followPanel").classList.add("hidden");
+  el("completeRepairBtn").disabled=s.status==="已完成";
+  buildRepairStatus();updateRepairControls_();renderWork();renderTimeline();window.scrollTo({top:0,behavior:"smooth"});
+}
+el("repairBack").onclick=()=>{
+  // 先立即回到快取中的工單列表，不等待網路。
+  renderRepairOrders();
+  window.scrollTo({top:0,behavior:"auto"});
+  // 再於背景更新正式工單；成功後才無感刷新列表。
+  if(SYNC_API_URL) refreshLiveOrdersInBackground_();
+};
+function updateRepairTypeUI(){
+  const isFault=el("repairTypeSelect").value==="故障維修";
+  el("repairClassTitle").classList.toggle("hidden",!isFault);
+  el("repairClassSelect").classList.toggle("hidden",!isFault);
+  el("repairClassNote").classList.toggle("hidden",!isFault);
+  if(!isFault){
+    el("repairClassSelect").value="";
+    repairState.classification="";
+  }
+}
+el("repairTypeSelect").onchange=()=>{
+  repairState.type=el("repairTypeSelect").value;
+  updateRepairTypeUI();
+};
+el("repairClassSelect").onchange=()=>{repairState.classification=el("repairClassSelect").value;};
+function repairStatusHint_(v){
+  if(v==="待處理")return "新工單等待機修人員按「開始維修」。";
+  if(v==="處理中")return repairState.store?.activeStart ? "維修進行中，工時正在累計。" : "維修中的工單；目前計時已暫停，可按「恢復維修」繼續累計。";
+  if(v==="待料")return "缺零件／材料，暫停維修與工時計時；到料後按「恢復維修」。";
+  if(v==="外修")return "廠內暫時無法處理，等待廠商維修；回廠／到場後按「恢復維修」。";
+  if(v==="待觀察")return "已處理但需持續觀察運轉；若再處理，按「恢復維修」。";
+  if(v==="已完成")return "工單已完成結案。";
+  return "";
+}
+
+function updateRepairControls_(){
+  const s=repairState.store;
+  if(!s)return;
+
+  const current=repairState.pendingStatus || s.status || "待處理";
+  el("repairCurrentStatus").textContent=current;
+  el("repairStatusHint").textContent=repairStatusHint_(current);
+
+  const startBtn=el("repairStartBtn");
+  const endBtn=el("repairEndBtn");
+  const done=s.status==="已完成";
+
+  if(done){
+    startBtn.textContent="✓ 已結案";
+    startBtn.disabled=true;
+    endBtn.disabled=true;
+  }else if(s.activeStart){
+    startBtn.textContent="⏱ 維修計時中";
+    startBtn.disabled=true;
+    endBtn.disabled=false;
+  }else{
+    startBtn.textContent=s.firstStart?"▶ 恢復維修":"▶ 開始維修";
+    startBtn.disabled=false;
+    endBtn.disabled=true;
+  }
+}
+
+function buildRepairStatus(){
+  const list=["待料","外修","待觀察"];
+  el("repairStatusGrid").innerHTML="";
+  list.forEach(v=>{
+    const icon=v==="待料"?"📦 ":v==="外修"?"🚚 ":"🔎 ";
+    const b=button(icon+v,"repair-status-btn",()=>chooseRepairStatus(v));
+    b.dataset.status=v;
+    el("repairStatusGrid").appendChild(b);
+  });
+  setRepairStatusVisual_(repairState.pendingStatus || repairState.store?.status || "");
+  updateRepairControls_();
+}
+
+function setRepairStatusVisual_(v){
+  document.querySelectorAll("#repairStatusGrid .repair-status-btn").forEach(btn=>{
+    btn.classList.toggle("sel",btn.dataset.status===v);
+    btn.blur();
+  });
+}
+
+function chooseRepairStatus(v){
+  const s=repairState.store;
+  if(!s || s.status==="已完成")return;
+
+  // 這裡只處理「維修途中暫停」的三種狀態。
+  repairState.pendingStatus=v;
+  setRepairStatusVisual_(v);
+  updateRepairControls_();
+
+  if(v==="待料"||v==="外修"){
+    showFollowPanel(v);
+    return;
+  }
+
+  // 待觀察：直接暫停目前維修計時並切換狀態。
+  el("followPanel").classList.add("hidden");
+  repairState.pendingStatus="";
+  applyRepairStatus("待觀察","維修後進入觀察");
+}
+
+function showFollowPanel(v){
+  el("followPanel").classList.remove("hidden");
+  el("followTitle").textContent=v==="待料"?"📦 待料追蹤":"🚚 外修追蹤";
+  el("followFields").innerHTML=v==="待料"
+    ? '<div class="follow-grid"><input id="followA" placeholder="等待零件／材料"><input id="followB" type="date" title="請購日期"><input id="followC" type="date" title="預計到貨日"></div><textarea id="followD" placeholder="補充說明（選填）"></textarea>'
+    : '<div class="follow-grid"><input id="followA" placeholder="送修廠商"><input id="followB" type="date" title="送修日期"><input id="followC" type="date" title="預計回廠日"></div><textarea id="followD" placeholder="送修原因／補充說明"></textarea>';
+  el("followPanel").scrollIntoView({behavior:"smooth",block:"center"});
+}
+el("followConfirm").onclick=()=>{
+  const v=repairState.pendingStatus,a=(el("followA")?.value||"").trim(),b=el("followB")?.value||"",c=el("followC")?.value||"",d=(el("followD")?.value||"").trim();
+  if(!a){alert(v==="待料"?"請先填寫等待的零件／材料":"請先填寫送修廠商");return;}
+  const summary=v==="待料" ? "待料："+a+(c?"｜預計 "+c+" 到貨":"") : "外修："+a+(c?"｜預計 "+c+" 回廠":"");
+  repairState.store.followup={type:v,a,b,c,d,summary};
+  el("followPanel").classList.add("hidden");
+  repairState.pendingStatus="";
+  applyRepairStatus(v,summary+(d?"｜"+d:""));
+  setRepairStatusVisual_(v);
+  updateRepairControls_();
+};
+function formatHM(d){const x=new Date(d),p=n=>String(n).padStart(2,"0");return p(x.getHours())+":"+p(x.getMinutes());}
+function formatStamp(d){const x=new Date(d),p=n=>String(n).padStart(2,"0");return x.getFullYear()+"/"+p(x.getMonth()+1)+"/"+p(x.getDate())+" "+p(x.getHours())+":"+p(x.getMinutes());}
+function workMinutesBetween(a,b){
+  let total=0,cur=new Date(a),end=new Date(b);cur.setHours(0,0,0,0);
+  while(cur<=end){
+    const dayStart=new Date(cur),m1=new Date(cur),m2=new Date(cur),a1=new Date(cur),a2=new Date(cur);
+    m1.setHours(8,0,0,0);m2.setHours(12,0,0,0);a1.setHours(13,0,0,0);a2.setHours(17,0,0,0);
+    total+=overlapDate(a,b,m1,m2)+overlapDate(a,b,a1,a2);
+    cur.setDate(cur.getDate()+1);
+  }
+  return Math.max(0,Math.round(total/60000));
+}
+function overlapDate(a,b,s,e){return Math.max(0,Math.min(new Date(b),e)-Math.max(new Date(a),s));}
+function closeActive(s){
+  if(s.activeStart){s.workMinutes+=workMinutesBetween(s.activeStart,new Date());s.activeStart=null;}
+}
+function applyRepairStatus(v,detail){
+  const s=repairState.store;if(!s)return;
+  repairState.pendingStatus="";
+  if(s.status==="處理中"&&v!=="處理中")closeActive(s);
+  if(v==="處理中"&&!s.activeStart){
+    const now=new Date();s.activeStart=now;if(!s.firstStart)s.firstStart=now;
+  }
+  s.status=v;repairState.status=v;repairState.order.status=v;
+  saveLiveOrdersCache_();
+  s.timeline.push({at:formatStamp(new Date()),title:v,detail:detail||"狀態更新"});
+  el("repairStart").textContent=s.firstStart?formatHM(s.firstStart):"--:--";
+  el("repairEnd").textContent=s.end?formatHM(s.end):"--:--";
+  buildRepairStatus();setRepairStatusVisual_(v);updateRepairControls_();renderWork();renderTimeline();renderTrackingOverview();
+  if(SYNC_API_URL && repairState.order?._live){
+    syncPost_({action:"setStatus",orderNo:repairState.order.no,status:v,technician:currentRepairUser,detail:detail||"狀態更新",nextDate:(repairState.store?.followup?.c||"")}).catch(err=>alert("狀態同步失敗："+err.message));
+  }
+}
+function renderWork(){
+  const s=repairState.store;if(!s)return;
+  let m=s.workMinutes;if(s.activeStart)m+=workMinutesBetween(s.activeStart,new Date());
+  el("repairWork").textContent=Math.floor(m/60)+"時"+String(m%60).padStart(2,"0")+"分";
+}
+function renderTimeline(){
+  const s=repairState.store;if(!s)return;
+  el("repairTimeline").innerHTML=s.timeline.slice().reverse().map(x=>'<div class="timeline-item"><div class="timeline-time">'+esc(x.at)+'</div><div class="timeline-title">'+esc(x.title)+'</div><div class="timeline-detail">'+esc(x.detail||"")+'</div></div>').join("");
+}
+function renderTrackingOverview(){
+  const names=["待處理","處理中","待料","外修","待觀察","已完成"];
+  const counts={};names.forEach(n=>counts[n]=0);currentOrders().forEach(o=>counts[o.status]=(counts[o.status]||0)+1);
+  el("trackOverview").innerHTML=names.map(n=>'<div class="track-box"><b>'+counts[n]+'</b><span>'+n+'</span></div>').join("");
+}
+function overlap(a,b,s,e){return Math.max(0,Math.min(b,e)-Math.max(a,s));}
+el("repairStartBtn").onclick=()=>{
+  const s=repairState.store;
+  if(!s || s.status==="已完成")return;
+  if(s.activeStart){
+    alert("目前已經在計時中。");
+    return;
+  }
+  const isResume=!!s.firstStart;
+  el("followPanel").classList.add("hidden");
+  repairState.pendingStatus="";
+  applyRepairStatus("處理中",isResume?"恢復維修並繼續計時":"開始維修並開始計時");
+};
+
+el("repairEndBtn").onclick=()=>{
+  const s=repairState.store;
+  if(!s)return;
+
+  if(!s.activeStart){
+    alert("目前沒有進行中的維修計時。");
+    return;
+  }
+
+  const now=new Date();
+
+  // 累加本次實際工作時間並停止目前計時，但不代表工單結案。
+  closeActive(s);
+  s.end=now;
+  repairState.end=now;
+
+  el("repairEnd").textContent=formatHM(now);
+  renderWork();
+
+  s.timeline.push({
+    at:formatStamp(now),
+    title:"結束本次計時",
+    detail:"本次維修計時已停止；工單尚未結案。"
+  });
+  renderTimeline();
+
+  // 狀態維持「處理中」，之後按「恢復維修」可繼續累加工時。
+  setRepairStatusVisual_(repairState.pendingStatus || s.status || "處理中");
+  updateRepairControls_();
+};
+el("completeRepairBtn").onclick=()=>{
+  const s=repairState.store;if(!s)return;
+
+  if(s.status==="已完成"){
+    alert("這張工單已經結案。");
+    return;
+  }
+
+  // 不論目前是待處理、處理中、待料、外修、待觀察，
+  // 都可以直接按這顆綠色按鈕做最後結案。
+  if(!confirm("確定設備已維修完成並結案？"))return;
+
+  const now=new Date();
+
+  // 如果目前正在計時，先把這一段工時累加後停止。
+  if(s.activeStart)closeActive(s);
+
+  // 若整張工單從未按過開始維修，也允許結案；
+  // 起訖時間同時記錄為結案當下，工時為 0 分，避免流程被卡住。
+  if(!s.firstStart)s.firstStart=now;
+
+  s.end=now;
+  s.status="已完成";
+  repairState.status="已完成";
+  repairState.pendingStatus="";
+  repairState.order.status="已完成";
+  saveLiveOrdersCache_();
+
+  s.timeline.push({
+    at:formatStamp(now),
+    title:"已完成",
+    detail:"維修完成・工單結案"
+  });
+
+  el("repairStart").textContent=formatHM(s.firstStart);
+  el("repairEnd").textContent=formatHM(now);
+
+  renderWork();
+  renderTimeline();
+  buildRepairStatus();
+  setRepairStatusVisual_("已完成");
+  updateRepairControls_();
+  renderTrackingOverview();
+
+  el("completeRepairBtn").disabled=true;
+  el("saveRepairMsg").textContent=SYNC_API_URL?"⏳ 正在同步結案…":"✅ 工單已模擬結案（未寫入正式資料）";
+  el("saveRepairMsg").classList.remove("hidden");
+
+  if(SYNC_API_URL && repairState.order?._live){
+    syncPost_({
+      action:"closeRepair",
+      orderNo:repairState.order.no,
+      technician:currentRepairUser,
+      repairType:s.type,
+      classification:s.classification,
+      content:s.content,
+      note:s.note
+    }).then(()=>{
+      el("saveRepairMsg").textContent="✅ 已同步至電腦「機修維修單」";
+    }).catch(err=>alert("結案同步失敗："+err.message));
+  }
+};
+el("saveRepairBtn").onclick=()=>{
+  const s=repairState.store;if(!s)return;
+  s.type=el("repairTypeSelect").value;s.classification=el("repairClassSelect").value;s.technician=currentRepairUser;s.content=el("repairContent").value.trim();s.note=el("repairNote").value.trim();
+  repairState.type=s.type;repairState.classification=s.classification;
+  s.timeline.push({at:formatStamp(new Date()),title:"更新維修紀錄",detail:(s.type||"未選維修類型")+"｜"+(s.classification||"未分類")+(s.content?"｜"+s.content:"")});
+  renderTimeline();
+  if(SYNC_API_URL && repairState.order?._live){
+    el("saveRepairMsg").textContent="⏳ 正在同步至電腦…";
+    el("saveRepairMsg").classList.remove("hidden");
+    syncPost_({action:"saveRepair",orderNo:repairState.order.no,technician:currentRepairUser,repairType:s.type,classification:s.classification,content:s.content,note:s.note})
+      .then(()=>{el("saveRepairMsg").textContent="✅ 已同步至電腦「機修維修單」";})
+      .catch(err=>alert("儲存同步失敗："+err.message));
+  }else{
+    el("saveRepairMsg").textContent="✅ 測試儲存成功（未寫入正式資料）";
+    el("saveRepairMsg").classList.remove("hidden");
+  }
+};
+
+function chooseDept(d){
+  state.dept=d;state.person=state.area=state.machine=state.stop=state.level="";
+  document.querySelectorAll("#deptGrid .choice").forEach(b=>b.classList.toggle("sel",b.textContent===d));
+  el("personGrid").innerHTML="";
+  DATA[d].people.forEach(p=>el("personGrid").appendChild(button(p,"choice",()=>choosePerson(p))));
+  el("personCard").classList.remove("hidden");
+  if(DATA[d].people.length===1){choosePerson(DATA[d].people[0]);el("personHint").textContent="此部門報修人已自動選取";}
+  else el("personHint").textContent="請選擇報修人";
+  update();
+}
+function choosePerson(p){
+  state.person=p;
+  state.machine="";
+  document.querySelectorAll("#personGrid .choice").forEach(b=>b.classList.toggle("sel",b.textContent===p));
+  el("statusCard").classList.add("hidden");
+  el("issueCard").classList.add("hidden");
+  el("summaryCard").classList.add("hidden");
+  updateIssueMode();
+  const areas=Object.keys(DATA[state.dept].areas);
+  el("areaGrid").innerHTML="";
+  if(areas.length===1){
+    state.area=areas[0];el("areaCard").classList.add("hidden");showMachines();
+  }else{
+    areas.forEach(a=>el("areaGrid").appendChild(button(a,"choice",()=>chooseArea(a))));
+    el("areaCard").classList.remove("hidden");
+  }
+  update();
+}
+function chooseArea(a){
+  state.area=a;state.machine="";
+  document.querySelectorAll("#areaGrid .choice").forEach(b=>b.classList.toggle("sel",b.textContent===a));
+  showMachines();update();
+}
+function showMachines(){
+  if(!state.area)return;
+  el("machineCard").classList.remove("hidden");
+  el("machineSearch").value="";
+  renderMachines();
+}
+function updateIssueMode(){
+  const special=state.machine===SPECIAL_MACHINE;
+  el("issueTitle").textContent=special?"⑥ 現場人員臨時作業需求（描述）":"⑥ 機台異常描述";
+  el("issueHint").textContent=special?"請填寫臨時需求／特殊作業的原因與內容":"簡單描述看到的問題即可";
+  el("issue").placeholder=special
+    ?"例如：臨時安裝照明、協助加工、設備移位、現場改善作業…"
+    :"例如：機台啟動後出現警報，無法正常加工…";
+}
+function renderMachines(){
+  const q=el("machineSearch").value.trim().toLowerCase();
+  const normal=DATA[state.dept].areas[state.area]||[];
+  const normalOnly=normal.filter(x=>x!==SPECIAL_MACHINE);
+  const all=canUseSpecialMachine_() ? [SPECIAL_MACHINE,...normalOnly] : normalOnly;
+  const list=all.filter(x=>x.toLowerCase().includes(q));
+  el("machineGrid").innerHTML="";
+  list.forEach(m=>{
+    const b=button(m,m===SPECIAL_MACHINE?"machine special":"machine",()=>{
+      state.machine=m;
+      renderMachines();
+      updateIssueMode();
+      el("statusCard").classList.remove("hidden");
+      el("issueCard").classList.remove("hidden");
+      update();
+    });
+    if(state.machine===m)b.classList.add("sel");
+    el("machineGrid").appendChild(b);
+  });
+}
+el("machineSearch").addEventListener("input",renderMachines);
+document.querySelectorAll(".stopbtn").forEach(b=>b.onclick=()=>{
+  state.stop=b.dataset.stop;
+  document.querySelectorAll(".stopbtn").forEach(x=>x.classList.toggle("sel",x===b));
+  update();
+});
+document.querySelectorAll(".levelbtn").forEach(b=>b.onclick=()=>{
+  state.level=b.dataset.v;
+  document.querySelectorAll(".levelbtn").forEach(x=>x.classList.toggle("sel",x===b));
+  update();
+});
+el("issue").addEventListener("input",update);
+el("clearIssue").onclick=()=>{el("issue").value="";update();};
+
+el("photo").addEventListener("change",e=>{
+  const f=e.target.files[0],box=el("photoPreview"),img=box.querySelector("img");
+  if(!f){box.style.display="none";return;}
+  img.src=URL.createObjectURL(f);box.style.display="block";
+});
+
+function update(){
+  const issue=el("issue").value.trim();
+  const ready=state.dept&&state.person&&state.area&&state.machine&&state.stop&&state.level&&issue;
+  el("submitBtn").disabled=!ready;
+  if(ready){
+    el("summaryCard").classList.remove("hidden");
+    el("summary").innerHTML=
+      "<strong>部門：</strong>"+esc(state.dept)+"<br>"+
+      (state.area!==state.dept&&state.area!=="空壓機室"?"<strong>區域：</strong>"+esc(state.area)+"<br>":"")+
+      "<strong>報修人：</strong>"+esc(state.person)+"<br>"+
+      "<strong>機台：</strong>"+esc(state.machine)+"<br>"+
+      "<strong>是否停機：</strong>"+esc(state.stop)+"<br>"+
+      "<strong>緊急程度：</strong>"+esc(state.level)+"<br>"+
+      (state.machine===SPECIAL_MACHINE?"<strong>需求原因：</strong>":"<strong>異常描述：</strong>")+esc(issue);
+  }else el("summaryCard").classList.add("hidden");
+  const score=[state.dept,state.person,state.area,state.machine,(state.stop&&state.level&&issue)].filter(Boolean).length;
+  document.querySelectorAll("#progress span").forEach((s,i)=>s.classList.toggle("on",i<Math.max(1,score)));
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+el("submitBtn").onclick=async()=>{
+  const issue=el("issue").value.trim();
+  if(!(state.dept&&state.person&&state.machine&&state.stop&&state.level&&issue))return;
+
+  const btn=el("submitBtn");
+  const oldText=btn.textContent;
+  btn.disabled=true;
+  btn.textContent="建立工單中…";
+
+  try{
+    if(!state.requestId){
+      state.requestId="MOB-"+Date.now()+"-"+Math.floor(Math.random()*1000000);
+    }
+
+    const data=await jsonp_("createMobileReportTest",{
+      dept:state.dept,
+      person:state.person,
+      machine:state.machine,
+      stop:state.stop,
+      level:state.level,
+      issue:issue,
+      requestId:state.requestId
+    },35000);
+
+    if(!data || !data.orderNo)throw new Error("沒有取得工單編號");
+    if(!data.verified || data.spreadsheetId!==EXPECTED_SPREADSHEET_ID){
+      throw new Error("後端沒有完成正式試算表回讀驗證，請重新部署最新 Webhook.gs");
+    }
+    if(data.backendVersion!==EXPECTED_BACKEND_VERSION){
+      throw new Error("Apps Script 後端不是最新 V8，請更新部署後再試");
+    }
+
+    el("orderNo").textContent=data.orderNo;
+    const localOrder={
+      no:data.orderNo,time:new Date().toLocaleString("zh-TW",{hour12:true}),
+      person:state.person,dept:state.dept,machine:state.machine,stop:state.stop,
+      issue:issue,level:state.level,status:"待處理",type:"",classification:"",
+      technician:"",content:"",note:"",start:"",end:"",work:"",
+      followupSummary:"",nextFollow:"",lastFollow:"",trackCount:0,deletable:true,_live:true
+    };
+    const existing=LIVE_ORDERS.findIndex(x=>x.no===data.orderNo);
+    if(existing>=0)LIVE_ORDERS[existing]=localOrder; else LIVE_ORDERS.push(localOrder);
+    saveLiveOrdersCache_();
+    el("successText").textContent="✅ 已寫入正式「機修維修單」並完成回讀驗證｜維修工作台已同步顯示。";
+    el("success").classList.remove("hidden");
+  }catch(err){
+    alert("手機報修建立失敗："+err.message);
+  }finally{
+    btn.textContent=oldText;
+    btn.disabled=false;
+  }
+};
+el("againBtn").onclick=()=>{el("success").classList.add("hidden");reset();};
+el("resetBtn").onclick=reset;
+function reset(){
+  Object.keys(state).forEach(k=>state[k]="");
+  el("issue").value="";el("machineSearch").value="";el("photo").value="";el("photoPreview").style.display="none";updateIssueMode();
+  document.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));
+  cards.forEach(id=>el(id).classList.add("hidden"));
+  el("submitBtn").disabled=true;update();
+}
+update();
+</script>
+</body>
+</html>
