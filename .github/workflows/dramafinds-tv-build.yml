@@ -1,0 +1,98 @@
+name: Build DramaFinds TV APK
+
+on:
+  push:
+    branches:
+      - dramafinds-tv-builder
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dramafinds-tv
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Ensure Android SDK 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Build APK
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Static APK checks
+        run: |
+          set -euxo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | tee apk-badging.txt
+          grep -q "package: name='com.sian.dramafindstv'" apk-badging.txt
+          grep -q "sdkVersion:'24'" apk-badging.txt
+          grep -q "targetSdkVersion:'35'" apk-badging.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | tee manifest-tree.txt
+          grep -q "android.intent.category.LEANBACK_LAUNCHER" manifest-tree.txt
+          unzip -l "$APK" | grep -q "classes.dex"
+
+      - name: DramaFinds network check
+        run: |
+          set -euxo pipefail
+          curl -A "Mozilla/5.0 (Linux; Android 11; Android TV) AppleWebKit/537.36 Chrome/125 Safari/537.36"             -fL --retry 2 --connect-timeout 10 --max-time 30             "https://dramafinds.com/zh-TW" -o /tmp/dramafinds.html
+          test -s /tmp/dramafinds.html
+
+      - name: Emulator smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          working-directory: dramafinds-tv
+          script: |
+            set -euxo pipefail
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -W -n com.sian.dramafindstv/.MainActivity | tee emulator-start.txt
+            sleep 8
+            adb shell dumpsys activity activities | grep -q "com.sian.dramafindstv/.MainActivity"
+            adb shell input keyevent KEYCODE_DPAD_DOWN
+            adb shell input keyevent KEYCODE_DPAD_RIGHT
+            adb shell input keyevent KEYCODE_DPAD_CENTER
+            sleep 2
+            adb shell input keyevent KEYCODE_BACK
+            adb shell pidof com.sian.dramafindstv
+            if adb logcat -d -t 400 | grep -E "FATAL EXCEPTION|Process: com\.sian\.dramafindstv"; then
+              echo "Fatal runtime crash detected"
+              exit 1
+            fi
+
+      - name: Upload APK and test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DramaFinds-TV-v1.0.0-debug
+          path: |
+            dramafinds-tv/app/build/outputs/apk/debug/app-debug.apk
+            dramafinds-tv/apk-badging.txt
+            dramafinds-tv/manifest-tree.txt
+            dramafinds-tv/emulator-start.txt
+          if-no-files-found: warn
+          retention-days: 30
