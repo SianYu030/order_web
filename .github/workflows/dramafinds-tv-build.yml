@@ -64,7 +64,19 @@ jobs:
           curl -A "Mozilla/5.0 (Linux; Android 11; Android TV) AppleWebKit/537.36 Chrome/125 Safari/537.36"             -fL --retry 2 --connect-timeout 10 --max-time 30             "https://dramafinds.com/zh-TW" -o /tmp/dramafinds.html
           test -s /tmp/dramafinds.html
 
+      - name: Upload APK immediately
+        uses: actions/upload-artifact@v4
+        with:
+          name: DramaFinds-TV-v1.0.0-debug
+          path: |
+            dramafinds-tv/app/build/outputs/apk/debug/app-debug.apk
+            dramafinds-tv/apk-badging.txt
+            dramafinds-tv/manifest-tree.txt
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Emulator smoke test
+        timeout-minutes: 12
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -90,15 +102,11 @@ jobs:
               exit 1
             fi
 
-      - name: Upload APK and test logs
+      - name: Upload emulator log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: DramaFinds-TV-v1.0.0-debug
-          path: |
-            dramafinds-tv/app/build/outputs/apk/debug/app-debug.apk
-            dramafinds-tv/apk-badging.txt
-            dramafinds-tv/manifest-tree.txt
-            dramafinds-tv/emulator-start.txt
+          name: DramaFinds-TV-emulator-log
+          path: dramafinds-tv/emulator-start.txt
           if-no-files-found: warn
           retention-days: 30
