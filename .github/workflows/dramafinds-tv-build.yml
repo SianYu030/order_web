@@ -97,10 +97,7 @@ jobs:
             sleep 2
             adb shell input keyevent KEYCODE_BACK
             adb shell pidof com.sian.dramafindstv
-            if adb logcat -d -t 400 | grep -E "FATAL EXCEPTION|Process: com\.sian\.dramafindstv"; then
-              echo "Fatal runtime crash detected"
-              exit 1
-            fi
+            ! adb logcat -d -t 400 | grep -E "FATAL EXCEPTION|Process: com\.sian\.dramafindstv"
 
       - name: Upload emulator log
         if: always()
