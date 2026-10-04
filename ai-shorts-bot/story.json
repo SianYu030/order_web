@@ -1,230 +1,157 @@
 {
-  "story_id": "20261001-raccoon-red-ball",
-  "title": "He Stole the Red Ball… for THIS",
-  "description": "Original 42-second visual animal rescue story with a misdirection, emotional reveal, and loop ending.",
+  "story_id": "20261004-otter-ice-cube",
+  "title": "One Ice Cube Changed Everything",
+  "description": "Original 38-second visual animal comedy with escalating cause-and-effect, a false win, satisfying payoff, and seamless loop.",
   "hashtags": [
     "#shorts",
     "#animalstory",
-    "#raccoon",
+    "#otter",
     "#aishorts"
   ],
   "category_id": "15",
   "made_for_kids": false,
   "synthetic_media": true,
-  "content_format": "mini_rescue",
-  "duration_seconds": 42,
-  "hook": "A raccoon grabs a bright red ball from a dog in the first frame and races toward a rain gutter.",
+  "content_format": "relatable_comedy",
+  "duration_seconds": 38,
+  "hook": "A tiny otter snatches one ice cube from a wobbling tray in the first frame and slides away as the tray begins to tip.",
   "retention_beats": [
-    "0-3s immediate grab and chase",
-    "3-8s raccoon keeps looking toward the gutter",
-    "8-13s ball enters rushing water",
-    "13-18s apparent loss creates misdirection",
-    "18-24s red flashes below hint at purpose",
-    "24-30s duckling reveal",
-    "30-36s cooperative retrieval",
-    "36-40s emotional payoff",
-    "40-42s ball-to-lens loop"
+    "0-3s immediate ice-cube grab and tipping tray",
+    "3-7s floor chase with a skittering cube",
+    "7-12s cube vanishes under cabinet",
+    "12-17s false celebration",
+    "17-23s hidden cube triggers a harmless chain reaction",
+    "23-29s escalating chase and airborne cube",
+    "29-35s cube lands perfectly in the water bowl",
+    "35-38s second cube flies to lens for loop"
   ],
-  "rewatch_trigger": "A tiny yellow reflection appears in the puddle during scene 2, foreshadowing the duckling reveal.",
-  "loop_bridge": "The red ball fills the final frame at the same scale and direction as the opening ball, with a matching squeak.",
+  "rewatch_trigger": "A toy penguin in the background slowly rotates during the first half, later revealing it was nudged by the runaway cube.",
+  "loop_bridge": "A second ice cube fills the final frame, matching the opening cube with the same sharp ice clink.",
   "scenes": [
     {
-      "background": "rain",
-      "caption": "WHY TAKE IT?",
+      "background": "kitchen",
+      "caption": "GOT IT!",
       "retention_purpose": "hook",
-      "camera": "extreme close-up, whip-pan",
-      "action": "Raccoon grabs the dog's red ball and runs.",
+      "camera": "macro close-up into whip-pan",
+      "action": "Otter grabs one ice cube from a wobbling tray and slides away.",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.48,
-          "y": 0.66,
-          "scale": 0.9,
-          "emotion": "urgent"
-        },
-        {
-          "type": "dog",
-          "x": 0.7,
-          "y": 0.68,
+          "type": "otter",
+          "x": 0.46,
+          "y": 0.67,
           "scale": 0.82,
+          "emotion": "mischievous"
+        }
+      ]
+    },
+    {
+      "background": "kitchen",
+      "caption": "UH-OH",
+      "retention_purpose": "escalation",
+      "camera": "low floor tracking push",
+      "action": "Otter slides after the skittering cube while a toy penguin subtly turns.",
+      "actors": [
+        {
+          "type": "otter",
+          "x": 0.52,
+          "y": 0.7,
+          "scale": 0.86,
+          "emotion": "focused"
+        }
+      ]
+    },
+    {
+      "background": "kitchen",
+      "caption": "WHERE'D IT GO?",
+      "retention_purpose": "misdirection",
+      "camera": "follow cube then snap to reaction",
+      "action": "Cube slides beneath a cabinet and vanishes; otter freezes.",
+      "actors": [
+        {
+          "type": "otter",
+          "x": 0.5,
+          "y": 0.67,
+          "scale": 0.92,
           "emotion": "shocked"
         }
       ]
     },
     {
-      "background": "rain",
-      "caption": "HE LOOKS BACK",
-      "retention_purpose": "escalation",
-      "camera": "low tracking push-in",
-      "action": "Raccoon runs toward the gutter while a tiny yellow reflection briefly appears in a puddle.",
+      "background": "kitchen",
+      "caption": "EASY.",
+      "retention_purpose": "micro-payoff",
+      "camera": "medium close-up push-in",
+      "action": "Otter proudly holds a tiny ice chip while the original cube keeps sliding behind the cabinet edge.",
       "actors": [
         {
-          "type": "raccoon",
+          "type": "otter",
           "x": 0.5,
-          "y": 0.65,
-          "scale": 0.92,
-          "emotion": "worried"
-        },
+          "y": 0.64,
+          "scale": 0.9,
+          "emotion": "proud"
+        }
+      ]
+    },
+    {
+      "background": "kitchen",
+      "caption": "WAIT…",
+      "retention_purpose": "escalation",
+      "camera": "accelerating lateral track",
+      "action": "The hidden cube taps the toy penguin, which bumps a spoon, which rolls a lemon.",
+      "actors": [
         {
-          "type": "dog",
-          "x": 0.76,
-          "y": 0.68,
+          "type": "otter",
+          "x": 0.72,
+          "y": 0.66,
           "scale": 0.7,
           "emotion": "confused"
         }
       ]
     },
     {
-      "background": "street",
-      "caption": "NOT THE DRAIN…",
+      "background": "kitchen",
+      "caption": "CATCH IT!",
       "retention_purpose": "escalation",
-      "camera": "overhead tilt then snap push",
-      "action": "Raccoon sets the ball into flowing gutter water.",
+      "camera": "rapid action-match cuts then brief slow motion",
+      "action": "Otter dodges the lemon and turns as the original cube pops upward from the spoon.",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.38,
+          "type": "otter",
+          "x": 0.48,
+          "y": 0.63,
+          "scale": 0.92,
+          "emotion": "determined"
+        }
+      ]
+    },
+    {
+      "background": "kitchen",
+      "caption": "PERFECT.",
+      "retention_purpose": "reveal",
+      "camera": "top-down to close-up",
+      "action": "Otter redirects the cube with one paw and it lands perfectly in the tiny water bowl.",
+      "actors": [
+        {
+          "type": "otter",
+          "x": 0.42,
           "y": 0.62,
-          "scale": 0.86,
-          "emotion": "focused"
-        },
-        {
-          "type": "dog",
-          "x": 0.72,
-          "y": 0.65,
-          "scale": 0.78,
-          "emotion": "alarmed"
-        }
-      ]
-    },
-    {
-      "background": "rain",
-      "caption": "IT'S GONE",
-      "retention_purpose": "misdirection",
-      "camera": "follow the ball then reaction close-up",
-      "action": "Ball disappears from view; raccoon immediately follows the channel.",
-      "actors": [
-        {
-          "type": "dog",
-          "x": 0.52,
-          "y": 0.64,
-          "scale": 1.02,
-          "emotion": "sad"
-        },
-        {
-          "type": "raccoon",
-          "x": 0.82,
-          "y": 0.63,
-          "scale": 0.58,
-          "emotion": "urgent"
-        }
-      ]
-    },
-    {
-      "background": "rain",
-      "caption": "WAIT…",
-      "retention_purpose": "micro-payoff",
-      "camera": "fast lateral tracking",
-      "action": "Red flashes appear through drain openings as raccoon follows above.",
-      "actors": [
-        {
-          "type": "raccoon",
-          "x": 0.52,
-          "y": 0.63,
-          "scale": 0.9,
-          "emotion": "focused"
-        },
-        {
-          "type": "dog",
-          "x": 0.78,
-          "y": 0.66,
-          "scale": 0.68,
-          "emotion": "curious"
-        }
-      ]
-    },
-    {
-      "background": "street",
-      "caption": "THAT'S WHY",
-      "retention_purpose": "reveal",
-      "camera": "rack focus from red ball to duckling",
-      "action": "Reveal a duckling on a safe ledge; the floating ball reaches it as a bright guide and support.",
-      "actors": [
-        {
-          "type": "raccoon",
-          "x": 0.28,
-          "y": 0.48,
-          "scale": 0.58,
-          "emotion": "worried"
-        }
-      ]
-    },
-    {
-      "background": "rain",
-      "caption": "PULL!",
-      "retention_purpose": "escalation",
-      "camera": "rapid action-match cuts",
-      "action": "Raccoon guides a vine through the opening and the dog helps pull it back.",
-      "actors": [
-        {
-          "type": "raccoon",
-          "x": 0.38,
-          "y": 0.64,
           "scale": 0.82,
-          "emotion": "determined"
-        },
-        {
-          "type": "dog",
-          "x": 0.68,
-          "y": 0.66,
-          "scale": 0.86,
-          "emotion": "determined"
+          "emotion": "delighted"
         }
       ]
     },
     {
-      "background": "street",
-      "caption": "SAFE ❤️",
-      "retention_purpose": "reveal",
-      "camera": "quick close-up, rain softens",
-      "action": "Duckling emerges safely beside the ball; dog nuzzles it and raccoon relaxes.",
-      "actors": [
-        {
-          "type": "raccoon",
-          "x": 0.32,
-          "y": 0.67,
-          "scale": 0.75,
-          "emotion": "relieved"
-        },
-        {
-          "type": "dog",
-          "x": 0.68,
-          "y": 0.66,
-          "scale": 0.8,
-          "emotion": "happy"
-        }
-      ]
-    },
-    {
-      "background": "street",
+      "background": "kitchen",
       "caption": "",
       "retention_purpose": "loop",
-      "camera": "ball rolls straight into lens",
-      "action": "Duckling nudges the red ball toward camera until it fills the frame.",
+      "camera": "bowl-level push then rack focus",
+      "action": "Otter taps the tray with its tail; a second cube flies toward camera until it fills the frame.",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.3,
+          "type": "otter",
+          "x": 0.5,
           "y": 0.64,
-          "scale": 0.65,
-          "emotion": "happy"
-        },
-        {
-          "type": "dog",
-          "x": 0.72,
-          "y": 0.64,
-          "scale": 0.68,
-          "emotion": "happy"
+          "scale": 0.78,
+          "emotion": "mischievous"
         }
       ]
     }
