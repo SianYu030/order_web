@@ -1,0 +1,1366 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>封邊標籤辨識｜自動掃描修正版 v20</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
+.wrap{max-width:720px;margin:auto}.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.07)}
+h1{font-size:23px;margin:0 0 8px}.muted{color:#667681;line-height:1.55;font-size:14px}
+.capture{display:flex;align-items:center;justify-content:center;min-height:62px;border-radius:14px;background:#145da0;color:#fff;font-weight:800;font-size:19px;cursor:pointer}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.autoScan{background:#0f7a54;color:#fff;min-height:62px}.cameraBox{display:none;margin-top:12px}.videoWrap{position:relative;border-radius:14px;overflow:hidden;background:#111}.videoWrap video{display:block;width:100%;max-height:62vh;object-fit:cover}.guide{position:absolute;left:7%;right:7%;top:18%;bottom:18%;border:3px solid rgba(255,255,255,.92);border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.18);pointer-events:none}.guide:before{content:'請把整張白色標籤放進框內';position:absolute;left:50%;top:-36px;transform:translateX(-50%);background:rgba(0,0,0,.68);color:#fff;padding:6px 10px;border-radius:8px;font-size:13px;white-space:nowrap}.scanHint{margin-top:9px;padding:10px 12px;border-radius:10px;background:#eef4f8;font-weight:750}.scanMeta{font-size:12px;color:#60717c;margin-top:6px}.stopCam{width:100%;background:#eceff2;color:#243744;margin-top:8px}@media(max-width:520px){.actions{grid-template-columns:1fr}}
+.capture input{display:none}.status{margin-top:12px;padding:12px;border-radius:12px;background:#eef4f8;font-weight:700;line-height:1.5}
+.grid{display:grid;gap:10px}.result{padding:13px;border:1px solid #d6dee4;border-radius:12px}.result b{display:block;font-size:14px;color:#60717c;margin-bottom:4px}.value{font-size:21px;font-weight:850;word-break:break-all}
+.ok{background:#edf8ef;border-color:#badfc0}.warn{background:#fff7df;border-color:#e7d28f}
+.timing{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.7;white-space:pre-wrap}
+#preview{width:100%;border-radius:12px;margin-top:12px;display:none;border:1px solid #d7dfe5}
+.small{font-size:13px;color:#667681;margin-top:8px;line-height:1.5}
+button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:800}
+.secondary{width:100%;background:#e7eef3;color:#18323f;margin-top:10px}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#edf2f5;font-size:12px;font-weight:800;margin-top:8px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>封邊標籤辨識｜自動掃描修正版 v20</h1>
+    <div class="muted">推薦使用「自動掃描」：先收集清楚影格，不要求預覽階段一定先掃到QR；約5個影格或最多4秒就自動挑最佳畫面，再做完整QR／單號／B碼辨識。</div>
+    <div class="actions">
+      <button id="autoScanBtn" class="autoScan" type="button">🎯 自動掃描（推薦）</button>
+      <label class="capture">📸 拍照辨識
+        <input id="photo" type="file" accept="image/*" capture="environment">
+      </label>
+    </div>
+    <div id="cameraBox" class="cameraBox">
+      <div class="videoWrap">
+        <video id="liveVideo" autoplay muted playsinline></video>
+        <div class="guide"></div>
+      </div>
+      <div id="scanHint" class="scanHint">相機準備中…</div>
+      <div id="scanMeta" class="scanMeta">會自動取樣 5 個影格並挑選最佳畫面。</div>
+      <button id="stopCameraBtn" class="stopCam" type="button">關閉相機</button>
+    </div>
+    <div id="status" class="status">背景載入 OCR 中…</div>
+    <div id="locBadge" class="badge">尚未定位標籤</div>
+    <img id="preview" alt="normalized label">
+    <button id="clearBtn" class="secondary" type="button">清除結果</button>
+  </div>
+
+  <div class="card grid">
+    <div id="qrBox" class="result"><b>QR碼</b><div id="qr" class="value">－</div></div>
+    <div id="orderBox" class="result"><b>單號</b><div id="order" class="value">－</div></div>
+    <div id="bBox" class="result"><b>B碼</b><div id="bcode" class="value">－</div></div>
+  </div>
+
+  <div class="card">
+    <b>速度／穩定度紀錄</b>
+    <div id="timing" class="timing">尚未測試</div>
+    <div class="small">自動掃描會先挑掉模糊、過暗、過曝的影格；請把整張標籤留在框內。iPhone／Android 仍會統一方向與解析度後再辨識。</div>
+  </div>
+</div>
+
+<script>
+// v20 2026-10-05：修正 iPhone 即時預覽會一直等待的問題；取樣不再要求每一幀先讀到QR，改為畫質先取樣＋QR加分＋4秒保底送辨識
+const $=id=>document.getElementById(id);
+let workerPromise=null;
+const now=()=>performance.now();
+const sec=v=>(v/1000).toFixed(2)+' 秒';
+
+async function warmWorker(){
+  if(!workerPromise){
+    workerPromise=Tesseract.createWorker('eng',1,{
+      logger:m=>{
+        if(m.status==='recognizing text'){
+          $('status').textContent='OCR 載入／辨識 '+Math.round((m.progress||0)*100)+'%';
+        }
+      }
+    }).then(async w=>{
+      try{await w.setParameters({preserve_interword_spaces:'1'});}catch(e){}
+      $('status').textContent='✅ OCR 已預熱，可直接拍照';
+      return w;
+    }).catch(e=>{
+      workerPromise=null;
+      $('status').textContent='⚠️ OCR 載入失敗，請重新整理';
+      throw e;
+    });
+  }
+  return workerPromise;
+}
+window.addEventListener('load',()=>{
+  if('requestIdleCallback' in window) requestIdleCallback(()=>warmWorker());
+  else setTimeout(()=>warmWorker(),150);
+});
+
+async function loadImage(file){
+  // v10：先把不同 iPhone／Android 的 EXIF 方向、超高解析照片統一成穩定的瀏覽器影像。
+  // createImageBitmap 支援時優先使用；不支援或 HEIC 解碼失敗時退回傳統 Image。
+  try{
+    if('createImageBitmap' in window){
+      const bmp=await createImageBitmap(file,{imageOrientation:'from-image'});
+      const srcW=bmp.width,srcH=bmp.height;
+      const maxSide=3200;
+      const scale=Math.min(1,maxSide/Math.max(srcW,srcH));
+      const w=Math.max(1,Math.round(srcW*scale)),h=Math.max(1,Math.round(srcH*scale));
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      cv.getContext('2d',{alpha:false}).drawImage(bmp,0,0,w,h);
+      if(bmp.close)bmp.close();
+      const img=new Image();
+      await new Promise((resolve,reject)=>{
+        img.onload=resolve;
+        img.onerror=()=>reject(new Error('照片標準化失敗'));
+        img.src=cv.toDataURL('image/jpeg',0.94);
+      });
+      return img;
+    }
+  }catch(e){}
+
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file),img=new Image();
+    img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('照片讀取失敗'))};
+    img.src=url;
+  });
+}
+
+function otsu(gray){
+  const hist=new Uint32Array(256);
+  for(let i=0;i<gray.length;i++)hist[gray[i]]++;
+  let total=gray.length,sum=0;
+  for(let i=0;i<256;i++)sum+=i*hist[i];
+  let sumB=0,wB=0,maxVar=-1,threshold=160;
+  for(let t=0;t<256;t++){
+    wB+=hist[t]; if(!wB)continue;
+    const wF=total-wB; if(!wF)break;
+    sumB+=t*hist[t];
+    const mB=sumB/wB,mF=(sum-sumB)/wF;
+    const v=wB*wF*(mB-mF)*(mB-mF);
+    if(v>maxVar){maxVar=v;threshold=t;}
+  }
+  return threshold;
+}
+
+function dist(a,b){
+  const dx=a.x-b.x,dy=a.y-b.y;
+  return Math.hypot(dx,dy);
+}
+
+function affineForTriangle(s0,s1,s2,d0,d1,d2){
+  const det=s0.x*(s1.y-s2.y)+s1.x*(s2.y-s0.y)+s2.x*(s0.y-s1.y);
+  if(Math.abs(det)<1e-8) return null;
+  const a=(d0.x*(s1.y-s2.y)+d1.x*(s2.y-s0.y)+d2.x*(s0.y-s1.y))/det;
+  const c=(d0.x*(s2.x-s1.x)+d1.x*(s0.x-s2.x)+d2.x*(s1.x-s0.x))/det;
+  const e=(d0.x*(s1.x*s2.y-s2.x*s1.y)+d1.x*(s2.x*s0.y-s0.x*s2.y)+d2.x*(s0.x*s1.y-s1.x*s0.y))/det;
+  const b=(d0.y*(s1.y-s2.y)+d1.y*(s2.y-s0.y)+d2.y*(s0.y-s1.y))/det;
+  const d=(d0.y*(s2.x-s1.x)+d1.y*(s0.x-s2.x)+d2.y*(s1.x-s0.x))/det;
+  const f=(d0.y*(s1.x*s2.y-s2.x*s1.y)+d1.y*(s2.x*s0.y-s0.x*s2.y)+d2.y*(s0.x*s1.y-s1.x*s0.y))/det;
+  return {a,b,c,d,e,f};
+}
+
+function drawMappedTriangle(ctx,img,s0,s1,s2,d0,d1,d2){
+  const m=affineForTriangle(s0,s1,s2,d0,d1,d2);
+  if(!m)return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(d0.x,d0.y);ctx.lineTo(d1.x,d1.y);ctx.lineTo(d2.x,d2.y);ctx.closePath();
+  ctx.clip();
+  ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);
+  ctx.drawImage(img,0,0);
+  ctx.restore();
+}
+
+function bilerp(tl,tr,br,bl,u,v){
+  return {
+    x:(1-u)*(1-v)*tl.x + u*(1-v)*tr.x + u*v*br.x + (1-u)*v*bl.x,
+    y:(1-u)*(1-v)*tl.y + u*(1-v)*tr.y + u*v*br.y + (1-u)*v*bl.y
+  };
+}
+
+function warpQuad(img,quad,outW){
+  const [tl,tr,br,bl]=quad;
+  const top=dist(tl,tr),bottom=dist(bl,br),left=dist(tl,bl),right=dist(tr,br);
+  const aspect=((top+bottom)/2)/Math.max(1,(left+right)/2);
+  const safeAspect=Math.max(1.05,Math.min(2.25,aspect));
+  const outH=Math.max(650,Math.round(outW/safeAspect));
+  const out=document.createElement('canvas');out.width=outW;out.height=outH;
+  const ctx=out.getContext('2d',{willReadFrequently:true});
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,outW,outH);
+
+  // 用細網格做透視近似，比單純旋轉更能處理斜拍梯形。
+  const cols=10,rows=7;
+  for(let j=0;j<rows;j++){
+    const v0=j/rows,v1=(j+1)/rows;
+    for(let i=0;i<cols;i++){
+      const u0=i/cols,u1=(i+1)/cols;
+      const s00=bilerp(tl,tr,br,bl,u0,v0);
+      const s10=bilerp(tl,tr,br,bl,u1,v0);
+      const s11=bilerp(tl,tr,br,bl,u1,v1);
+      const s01=bilerp(tl,tr,br,bl,u0,v1);
+      const d00={x:u0*outW,y:v0*outH},d10={x:u1*outW,y:v0*outH};
+      const d11={x:u1*outW,y:v1*outH},d01={x:u0*outW,y:v1*outH};
+      drawMappedTriangle(ctx,img,s00,s10,s11,d00,d10,d11);
+      drawMappedTriangle(ctx,img,s00,s11,s01,d00,d11,d01);
+    }
+  }
+  return {canvas:out,aspect:safeAspect};
+}
+
+function normalizeLabel(img){
+  // v6：小標籤/遠拍也要能鎖定，所以分析寬度提高、最小面積門檻降低。
+  const maxW=900;
+  const scale=Math.min(1,maxW/img.naturalWidth);
+  const w=Math.max(1,Math.round(img.naturalWidth*scale));
+  const h=Math.max(1,Math.round(img.naturalHeight*scale));
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(img,0,0,w,h);
+  const im=ctx.getImageData(0,0,w,h),d=im.data;
+  const gray=new Uint8Array(w*h);
+  let mean=0;
+  for(let p=0,i=0;p<gray.length;p++,i+=4){
+    const g=Math.round(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+    gray[p]=g;mean+=g;
+  }
+  mean/=gray.length;
+  let th=otsu(gray);
+  th=Math.max(135,Math.min(225,Math.max(th,mean+5)));
+
+  const mask=new Uint8Array(w*h);
+  for(let i=0;i<gray.length;i++) if(gray[i]>=th) mask[i]=1;
+  const seen=new Uint8Array(w*h);
+  const stack=new Int32Array(w*h);
+  let best=null,bestScore=0;
+  const total=w*h;
+
+  for(let seed=0;seed<mask.length;seed++){
+    if(!mask[seed]||seen[seed])continue;
+    let sp=0;stack[sp++]=seed;seen[seed]=1;
+    let area=0,minx=w,maxx=0,miny=h,maxy=0;
+    const pix=[];
+    while(sp){
+      const idx=stack[--sp],y=(idx/w)|0,x=idx-y*w;
+      area++;pix.push(idx);
+      if(x<minx)minx=x;if(x>maxx)maxx=x;if(y<miny)miny=y;if(y>maxy)maxy=y;
+      let n;
+      if(x>0){n=idx-1;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
+      if(x<w-1){n=idx+1;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
+      if(y>0){n=idx-w;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
+      if(y<h-1){n=idx+w;if(mask[n]&&!seen[n]){seen[n]=1;stack[sp++]=n}}
+    }
+    const bw=maxx-minx+1,bh=maxy-miny+1,ratio=bw/Math.max(1,bh),fill=area/(bw*bh),frac=area/total;
+
+    // 遠拍時標籤可能只佔畫面 0.5~3%，舊版 3.5% 門檻會直接漏掉。
+    if(frac<0.0045||frac>0.72||ratio<0.90||ratio>2.70||fill<0.24)continue;
+    const aspectScore=1-Math.min(1,Math.abs(ratio-1.45)/1.15);
+    const centerX=(minx+maxx)/2/w,centerY=(miny+maxy)/2/h;
+    const centerPenalty=Math.min(0.35,Math.hypot(centerX-.5,centerY-.5)*0.25);
+    const score=area*fill*(0.72+0.28*aspectScore)*(1-centerPenalty);
+    if(score>bestScore){bestScore=score;best={area,minx,maxx,miny,maxy,pix,ratio,fill,th};}
+  }
+
+  if(!best){
+    const out=document.createElement('canvas');
+    const ow=1600,oh=Math.round(ow*img.naturalHeight/img.naturalWidth);
+    out.width=ow;out.height=oh;
+    out.getContext('2d').drawImage(img,0,0,ow,oh);
+    return {canvas:out,located:false,angle:0,perspective:false,threshold:th};
+  }
+
+  // 用亮色標籤元件的四個對角極值找四角。
+  let tl=null,tr=null,br=null,bl=null;
+  let minSum=1e9,maxSum=-1e9,minDiff=1e9,maxDiff=-1e9;
+  for(const idx of best.pix){
+    const y=(idx/w)|0,x=idx-y*w,s=x+y,dif=x-y;
+    if(s<minSum){minSum=s;tl={x,y}}
+    if(s>maxSum){maxSum=s;br={x,y}}
+    if(dif>maxDiff){maxDiff=dif;tr={x,y}}
+    if(dif<minDiff){minDiff=dif;bl={x,y}}
+  }
+
+  if(!tl||!tr||!br||!bl){
+    const out=document.createElement('canvas');
+    out.width=1600;out.height=Math.round(1600*img.naturalHeight/img.naturalWidth);
+    out.getContext('2d').drawImage(img,0,0,out.width,out.height);
+    return {canvas:out,located:false,angle:0,perspective:false,threshold:th};
+  }
+
+  const inv=1/scale;
+  let quad=[tl,tr,br,bl].map(p=>({x:p.x*inv,y:p.y*inv}));
+  const cx=quad.reduce((s,p)=>s+p.x,0)/4,cy=quad.reduce((s,p)=>s+p.y,0)/4;
+
+  // 往外擴 3%，保留標籤邊緣，避免頂端單號/B碼被裁掉。
+  quad=quad.map(p=>({
+    x:Math.max(0,Math.min(img.naturalWidth-1,cx+(p.x-cx)*1.035)),
+    y:Math.max(0,Math.min(img.naturalHeight-1,cy+(p.y-cy)*1.035))
+  }));
+
+  const topAngle=Math.atan2(quad[1].y-quad[0].y,quad[1].x-quad[0].x)*180/Math.PI;
+  const warped=warpQuad(img,quad,1600);
+  return {
+    canvas:warped.canvas,
+    located:true,
+    angle:topAngle,
+    perspective:true,
+    threshold:th,
+    aspect:warped.aspect
+  };
+}
+
+
+function scaledCanvas(img,maxW=1800){
+  const scale=Math.min(1,maxW/img.naturalWidth);
+  const w=Math.max(1,Math.round(img.naturalWidth*scale));
+  const h=Math.max(1,Math.round(img.naturalHeight*scale));
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  c.getContext('2d',{willReadFrequently:true}).drawImage(img,0,0,w,h);
+  return {canvas:c,scale};
+}
+
+function decodeJsQrDetailed(canvas){
+  try{
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    const im=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const r=jsQR(im.data,canvas.width,canvas.height,{inversionAttempts:'attemptBoth'});
+    if(!r||!r.data||!r.location)return null;
+    return {data:r.data.trim(),location:r.location};
+  }catch(e){return null}
+}
+
+function addVec(p,u,ux,v,vy){
+  return {x:p.x+u.x*ux+v.x*vy,y:p.y+u.y*ux+v.y*vy};
+}
+
+function qrContrastCanvas(src,gain=1.55,binary=false){
+  const c=document.createElement('canvas');c.width=src.width;c.height=src.height;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(src,0,0);
+  const im=ctx.getImageData(0,0,c.width,c.height),d=im.data;
+  let mean=0,n=0;
+  for(let i=0;i<d.length;i+=4){
+    mean+=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];n++;
+  }
+  mean/=Math.max(1,n);
+  const threshold=Math.max(110,Math.min(190,mean*0.92));
+  for(let i=0;i<d.length;i+=4){
+    const y=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    let v=binary?(y>threshold?255:0):Math.max(0,Math.min(255,(y-128)*gain+128));
+    d[i]=d[i+1]=d[i+2]=v;
+  }
+  ctx.putImageData(im,0,0);
+  return c;
+}
+
+async function decodeNativeQr(canvas){
+  if(!('BarcodeDetector' in window))return null;
+  try{
+    let detector;
+    try{detector=new BarcodeDetector({formats:['qr_code']});}
+    catch(e){detector=new BarcodeDetector();}
+    const hits=await detector.detect(canvas);
+    const hit=hits&&hits[0];
+    if(!hit||!hit.rawValue)return null;
+
+    let pts=(hit.cornerPoints||[]).map(p=>({x:p.x,y:p.y}));
+    if(pts.length<4 && hit.boundingBox){
+      const b=hit.boundingBox;
+      pts=[
+        {x:b.x,y:b.y},
+        {x:b.x+b.width,y:b.y},
+        {x:b.x+b.width,y:b.y+b.height},
+        {x:b.x,y:b.y+b.height}
+      ];
+    }
+    return {data:String(hit.rawValue).trim(),points:pts.length>=4?pts.slice(0,4):null};
+  }catch(e){return null}
+}
+
+function nativePointsToJsQrLocation(points){
+  if(!points||points.length<4)return null;
+  // BarcodeDetector 的 cornerPoints 規格為順時針；大多裝置從左上角開始。
+  return {
+    topLeftCorner:points[0],
+    topRightCorner:points[1],
+    bottomRightCorner:points[2],
+    bottomLeftCorner:points[3]
+  };
+}
+
+async function robustQrHitFromImage(img){
+  // 先用各平台原生條碼引擎；Android Chrome 常能明顯提高成功率。
+  for(const maxW of [1800,2300,1300]){
+    const sc=scaledCanvas(img,maxW);
+
+    const native=await decodeNativeQr(sc.canvas);
+    if(native){
+      const loc=nativePointsToJsQrLocation(native.points);
+      if(loc)return {data:native.data,location:loc,scale:sc.scale,engine:'原生條碼'};
+    }
+
+    let hit=decodeJsQrDetailed(sc.canvas);
+    if(hit)return {...hit,scale:sc.scale,engine:'jsQR原圖'};
+
+    const contrast=qrContrastCanvas(sc.canvas,1.55,false);
+    hit=decodeJsQrDetailed(contrast);
+    if(hit)return {...hit,scale:sc.scale,engine:'jsQR對比'};
+
+    // 只有前兩種都失敗才做黑白化，避免不必要的耗時。
+    const binary=qrContrastCanvas(sc.canvas,1.0,true);
+    hit=decodeJsQrDetailed(binary);
+    if(hit)return {...hit,scale:sc.scale,engine:'jsQR黑白'};
+  }
+  return null;
+}
+
+async function decodeQrCanvasRobust(canvas){
+  const native=await decodeNativeQr(canvas);
+  if(native&&native.data)return native.data;
+
+  let hit=decodeJsQrDetailed(canvas);
+  if(hit)return hit.data;
+
+  hit=decodeJsQrDetailed(qrContrastCanvas(canvas,1.55,false));
+  if(hit)return hit.data;
+
+  hit=decodeJsQrDetailed(qrContrastCanvas(canvas,1.0,true));
+  return hit?hit.data:'';
+}
+
+async function normalizeByQrAnchor(img){
+  // v10：跨 iPhone／Android 使用原生 BarcodeDetector（可用時）＋ jsQR 多尺度備援。
+  const hit=await robustQrHitFromImage(img);
+  if(!hit||!hit.location)return null;
+
+  const L=hit.location;
+  const inv=1/hit.scale;
+  const tl={x:L.topLeftCorner.x*inv,y:L.topLeftCorner.y*inv};
+  const tr={x:L.topRightCorner.x*inv,y:L.topRightCorner.y*inv};
+  const br={x:L.bottomRightCorner.x*inv,y:L.bottomRightCorner.y*inv};
+  const bl={x:L.bottomLeftCorner.x*inv,y:L.bottomLeftCorner.y*inv};
+
+  const u={
+    x:((tr.x-tl.x)+(br.x-bl.x))/2,
+    y:((tr.y-tl.y)+(br.y-bl.y))/2
+  };
+  const v={
+    x:((bl.x-tl.x)+(br.x-tr.x))/2,
+    y:((bl.y-tl.y)+(br.y-tr.y))/2
+  };
+
+  const qSize=(Math.hypot(u.x,u.y)+Math.hypot(v.x,v.y))/2;
+  if(qSize<5)return null;
+
+  const p0=tl;
+  // 依 2026-10-01 現場錄影重新量測：
+  // 舊值把標籤上緣切掉約 14px，導致單號/B碼第一列被截字。
+  // v14：三組實拍中有一張頂列左上被切到，故增加上/左安全邊界。
+  let quad=[
+    addVec(p0,u,-3.72,v,-3.70),
+    addVec(p0,u, 4.88,v,-3.70),
+    addVec(p0,u, 4.88,v, 2.22),
+    addVec(p0,u,-3.72,v, 2.22)
+  ];
+
+  quad=quad.map(p=>({
+    x:Math.max(0,Math.min(img.naturalWidth-1,p.x)),
+    y:Math.max(0,Math.min(img.naturalHeight-1,p.y))
+  }));
+
+  const warped=warpQuad(img,quad,1600);
+  const angle=Math.atan2(u.y,u.x)*180/Math.PI;
+  return {
+    canvas:warped.canvas,
+    located:true,
+    anchor:'QR',
+    angle,
+    perspective:true,
+    qr:hit.data,
+    qrEngine:hit.engine||'',
+    aspect:warped.aspect
+  };
+}
+
+
+function processCanvasMode(src,mode){
+  if(!mode)return src;
+  const c=document.createElement('canvas');c.width=src.width;c.height=src.height;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(src,0,0);
+  const im=ctx.getImageData(0,0,c.width,c.height),d=im.data;
+  let mean=0,n=0;
+  for(let i=0;i<d.length;i+=4){
+    mean+=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];n++;
+  }
+  mean/=Math.max(1,n);
+  const th=Math.max(115,Math.min(190,mean*0.92));
+  for(let i=0;i<d.length;i+=4){
+    const y=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    let v=y;
+    if(mode==='contrast')v=Math.max(0,Math.min(255,(y-128)*1.7+128));
+    if(mode==='binary')v=y>th?255:0;
+    d[i]=d[i+1]=d[i+2]=v;
+  }
+  ctx.putImageData(im,0,0);
+  return c;
+}
+
+function qrBasisOriginal(hit){
+  if(!hit||!hit.location||!hit.scale)return null;
+  const L=hit.location,inv=1/hit.scale;
+  const tl={x:L.topLeftCorner.x*inv,y:L.topLeftCorner.y*inv};
+  const tr={x:L.topRightCorner.x*inv,y:L.topRightCorner.y*inv};
+  const br={x:L.bottomRightCorner.x*inv,y:L.bottomRightCorner.y*inv};
+  const bl={x:L.bottomLeftCorner.x*inv,y:L.bottomLeftCorner.y*inv};
+  return {
+    p0:tl,
+    u:{
+      x:((tr.x-tl.x)+(br.x-bl.x))/2,
+      y:((tr.y-tl.y)+(br.y-bl.y))/2
+    },
+    v:{
+      x:((bl.x-tl.x)+(br.x-tr.x))/2,
+      y:((bl.y-tl.y)+(br.y-tr.y))/2
+    }
+  };
+}
+
+function cropQrRelative(img,hit,u0,v0,u1,v1,targetW=1800,mode=null){
+  const b=qrBasisOriginal(hit);
+  if(!b)return null;
+  const pt=(uu,vv)=>addVec(b.p0,b.u,uu,b.v,vv);
+  const quad=[
+    pt(u0,v0),
+    pt(u1,v0),
+    pt(u1,v1),
+    pt(u0,v1)
+  ].map(p=>({
+    x:Math.max(0,Math.min(img.naturalWidth-1,p.x)),
+    y:Math.max(0,Math.min(img.naturalHeight-1,p.y))
+  }));
+  const warped=warpQuad(img,quad,targetW).canvas;
+  return processCanvasMode(warped,mode);
+}
+
+async function readQrRelativeTopFields(worker,img,qrHit){
+  // v17：斜拍時直接以 QR 自身的水平/垂直向量裁「頂列」兩個欄位，
+  // 不依賴整張白標四角，也不依賴 QR→整張標籤的完整外推。
+  if(!qrHit||!qrHit.location)return null;
+
+  const orderReads=[];
+  for(const spec of [
+    // 依 2026-10-05 使用者斜拍實照校正：
+    // 單號實際約落在 QR 左上點的 u=-2.9~-0.5、v=-2.8~-2.2 區域。
+    [-3.10,-2.98,-0.22,-2.05,1950,null,7],
+    [-3.00,-2.90,-0.32,-2.12,2050,'contrast',7],
+    [-3.22,-3.05,-0.10,-1.98,2200,'binary',6]
+  ]){
+    const cc=cropQrRelative(img,qrHit,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
+    if(cc)orderReads.push(await ocr(worker,cc,'0123456789',spec[6]));
+  }
+
+  const bReads=[];
+  for(const spec of [
+    // B碼實際約落在 u=-0.3~1.35、v=-2.8~-2.2。
+    [-0.48,-2.98, 1.58,-2.05,1750,null,7],
+    [-0.38,-2.90, 1.48,-2.12,1850,'contrast',7],
+    [-0.58,-3.05, 1.72,-1.98,1950,'binary',6]
+  ]){
+    const cc=cropQrRelative(img,qrHit,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
+    if(cc)bReads.push(await ocr(worker,cc,'B0123456789',spec[6]));
+  }
+
+  const op=chooseOrderCandidate(orderReads);
+  const bp=chooseBCodeCandidate(bReads);
+  return {
+    order:op.code,
+    bcode:bp.code,
+    confidence:{order:op.confidence,bcode:bp.confidence},
+    orderDiagnostics:op,
+    bDiagnostics:bp
+  };
+}
+
+function cropNorm(src,rx,ry,rw,rh,targetW=900,mode='contrast'){
+  const sx=Math.max(0,Math.round(src.width*rx)),sy=Math.max(0,Math.round(src.height*ry));
+  const sw=Math.min(src.width-sx,Math.round(src.width*rw)),sh=Math.min(src.height-sy,Math.round(src.height*rh));
+  const scale=targetW/sw,w=Math.max(1,Math.round(sw*scale)),h=Math.max(1,Math.round(sh*scale));
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(src,sx,sy,sw,sh,0,0,w,h);
+  if(mode){
+    const im=ctx.getImageData(0,0,w,h),d=im.data;
+    for(let i=0;i<d.length;i+=4){
+      const y=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+      let v=y;
+      if(mode==='contrast')v=Math.max(0,Math.min(255,(y-128)*1.6+128));
+      if(mode==='binary')v=y>150?255:0;
+      d[i]=d[i+1]=d[i+2]=v;
+    }
+    ctx.putImageData(im,0,0);
+  }
+  return c;
+}
+
+function decodeJsQr(canvas){
+  const r=decodeJsQrDetailed(canvas);
+  return r?r.data:'';
+}
+
+async function ocr(worker,canvas,whitelist,psm='7'){
+  try{
+    await worker.setParameters({
+      tessedit_pageseg_mode:psm,
+      tessedit_char_whitelist:whitelist,
+      preserve_interword_spaces:'1'
+    });
+  }catch(e){}
+  const r=await worker.recognize(canvas);
+  return {
+    text:r&&r.data?r.data.text||'':'',
+    confidence:r&&r.data&&typeof r.data.confidence==='number'?r.data.confidence:0
+  };
+}
+
+function parseOrder(s){
+  // 單號固定為 20 開頭、共 12 碼。
+  // 不把不同列/不同區塊的數字全部串起來，避免產生假單號。
+  const raw=String(s||'').toUpperCase();
+  const lines=raw.split(/\r?\n/);
+
+  for(const line of lines){
+    const compact=line.replace(/[^0-9]/g,'');
+    const m=compact.match(/20\d{10}/);
+    if(m) return m[0];
+  }
+
+  const tokens=raw.match(/20[0-9\s._-]{10,20}/g)||[];
+  for(const token of tokens){
+    const digits=token.replace(/[^0-9]/g,'');
+    const m=digits.match(/^20\d{10}$/);
+    if(m) return m[0];
+  }
+  return '';
+}
+
+function chooseOrderCandidate(items){
+  const valid=(items||[])
+    .map(x=>({code:parseOrder(x.text),confidence:Number(x.confidence||0)}))
+    .filter(x=>/^20\d{10}$/.test(x.code));
+
+  if(!valid.length) return {code:'',confidence:0,votes:0,agreement:0,candidates:[]};
+
+  const groups={};
+  for(const x of valid){
+    if(!groups[x.code]) groups[x.code]={code:x.code,count:0,score:0,maxConf:0};
+    groups[x.code].count++;
+    groups[x.code].score += Math.max(15,x.confidence);
+    groups[x.code].maxConf=Math.max(groups[x.code].maxConf,x.confidence);
+  }
+
+  const ranked=Object.values(groups).sort((a,b)=>
+    (b.count-a.count) || (b.score-a.score) || (b.maxConf-a.maxConf)
+  );
+
+  let code=ranked[0].code;
+  let agreement=ranked[0].count/valid.length;
+
+  // 沒有完整碼共識時，逐位數做加權投票。
+  if(ranked[0].count<2 && valid.length>=2){
+    let out='';
+    let agreeSum=0;
+    for(let pos=0;pos<12;pos++){
+      const bucket={};
+      let total=0;
+      for(const x of valid){
+        const ch=x.code[pos];
+        const w=Math.max(20,x.confidence);
+        bucket[ch]=(bucket[ch]||0)+w;
+        total+=w;
+      }
+      const top=Object.entries(bucket).sort((a,b)=>b[1]-a[1])[0];
+      out+=top[0];
+      agreeSum+=total?top[1]/total:0;
+    }
+    if(/^20\d{10}$/.test(out)){
+      code=out;
+      agreement=agreeSum/12;
+    }
+  }
+
+  const avgConf=valid.reduce((s,x)=>s+x.confidence,0)/valid.length;
+  return {
+    code,
+    confidence:avgConf,
+    votes:valid.filter(x=>x.code===code).length,
+    agreement,
+    candidates:valid.map(x=>x.code)
+  };
+}
+function parseB(s){
+  // 現場 B碼固定為 B + 9 位數。
+  const t=String(s||'').toUpperCase().replace(/[^B0-9]/g,'');
+  const m=t.match(/B\d{9}/);
+  return m?m[0]:'';
+}
+
+function chooseBCodeCandidate(items){
+  // 多個 OCR 版本同時判讀 B碼，避免單次誤把 5/7、0/2、3/8 看錯。
+  const valid=(items||[])
+    .map(x=>({code:parseB(x.text),confidence:Number(x.confidence||0)}))
+    .filter(x=>/^B\d{9}$/.test(x.code));
+
+  if(!valid.length) return {code:'',confidence:0,votes:0,agreement:0,candidates:[]};
+
+  // 先做完整候選碼投票。
+  const groups={};
+  for(const x of valid){
+    if(!groups[x.code]) groups[x.code]={code:x.code,count:0,score:0,maxConf:0};
+    groups[x.code].count++;
+    groups[x.code].score += Math.max(15,x.confidence);
+    groups[x.code].maxConf=Math.max(groups[x.code].maxConf,x.confidence);
+  }
+  let ranked=Object.values(groups).sort((a,b)=>
+    (b.count-a.count) || (b.score-a.score) || (b.maxConf-a.maxConf)
+  );
+
+  // 若沒有明顯完整碼共識，再做逐字元加權投票。
+  let code=ranked[0].code;
+  let votes=ranked[0].count;
+  let charAgreement=0;
+
+  if(ranked[0].count<2 && valid.length>=2){
+    let out='B';
+    let agreeSum=0;
+    for(let pos=1;pos<10;pos++){
+      const bucket={};
+      let total=0;
+      for(const x of valid){
+        const ch=x.code[pos];
+        const w=Math.max(20,x.confidence);
+        bucket[ch]=(bucket[ch]||0)+w;
+        total+=w;
+      }
+      const top=Object.entries(bucket).sort((a,b)=>b[1]-a[1])[0];
+      out+=top[0];
+      agreeSum += total ? top[1]/total : 0;
+    }
+    const voted=parseB(out);
+    if(voted){
+      code=voted;
+      charAgreement=agreeSum/9;
+      votes=valid.filter(x=>x.code===voted).length;
+    }
+  } else {
+    charAgreement=ranked[0].count/valid.length;
+  }
+
+  const avgConf=valid.reduce((s,x)=>s+x.confidence,0)/valid.length;
+  return {
+    code,
+    confidence:avgConf,
+    votes,
+    agreement:charAgreement,
+    candidates:valid.map(x=>x.code)
+  };
+}
+function parseQrHuman(s){
+  const a=(String(s||'').match(/\d{7,10}/g)||[]);
+  const eight=a.find(x=>x.length===8);
+  return eight||a[0]||'';
+}
+
+async function readAll(worker,label,seedQr='',seedQrSource=''){
+  let qr=seedQr||'',qrSource=seedQrSource||'';
+
+  if(!qr){
+    const qrRegion=cropNorm(label,0.32,0.43,0.37,0.42,1000,null);
+    qr=await decodeQrCanvasRobust(qrRegion);
+    if(!qr){
+      const q2=cropNorm(label,0.27,0.36,0.48,0.50,1200,'contrast');
+      qr=await decodeQrCanvasRobust(q2);
+    }
+    if(qr)qrSource='QR圖形';
+  }
+
+  // v13：先讀完整頂列。這一列同時含「單號」與「B碼」，
+  // 後面專用裁切會把這些結果一起拿來投票，不再互相排斥。
+  const topJobs=[
+    {c:cropNorm(label,0.000,0.000,0.72,0.130,1650,null),       psm:7},
+    {c:cropNorm(label,0.000,0.000,0.72,0.140,1700,'contrast'), psm:7},
+    {c:cropNorm(label,0.000,0.000,0.74,0.155,1750,'binary'),   psm:6}
+  ];
+  const topReads=[];
+  for(const job of topJobs){
+    topReads.push(await ocr(worker,job.c,'B0123456789',job.psm));
+  }
+
+  // 單號先由頂列取得；若沒有，再針對左上角做專用高解析補讀。
+  let orderPool=[...topReads];
+  let orderPick=chooseOrderCandidate(orderPool);
+  let order=orderPick.code,orderConf=orderPick.confidence;
+  let orderFallback=false;
+
+  if(!order){
+    orderFallback=true;
+    const orderExtra=[];
+    for(const spec of [
+      [0.000,0.000,0.43,0.145,1950,null,7],
+      [0.000,0.000,0.47,0.165,2050,'contrast',7],
+      [0.000,0.000,0.50,0.185,2150,'binary',6]
+    ]){
+      const cc=cropNorm(label,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
+      orderExtra.push(await ocr(worker,cc,'0123456789',spec[6]));
+    }
+    orderPool=orderPool.concat(orderExtra);
+    orderPick=chooseOrderCandidate(orderPool);
+    order=orderPick.code;
+    orderConf=orderPick.confidence;
+
+    if(!order){
+      // 最後一層：只針對最左上第一列，處理標籤幾乎貼齊畫面邊緣的情況。
+      const edgeReads=[];
+      for(const spec of [
+        [0.000,0.000,0.56,0.205,2300,'contrast',6],
+        [0.000,0.000,0.54,0.190,2300,'binary',7]
+      ]){
+        const cc=cropNorm(label,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
+        edgeReads.push(await ocr(worker,cc,'0123456789',spec[6]));
+      }
+      orderPool=orderPool.concat(edgeReads);
+      orderPick=chooseOrderCandidate(orderPool);
+      order=orderPick.code;
+      orderConf=orderPick.confidence;
+    }
+  }
+
+  // B碼同樣先看頂列，再加入中央專用裁切交叉投票。
+  // 這樣「整列讀得到、窄區讀不到」或相反情況都能互補。
+  const bExtra=[];
+  for(const spec of [
+    [0.300,0.000,0.325,0.120,1550,null,7],
+    [0.295,0.000,0.345,0.135,1600,'contrast',7],
+    [0.285,0.000,0.365,0.150,1650,'binary',6]
+  ]){
+    const cc=cropNorm(label,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
+    bExtra.push(await ocr(worker,cc,'B0123456789',spec[6]));
+  }
+  let bPool=topReads.concat(bExtra);
+  let bPick=chooseBCodeCandidate(bPool);
+  let bcode=bPick.code,bConf=bPick.confidence;
+  let bFallback=false;
+
+  if(!bcode){
+    bFallback=true;
+    const bMore=[];
+    for(const spec of [
+      [0.260,0.000,0.410,0.165,1750,'contrast',7],
+      [0.315,0.000,0.300,0.120,1800,'binary',7]
+    ]){
+      const cc=cropNorm(label,spec[0],spec[1],spec[2],spec[3],spec[4],spec[5]);
+      bMore.push(await ocr(worker,cc,'B0123456789',spec[6]));
+    }
+    bPool=bPool.concat(bMore);
+    bPick=chooseBCodeCandidate(bPool);
+    bcode=bPick.code;
+    bConf=bPick.confidence;
+  }
+
+  let qrHuman='',qrHumanConf=0;
+  if(!qr){
+    const humanRegion=cropNorm(label,0.37,0.67,0.28,0.15,1000,'contrast');
+    const human=await ocr(worker,humanRegion,'0123456789',7);
+    qrHuman=parseQrHuman(human.text);qrHumanConf=human.confidence;
+    if(qrHuman){qr=qrHuman;qrSource='QR下方數字';}
+  }
+
+  return {
+    qr,order,bcode,qrSource,
+    fallbackUsed:orderFallback||bFallback,
+    confidence:{order:orderConf,bcode:bConf,qrHuman:qrHumanConf},
+    orderDiagnostics:{votes:orderPick.votes,agreement:orderPick.agreement,candidates:orderPick.candidates},
+    bDiagnostics:{votes:bPick.votes,agreement:bPick.agreement,candidates:bPick.candidates}
+  };
+}
+function diagStrength(diag,confidence){
+  const d=diag||{};
+  const votes=Number(d.votes||0);
+  const agreement=Number(d.agreement||0);
+  const conf=Number(confidence||0);
+  return votes*100 + agreement*80 + conf;
+}
+function diagTrusted(diag,confidence){
+  const d=diag||{};
+  const votes=Number(d.votes||0);
+  const agreement=Number(d.agreement||0);
+  const conf=Number(confidence||0);
+  return votes>=2 || agreement>=0.78 || (votes>=1 && conf>=78);
+}
+function mergeField(primary,secondary,key,diagKey){
+  const a=String(primary&&primary[key]||'');
+  const b=String(secondary&&secondary[key]||'');
+  const ac=Number(primary&&primary.confidence&&primary.confidence[key]||0);
+  const bc=Number(secondary&&secondary.confidence&&secondary.confidence[key]||0);
+  const ad=primary&&primary[diagKey]||{};
+  const bd=secondary&&secondary[diagKey]||{};
+
+  if(!a && !b) return {code:'',confidence:Math.max(ac,bc),diag:{votes:0,agreement:0,candidates:[]},verified:false,conflict:false};
+  if(a && !b) return {code:diagTrusted(ad,ac)?a:'',confidence:ac,diag:ad,verified:false,conflict:false};
+  if(!a && b) return {code:diagTrusted(bd,bc)?b:'',confidence:bc,diag:bd,verified:false,conflict:false};
+
+  if(a===b){
+    return {
+      code:a,
+      confidence:Math.max(ac,bc),
+      diag:{
+        votes:Number(ad.votes||0)+Number(bd.votes||0),
+        agreement:Math.max(Number(ad.agreement||0),Number(bd.agreement||0),1),
+        candidates:[...(ad.candidates||[]),...(bd.candidates||[])]
+      },
+      verified:true,
+      conflict:false
+    };
+  }
+
+  const as=diagStrength(ad,ac),bs=diagStrength(bd,bc);
+  const at=diagTrusted(ad,ac),bt=diagTrusted(bd,bc);
+
+  // 只有一邊達到可信門檻時採用可信的一邊。
+  if(at&&!bt) return {code:a,confidence:ac,diag:ad,verified:false,conflict:true};
+  if(bt&&!at) return {code:b,confidence:bc,diag:bd,verified:false,conflict:true};
+
+  // 兩邊都可信但內容不同：不要猜，直接留空要求重拍。
+  if(at&&bt) return {
+    code:'',
+    confidence:Math.max(ac,bc),
+    diag:{votes:0,agreement:0,candidates:[a,b]},
+    verified:false,
+    conflict:true
+  };
+
+  // 都不夠可信，除非分數差距非常大，否則也不輸出。
+  if(Math.abs(as-bs)>=120){
+    return as>bs
+      ? {code:a,confidence:ac,diag:ad,verified:false,conflict:true}
+      : {code:b,confidence:bc,diag:bd,verified:false,conflict:true};
+  }
+  return {
+    code:'',
+    confidence:Math.max(ac,bc),
+    diag:{votes:0,agreement:0,candidates:[a,b]},
+    verified:false,
+    conflict:true
+  };
+}
+function needsFieldCrossCheck(data){
+  if(!data)return true;
+  const od=data.orderDiagnostics||{},bd=data.bDiagnostics||{};
+  return !data.order || !data.bcode ||
+    !diagTrusted(od,data.confidence&&data.confidence.order) ||
+    !diagTrusted(bd,data.confidence&&data.confidence.bcode);
+}
+
+
+let cameraStream=null;
+let autoScanning=false;
+let scanBusy=false;
+let scanSamples=[];
+let scanLastAt=0;
+let scanQrValue='';
+let scanStartedAt=0;
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+function captureVideoCanvas(video,maxW=1280){
+  const vw=video.videoWidth||0,vh=video.videoHeight||0;
+  if(!vw||!vh)return null;
+  const scale=Math.min(1,maxW/vw);
+  const w=Math.max(1,Math.round(vw*scale)),h=Math.max(1,Math.round(vh*scale));
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  cv.getContext('2d',{alpha:false,willReadFrequently:true}).drawImage(video,0,0,w,h);
+  return cv;
+}
+
+function frameQuality(canvas){
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  const im=ctx.getImageData(0,0,canvas.width,canvas.height),d=im.data;
+  const step=Math.max(2,Math.round(Math.sqrt((canvas.width*canvas.height)/120000)));
+  let n=0,sum=0,sum2=0,sharp=0,dark=0,bright=0;
+  let prevRow=new Float32Array(Math.ceil(canvas.width/step));
+  let rowIndex=0;
+  for(let y=0;y<canvas.height;y+=step){
+    let prev=0,colIndex=0;
+    for(let x=0;x<canvas.width;x+=step){
+      const i=(y*canvas.width+x)*4;
+      const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+      sum+=g;sum2+=g*g;n++;
+      if(g<42)dark++;
+      if(g>242)bright++;
+      if(colIndex>0)sharp+=Math.abs(g-prev);
+      if(y>0)sharp+=Math.abs(g-prevRow[colIndex]);
+      prev=g;prevRow[colIndex]=g;colIndex++;
+    }
+    rowIndex++;
+  }
+  const mean=sum/Math.max(1,n);
+  const variance=Math.max(0,sum2/Math.max(1,n)-mean*mean);
+  const contrast=Math.sqrt(variance);
+  const sharpness=sharp/Math.max(1,n*2);
+  const darkRatio=dark/Math.max(1,n),brightRatio=bright/Math.max(1,n);
+
+  const exposureScore=Math.max(0,100-Math.abs(mean-150)*0.8-(darkRatio+brightRatio)*180);
+  const sharpScore=Math.min(100,sharpness*5.2);
+  const contrastScore=Math.min(100,contrast*2.0);
+  const score=0.52*sharpScore+0.28*contrastScore+0.20*exposureScore;
+
+  return {
+    score,brightness:mean,contrast,sharpness,darkRatio,brightRatio,
+    ok: sharpness>=4.5 && mean>=48 && mean<=232 && brightRatio<0.34 && darkRatio<0.46
+  };
+}
+
+function qualityHint(q,qr,got){
+  if(!q)return '等待相機畫面…';
+  if(q.brightness<58)return '🌑 太暗，請移到亮一點的位置';
+  if(q.brightness>222 || q.brightRatio>0.28)return '💡 太亮／反光，請換個角度';
+  if(q.sharpness<4.5)return '🫨 畫面偏糊，請拿穩或靠近一些';
+  if(!qr)return '🔳 畫質可以，請讓 QR 與整張標籤都在框內';
+  return '🟢 已鎖定標籤，正在取樣 '+got+'/5';
+}
+
+async function quickQrFromCanvas(canvas){
+  const native=await decodeNativeQr(canvas);
+  if(native&&native.data)return native.data;
+
+  let r=decodeJsQrDetailed(canvas);
+  if(r&&r.data)return r.data;
+
+  // 即時掃描只多做一次對比版，不做重型多尺度，避免預覽卡頓。
+  try{
+    r=decodeJsQrDetailed(qrContrastCanvas(canvas,1.5,false));
+    if(r&&r.data)return r.data;
+  }catch(e){}
+  return '';
+}
+
+function cloneCanvas(src){
+  const c=document.createElement('canvas');c.width=src.width;c.height=src.height;
+  c.getContext('2d',{alpha:false}).drawImage(src,0,0);
+  return c;
+}
+
+function canvasToFile(canvas,name='auto-scan.jpg'){
+  return new Promise((resolve,reject)=>{
+    canvas.toBlob(blob=>{
+      if(!blob)return reject(new Error('自動掃描影像建立失敗'));
+      resolve(new File([blob],name,{type:'image/jpeg',lastModified:Date.now()}));
+    },'image/jpeg',0.94);
+  });
+}
+
+async function stopCamera(keepMessage=false){
+  autoScanning=false;
+  scanBusy=false;
+  if(cameraStream){
+    for(const track of cameraStream.getTracks())track.stop();
+    cameraStream=null;
+  }
+  const v=$('liveVideo');
+  if(v)v.srcObject=null;
+  if(!keepMessage)$('cameraBox').style.display='none';
+}
+
+async function startAutoScanner(){
+  if(scanBusy)return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    $('status').textContent='⚠️ 這個瀏覽器不支援即時相機；請改用「拍照辨識」';
+    return;
+  }
+
+  await stopCamera();
+  reset();
+  scanSamples=[];
+  scanQrValue='';
+  scanLastAt=0;
+  scanStartedAt=performance.now();
+  $('cameraBox').style.display='block';
+  $('scanHint').textContent='正在開啟後鏡頭…';
+  $('scanMeta').textContent='會自動取樣 5 個影格並挑選最佳畫面。';
+
+  try{
+    cameraStream=await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{
+        facingMode:{ideal:'environment'},
+        width:{ideal:1920},
+        height:{ideal:1080}
+      }
+    });
+    const video=$('liveVideo');
+    video.srcObject=cameraStream;
+    await video.play();
+    autoScanning=true;
+    $('status').textContent='🎯 自動掃描中：不用按快門，對準標籤即可';
+    requestAnimationFrame(autoScanLoop);
+  }catch(err){
+    await stopCamera(true);
+    $('scanHint').textContent='❌ 無法開啟相機';
+    $('status').textContent='⚠️ 相機權限被拒絕或瀏覽器不支援；請改用「拍照辨識」';
+  }
+}
+
+async function autoScanLoop(ts){
+  if(!autoScanning||scanBusy)return;
+  if(ts-scanLastAt<260){requestAnimationFrame(autoScanLoop);return;}
+  scanLastAt=ts;
+
+  const frame=captureVideoCanvas($('liveVideo'),1500);
+  if(!frame){requestAnimationFrame(autoScanLoop);return;}
+
+  const q=frameQuality(frame);
+  let qr='';
+  try{qr=await quickQrFromCanvas(frame);}catch(e){}
+
+  if(qr && scanQrValue && qr!==scanQrValue){
+    // 換到另一張標籤時重新取樣，避免兩張標籤的影格混在一起。
+    scanSamples=[];
+  }
+  if(qr)scanQrValue=qr;
+
+  // v20：不再要求「這個影格一定先掃到 QR」才收樣本。
+  // iPhone Safari 的即時畫面常可看清 QR，但 jsQR 在縮小預覽幀不一定立刻命中，
+  // 舊版因此會永遠停在相機畫面。現在先依畫質收樣本，QR只作加分。
+  const elapsed=performance.now()-scanStartedAt;
+  const acceptable=q.ok || (q.sharpness>=3.2 && q.brightness>=42 && q.brightness<=238);
+
+  if(acceptable){
+    scanSamples.push({
+      canvas:cloneCanvas(frame),
+      quality:q,
+      qr,
+      score:q.score + (qr?30:0)
+    });
+    if(scanSamples.length>8)scanSamples.shift();
+  }
+
+  $('scanHint').textContent=qualityHint(q,qr,Math.min(scanSamples.length,5));
+  $('scanMeta').textContent=
+    '已取樣 '+scanSamples.length+'｜清晰度 '+q.sharpness.toFixed(1)+'｜亮度 '+Math.round(q.brightness)+
+    '｜對比 '+q.contrast.toFixed(1)+(qr?'｜QR '+qr:'｜QR稍後完整辨識');
+
+  // 正常：5個合格影格就送出。
+  // 保底：4秒後只要有至少2個影格，也直接挑最佳送完整辨識，避免無限等待。
+  const ready=scanSamples.length>=5 || (elapsed>=4000 && scanSamples.length>=2);
+
+  if(ready){
+    scanBusy=true;
+    autoScanning=false;
+    const samples=[...scanSamples].sort((a,b)=>b.score-a.score);
+    const best=samples[0];
+    $('scanHint').textContent='✅ 已取得 '+samples.length+' 個影格，正在使用最佳畫面辨識…';
+    $('scanMeta').textContent=
+      '最佳分數 '+best.quality.score.toFixed(1)+
+      (best.qr?'｜QR '+best.qr:'｜QR將由完整辨識讀取');
+    await stopCamera(true);
+    try{
+      const file=await canvasToFile(best.canvas);
+      await handleRecognitionFile(file,{
+        auto:true,
+        quality:best.quality,
+        sampleCount:samples.length,
+        seedQr:best.qr||''
+      });
+    }catch(err){
+      $('status').textContent='❌ '+(err&&err.message?err.message:'自動掃描失敗');
+    }finally{
+      scanBusy=false;
+    }
+    return;
+  }
+
+  // 極端情況：8秒仍連2個可用影格都沒有，直接提醒拍照，不讓相機一直卡著。
+  if(elapsed>=8000){
+    autoScanning=false;
+    await stopCamera(true);
+    $('scanHint').textContent='⚠️ 自動掃描沒有取得足夠清楚的影格';
+    $('status').textContent='請靠近標籤、拿穩手機再試一次，或改用「拍照辨識」';
+    return;
+  }
+
+  requestAnimationFrame(autoScanLoop);
+}
+
+function setResult(boxId,id,val){
+  $(id).textContent=val||'未讀到';
+  $(boxId).classList.remove('ok','warn');
+  $(boxId).classList.add(val?'ok':'warn');
+}
+function reset(){
+  setResult('qrBox','qr','');setResult('orderBox','order','');setResult('bBox','bcode','');
+  $('qr').textContent='－';$('order').textContent='－';$('bcode').textContent='－';
+  ['qrBox','orderBox','bBox'].forEach(id=>$(id).classList.remove('ok','warn'));
+  $('preview').style.display='none';$('preview').src='';
+  $('timing').textContent='尚未測試';$('locBadge').textContent='尚未定位標籤';
+}
+$('clearBtn').addEventListener('click',reset);
+
+async function handleRecognitionFile(file,meta={}){
+  reset();const t0=now();
+  try{
+    $('status').textContent=meta.auto?'🎯 自動掃描完成，開始辨識…':'📷 讀取照片…';
+    const img=await loadImage(file);const t1=now();
+
+    $('status').textContent='🔳 讀取 QR＋定位白色標籤…';
+    const qrHit=await robustQrHitFromImage(img);
+
+    let norm=normalizeLabel(img);
+    let locateMode=norm.located?'白色標籤':'';
+
+    if(!norm.located){
+      $('status').textContent='⬜ 白標定位失敗，改用 QR 幾何備援…';
+      const qrNorm=await normalizeByQrAnchor(img);
+      if(qrNorm){
+        norm=qrNorm;
+        locateMode='QR錨點備援';
+      }else{
+        locateMode='整張照片備援';
+      }
+    }
+
+    if(qrHit&&qrHit.data){
+      norm.qr=qrHit.data;
+      norm.qrEngine=qrHit.engine||'';
+    }else if(meta.seedQr){
+      norm.qr=meta.seedQr;
+      norm.qrEngine='自動掃描影格';
+    }
+    const t2=now();
+
+    $('locBadge').textContent=norm.located
+      ? '✅ 已鎖定標籤｜'+locateMode+'｜校正 '+Math.abs(norm.angle||0).toFixed(1)+'°'
+      : '⚠️ 未鎖定標籤｜使用整張照片備援';
+
+    $('preview').src=norm.canvas.toDataURL('image/jpeg',0.86);
+    $('preview').style.display='block';
+
+    const worker=await warmWorker();const t3=now();
+    $('status').textContent='🔍 讀取 QR碼、單號、B碼…';
+    let data=await readAll(
+      worker,
+      norm.canvas,
+      norm.qr || '',
+      norm.qr ? ((norm.anchor==='QR'?'QR錨點':'原圖QR')+(norm.qrEngine?'｜'+norm.qrEngine:'')) : ''
+    );
+
+    let crossChecked=false,crossConflict=false,qrLocalChecked=false;
+
+    if(qrHit && needsFieldCrossCheck(data)){
+      $('status').textContent='📐 斜拍補讀：直接從原圖讀單號／B碼…';
+      const direct=await readQrRelativeTopFields(worker,img,qrHit);
+      if(direct){
+        qrLocalChecked=true;
+        const mo=mergeField(data,direct,'order','orderDiagnostics');
+        const mb=mergeField(data,direct,'bcode','bDiagnostics');
+
+        data.order=mo.code;
+        data.bcode=mb.code;
+        data.confidence.order=mo.confidence;
+        data.confidence.bcode=mb.confidence;
+        data.orderDiagnostics=mo.diag;
+        data.bDiagnostics=mb.diag;
+        data.crossVerified={order:mo.verified,bcode:mb.verified};
+        crossConflict=!!(mo.conflict||mb.conflict);
+      }
+    }
+
+    if(locateMode==='白色標籤' && needsFieldCrossCheck(data)){
+      $('status').textContent='🧪 局部補讀仍不足，啟動第二定位交叉驗證…';
+      const qrNorm=await normalizeByQrAnchor(img);
+      if(qrNorm){
+        const second=await readAll(
+          worker,
+          qrNorm.canvas,
+          data.qr || qrNorm.qr || '',
+          data.qrSource || 'QR錨點交叉驗證'
+        );
+        crossChecked=true;
+
+        const mo=mergeField(data,second,'order','orderDiagnostics');
+        const mb=mergeField(data,second,'bcode','bDiagnostics');
+
+        data.order=mo.code;
+        data.bcode=mb.code;
+        data.confidence.order=mo.confidence;
+        data.confidence.bcode=mb.confidence;
+        data.orderDiagnostics=mo.diag;
+        data.bDiagnostics=mb.diag;
+        data.crossVerified={
+          ...(data.crossVerified||{}),
+          order:!!((data.crossVerified&&data.crossVerified.order)||mo.verified),
+          bcode:!!((data.crossVerified&&data.crossVerified.bcode)||mb.verified)
+        };
+        crossConflict=!!(crossConflict||mo.conflict||mb.conflict);
+      }
+    }
+
+    const t4=now();
+
+    setResult('qrBox','qr',data.qr);
+    setResult('orderBox','order',data.order);
+    setResult('bBox','bcode',data.bcode);
+
+    const all=!!data.qr&&!!data.order&&!!data.bcode;
+    $('status').textContent=all
+      ? (meta.auto?'✅ 自動掃描完成：QR碼、單號、B碼都已辨識':'✅ QR碼、單號、B碼都已辨識')
+      : (crossConflict?'⚠️ 不同辨識結果互相衝突，系統已拒絕猜測；請再掃一次':'⚠️ 有欄位未讀到；建議再掃一次');
+
+    const q=meta.quality;
+    $('timing').textContent=
+      (meta.auto?'自動取樣：'+(meta.sampleCount||0)+' 個影格\n':'')+
+      (q?'選中影格：清晰 '+q.sharpness.toFixed(1)+'｜亮度 '+Math.round(q.brightness)+'｜對比 '+q.contrast.toFixed(1)+'\n':'')+
+      '照片讀取：'+sec(t1-t0)+'\n'+
+      '定位＋透視拉正：'+sec(t2-t1)+'\n'+
+      'OCR 預熱等待：'+sec(t3-t2)+'\n'+
+      '三欄辨識：'+sec(t4-t3)+'\n'+
+      '總耗時：'+sec(t4-t0)+'\n'+
+      '定位方式：'+locateMode+'\n'+
+      '校正角度：'+norm.angle.toFixed(1)+'°\n'+
+      'QR來源：'+(data.qrSource||'未讀到')+(norm.qrEngine?'｜'+norm.qrEngine:'')+'\n'+
+      '單號信心：'+Math.round(data.confidence.order)+'%\n'+
+      '單號候選：'+((data.orderDiagnostics&&data.orderDiagnostics.candidates)||[]).join(' / ')+'\n'+
+      '單號一致度：'+Math.round(((data.orderDiagnostics&&data.orderDiagnostics.agreement)||0)*100)+'%\n'+
+      'B碼信心：'+Math.round(data.confidence.bcode)+'%\n'+
+      'B碼候選：'+((data.bDiagnostics&&data.bDiagnostics.candidates)||[]).join(' / ')+'\n'+
+      'B碼一致度：'+Math.round(((data.bDiagnostics&&data.bDiagnostics.agreement)||0)*100)+'%\n'+
+      '雙定位交叉驗證：'+(crossChecked?'有啟動':'未啟動')+'\n'+
+      'QR局部斜拍補讀：'+(qrLocalChecked?'有啟動':'未啟動')+'\n'+
+      '定位衝突保護：'+(crossConflict?'有攔截':'無')+'\n'+
+      (data.fallbackUsed?'欄位備援：有啟動\n':'欄位備援：未啟動\n');
+
+    if(meta.auto){
+      $('cameraBox').style.display='none';
+    }
+    return {data,norm};
+  }catch(err){
+    $('status').textContent='❌ '+(err&&err.message?err.message:'辨識失敗');
+    throw err;
+  }
+}
+
+$('autoScanBtn').addEventListener('click',startAutoScanner);
+$('stopCameraBtn').addEventListener('click',()=>stopCamera());
+$('photo').addEventListener('change',async e=>{
+  const file=e.target.files&&e.target.files[0];
+  if(!file)return;
+  try{await handleRecognitionFile(file,{auto:false});}
+  finally{e.target.value='';}
+});
+window.addEventListener('pagehide',()=>stopCamera());
+
+
+</script>
+</body>
+</html>
