@@ -6,7 +6,7 @@
 <meta http-equiv="Expires" content="0">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>封邊標籤辨識｜手持穩定版 v28</title>
+<title>封邊標籤辨識｜手持防抖版 v28</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
@@ -29,8 +29,8 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>封邊標籤辨識｜手持穩定版 v28</h1>
-    <div class="muted">主流程改成「自動辨識」：先鎖定同一個 QR，再判斷手機是否已大致停穩。手持時的小幅晃動不會一直歸零；穩定約 0.8 秒後才自動挑最佳影格辨識。</div>
+    <h1>封邊標籤辨識｜手持防抖版 v28</h1>
+    <div class="muted">主流程改成「自動辨識」：先讓員工對準標籤，再確認 QR 與畫面連續穩定；穩定後才自動挑最佳影格辨識。第一張不完整時才自動換第二張複核。</div>
     <div class="actions">
       <button id="autoScanBtn" class="autoScan" type="button">🎯 掃描＋AI辨識</button>
       <label class="capture">📸 拍照辨識
@@ -80,7 +80,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 </div>
 
 <script>
-// v28 2026-10-05：修正手持微晃與自動對焦造成停穩時間一直歸零；改為QR先鎖定＋容錯累積0.8秒，畫質只作影格篩選，不再綁死停穩計時
+// v28 2026-10-05：改為手持防抖策略；不要求絕對靜止，使用最近影格的QR一致性＋清晰影格數決定觸發，容許一般手抖並自動挑最佳影格
 const $=id=>document.getElementById(id);
 let workerPromise=null;
 const now=()=>performance.now();
@@ -997,8 +997,8 @@ let stableQrCount=0;
 let stableQualityCount=0;
 let lastStableQr='';
 let lastMotionThumb=null;
-let stableHoldMs=0;
-let lastLoopAt=0;
+let stillSince=0;
+let recentQr=[];
 
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
@@ -1228,8 +1228,8 @@ async function startAutoScanner(){
   stableQualityCount=0;
   lastStableQr='';
   lastMotionThumb=null;
-  stableHoldMs=0;
-  lastLoopAt=0;
+  stillSince=0;
+  recentQr=[];
   $('cameraBox').style.display='block';
   $('scanHint').textContent='正在開啟後鏡頭…';
   $('scanMeta').textContent='會自動取樣 5 個影格並挑選最佳畫面。';
@@ -1300,14 +1300,16 @@ async function autoScanLoop(ts){
       lastStableQr=qr;
       stableQrCount=1;
     }
+    recentQr.push(qr);
+    if(recentQr.length>5)recentQr.shift();
   }else{
     stableQrCount=Math.max(0,stableQrCount-1);
+    recentQr.push('');
+    if(recentQr.length>5)recentQr.shift();
   }
 
-  // v28：手持手機不可能完全零移動，而且自動對焦也會讓像素差短暫升高。
-  // 因此「停穩」不再綁死高銳利度；先確認 QR 已連續鎖定，再用可容忍手震的移動量累積穩定時間。
-  const qualityStable = q.ok && q.sharpness>=4.2 && q.brightness>=48 && q.brightness<=232;
-  const motionStable = motion<=7.2;
+  const qualityStable = q.ok && q.sharpness>=4.8 && q.brightness>=50 && q.brightness<=230;
+  const severeMotion = motion>14.0;
 
   if(qualityStable){
     stableQualityCount++;
@@ -1315,20 +1317,11 @@ async function autoScanLoop(ts){
     stableQualityCount=Math.max(0,stableQualityCount-1);
   }
 
-  const tNow=performance.now();
-  const dt=lastLoopAt ? Math.min(320,Math.max(0,tNow-lastLoopAt)) : 0;
-  lastLoopAt=tNow;
-
-  const qrLocked = !!qr && stableQrCount>=3;
-  const exposureOk = q.brightness>=45 && q.brightness<=235 && q.brightRatio<0.38;
-
-  if(qrLocked && motionStable && exposureOk){
-    stableHoldMs=Math.min(1200,stableHoldMs+dt);
-  }else if(qrLocked && motion<=10.5 && exposureOk){
-    // 小幅手震／對焦變化只扣一點，不整段歸零。
-    stableHoldMs=Math.max(0,stableHoldMs-dt*0.35);
-  }else{
-    stableHoldMs=Math.max(0,stableHoldMs-dt*1.5);
+  // v28：一般手抖不視為失敗，只在移動幅度很大時提醒。
+  if(!severeMotion && qualityStable && qr){
+    if(!stillSince)stillSince=performance.now();
+  }else if(severeMotion){
+    stillSince=0;
   }
 
   if(qr && scanQrValue && qr!==scanQrValue){
@@ -1352,32 +1345,44 @@ async function autoScanLoop(ts){
   }
 
   const armed = elapsed>=1300;
-  const holdTarget=800;
+
+  // 最近5幀只要有至少2幀讀到同一個QR，就視為QR已鎖定。
+  const qrCounts={};
+  for(const v of recentQr){
+    if(!v)continue;
+    qrCounts[v]=(qrCounts[v]||0)+1;
+  }
+  let qrConsensus='',qrVotes=0;
+  for(const [k,v] of Object.entries(qrCounts)){
+    if(v>qrVotes){qrVotes=v;qrConsensus=k;}
+  }
+
+  const enoughGoodFrames = scanSamples.length>=3;
   const scannerReady =
     armed &&
-    qr &&
-    stableQrCount>=3 &&
-    stableHoldMs>=holdTarget &&
-    scanSamples.length>=3;
+    qrVotes>=2 &&
+    enoughGoodFrames &&
+    stableQualityCount>=2 &&
+    !severeMotion;
 
   if(!armed){
-    $('scanHint').textContent='🎯 請先把整張標籤放進框內…';
-  }else if(!qr || stableQrCount<3){
-    $('scanHint').textContent='🔎 正在鎖定 QR，請把整張標籤放進框內';
-  }else if(stableHoldMs<holdTarget){
-    const remain=Math.max(0,holdTarget-stableHoldMs);
-    $('scanHint').textContent='✋ 已鎖定標籤，請停一下 '+(remain/1000).toFixed(1)+' 秒';
+    $('scanHint').textContent='🎯 請把整張標籤放進框內…';
+  }else if(qrVotes<2){
+    $('scanHint').textContent='🔎 正在鎖定標籤，手持即可，不用完全不動';
+  }else if(severeMotion){
+    $('scanHint').textContent='↔️ 移動幅度有點大，稍微放慢即可';
   }else{
-    $('scanHint').textContent='🟢 已穩定鎖定，進入 AI 辨識…';
+    $('scanHint').textContent=scannerReady
+      ? '🟢 已鎖定，正在挑最佳影格做 AI 辨識…'
+      : '📸 正在收集清楚影格…';
   }
 
   $('scanMeta').textContent=
     '影格 '+scanSamples.length+'｜清晰 '+q.sharpness.toFixed(1)+'｜亮度 '+Math.round(q.brightness)+
-    '｜移動 '+motion.toFixed(1)+
-    (qr?'｜QR '+qr+'｜QR穩定 '+stableQrCount+'/3':'｜正在找QR')+
-    '｜穩定 '+Math.min(holdTarget,stableHoldMs).toFixed(0)+'/'+holdTarget+'ms';
+    '｜手抖 '+motion.toFixed(1)+
+    (qrConsensus?'｜QR一致 '+qrVotes+'/5':'｜正在找QR');
 
-  // v28：同一 QR 鎖定後，允許正常手持微晃；累積穩定約 0.8 秒才觸發。
+  // v28：不要求完全停穩；只要QR有共識＋至少3張清楚影格就觸發。
   const ready=scannerReady;
 
   if(ready){
@@ -1414,8 +1419,8 @@ async function autoScanLoop(ts){
   if(elapsed>=12000){
     autoScanning=false;
     await stopCamera(true);
-    $('scanHint').textContent='⚠️ 還沒有穩定鎖定標籤';
-    $('status').textContent='請把整張標籤保持在框內，鎖定 QR 後稍微停一下；也可以改用「拍照辨識」';
+    $('scanHint').textContent='⚠️ 還沒有抓到足夠清楚的標籤影格';
+    $('status').textContent='不用完全停住，只要讓整張標籤維持在框內、移動慢一點即可；也可以改用「拍照辨識」';
     return;
   }
 
