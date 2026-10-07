@@ -1,156 +1,170 @@
 {
-  "story_id": "20261004-otter-ice-cube",
-  "title": "One Ice Cube Changed Everything",
-  "description": "Original 38-second visual animal comedy with escalating cause-and-effect, a false win, satisfying payoff, and seamless loop.",
+  "story_id": "20261007-red-panda-cookie-mirror",
+  "title": "Why Does The Cookie Keep Escaping?",
+  "description": "Original 40-second visual animal mystery-comedy built around repeated expectation resets, a fair visual clue, reveal payoff, and seamless loop.",
   "hashtags": [
     "#shorts",
     "#animalstory",
-    "#otter",
+    "#redpanda",
     "#aishorts"
   ],
   "category_id": "15",
   "made_for_kids": false,
   "synthetic_media": true,
-  "content_format": "relatable_comedy",
-  "duration_seconds": 38,
-  "hook": "A tiny otter snatches one ice cube from a wobbling tray in the first frame and slides away as the tray begins to tip.",
+  "content_format": "guess_reveal",
+  "duration_seconds": 40,
+  "hook": "A red panda reaches for a cookie in the first frame, but the cookie suddenly shoots away by itself.",
   "retention_beats": [
-    "0-3s immediate ice-cube grab and tipping tray",
-    "3-7s floor chase with a skittering cube",
-    "7-12s cube vanishes under cabinet",
-    "12-17s false celebration",
-    "17-23s hidden cube triggers a harmless chain reaction",
-    "23-29s escalating chase and airborne cube",
-    "29-35s cube lands perfectly in the water bowl",
-    "35-38s second cube flies to lens for loop"
+    "0-3s cookie escapes at first touch",
+    "3-7s second grab fails as reflection seems wrong",
+    "7-12s cookie slips behind a cup and crumbs point toward mirror",
+    "12-17s red panda traps the cookie but it moves again",
+    "17-23s mirror reflection appears to lag, creating a false supernatural explanation",
+    "23-29s thin thread briefly catches light and the chase accelerates",
+    "29-36s reveal: a tiny mouse behind the mirror has been pulling the cookie and shares it",
+    "36-40s a second cookie snaps toward lens to restart the chase"
   ],
-  "rewatch_trigger": "A toy penguin in the background slowly rotates during the first half, later revealing it was nudged by the runaway cube.",
-  "loop_bridge": "A second ice cube fills the final frame, matching the opening cube with the same sharp ice clink.",
+  "rewatch_trigger": "A tiny mouse ear is visible for a fraction of a second at the mirror edge early in the story, fairly foreshadowing the reveal.",
+  "loop_bridge": "The second cookie fills the final frame moving in the same direction and speed as the escaping cookie in frame one, with the same crisp slide sound.",
   "scenes": [
     {
-      "background": "kitchen",
-      "caption": "GOT IT!",
+      "background": "cozy breakfast nook with floor mirror",
+      "caption": "HEY!",
       "retention_purpose": "hook",
-      "camera": "macro close-up into whip-pan",
-      "action": "Otter grabs one ice cube from a wobbling tray and slides away.",
+      "camera": "macro cookie close-up into fast pullback",
+      "action": "Red panda paw almost touches a cookie; it suddenly shoots sideways before contact.",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.46,
-          "y": 0.67,
-          "scale": 0.82,
-          "emotion": "mischievous"
-        }
-      ]
-    },
-    {
-      "background": "kitchen",
-      "caption": "UH-OH",
-      "retention_purpose": "escalation",
-      "camera": "low floor tracking push",
-      "action": "Otter slides after the skittering cube while a toy penguin subtly turns.",
-      "actors": [
-        {
-          "type": "otter",
-          "x": 0.52,
-          "y": 0.7,
-          "scale": 0.86,
-          "emotion": "focused"
-        }
-      ]
-    },
-    {
-      "background": "kitchen",
-      "caption": "WHERE'D IT GO?",
-      "retention_purpose": "misdirection",
-      "camera": "follow cube then snap to reaction",
-      "action": "Cube slides beneath a cabinet and vanishes; otter freezes.",
-      "actors": [
-        {
-          "type": "otter",
-          "x": 0.5,
-          "y": 0.67,
-          "scale": 0.92,
-          "emotion": "shocked"
-        }
-      ]
-    },
-    {
-      "background": "kitchen",
-      "caption": "EASY.",
-      "retention_purpose": "micro-payoff",
-      "camera": "medium close-up push-in",
-      "action": "Otter proudly holds a tiny ice chip while the original cube keeps sliding behind the cabinet edge.",
-      "actors": [
-        {
-          "type": "otter",
-          "x": 0.5,
-          "y": 0.64,
-          "scale": 0.9,
-          "emotion": "proud"
-        }
-      ]
-    },
-    {
-      "background": "kitchen",
-      "caption": "WAIT…",
-      "retention_purpose": "escalation",
-      "camera": "accelerating lateral track",
-      "action": "The hidden cube taps the toy penguin, which bumps a spoon, which rolls a lemon.",
-      "actors": [
-        {
-          "type": "otter",
-          "x": 0.72,
+          "type": "red_panda",
+          "x": 0.48,
           "y": 0.66,
-          "scale": 0.7,
+          "scale": 0.86,
+          "emotion": "startled"
+        }
+      ]
+    },
+    {
+      "background": "same breakfast nook and mirror",
+      "caption": "AGAIN?",
+      "retention_purpose": "escalation",
+      "camera": "low tracking shot with quick reaction cut",
+      "action": "Red panda lunges again; cookie changes direction while its mirror reflection seems one beat late.",
+      "actors": [
+        {
+          "type": "red_panda",
+          "x": 0.52,
+          "y": 0.67,
+          "scale": 0.9,
           "emotion": "confused"
         }
       ]
     },
     {
-      "background": "kitchen",
-      "caption": "CATCH IT!",
-      "retention_purpose": "escalation",
-      "camera": "rapid action-match cuts then brief slow motion",
-      "action": "Otter dodges the lemon and turns as the original cube pops upward from the spoon.",
+      "background": "same breakfast nook and mirror",
+      "caption": "A CLUE?",
+      "retention_purpose": "micro-payoff",
+      "camera": "follow crumbs into slow push toward mirror",
+      "action": "Cookie slips behind a cup; a fresh crumb trail points toward the mirror. A tiny ear briefly peeks from its edge.",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.48,
-          "y": 0.63,
+          "type": "red_panda",
+          "x": 0.4,
+          "y": 0.66,
+          "scale": 0.76,
+          "emotion": "curious"
+        }
+      ]
+    },
+    {
+      "background": "same breakfast nook and mirror",
+      "caption": "GOT YOU.",
+      "retention_purpose": "misdirection",
+      "camera": "top-down snap to close-up",
+      "action": "Red panda traps the cookie under both paws and smiles; the cookie slowly slides out anyway.",
+      "actors": [
+        {
+          "type": "red_panda",
+          "x": 0.5,
+          "y": 0.64,
           "scale": 0.92,
+          "emotion": "proud"
+        }
+      ]
+    },
+    {
+      "background": "same breakfast nook and mirror",
+      "caption": "WHAT?!",
+      "retention_purpose": "misdirection",
+      "camera": "tight push on mirror then rack focus",
+      "action": "The mirror image appears to move late, making the red panda stare at its own reflection while the cookie escapes behind it.",
+      "actors": [
+        {
+          "type": "red_panda",
+          "x": 0.5,
+          "y": 0.65,
+          "scale": 0.88,
+          "emotion": "shocked"
+        }
+      ]
+    },
+    {
+      "background": "same breakfast nook and mirror",
+      "caption": "WAIT…",
+      "retention_purpose": "escalation",
+      "camera": "fast lateral chase with brief slow-motion glint",
+      "action": "A nearly invisible thread catches sunlight for an instant as the cookie races toward the mirror.",
+      "actors": [
+        {
+          "type": "red_panda",
+          "x": 0.58,
+          "y": 0.67,
+          "scale": 0.86,
           "emotion": "determined"
         }
       ]
     },
     {
-      "background": "kitchen",
-      "caption": "PERFECT.",
+      "background": "behind the floor mirror in same nook",
+      "caption": "OH.",
       "retention_purpose": "reveal",
-      "camera": "top-down to close-up",
-      "action": "Otter redirects the cube with one paw and it lands perfectly in the tiny water bowl.",
+      "camera": "whip around mirror into warm close-up",
+      "action": "A tiny mouse is revealed holding the thread. It breaks the cookie in two and offers half; red panda softens and accepts.",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.42,
-          "y": 0.62,
-          "scale": 0.82,
+          "type": "red_panda",
+          "x": 0.58,
+          "y": 0.65,
+          "scale": 0.76,
           "emotion": "delighted"
+        },
+        {
+          "type": "mouse",
+          "x": 0.35,
+          "y": 0.69,
+          "scale": 0.38,
+          "emotion": "shy"
         }
       ]
     },
     {
-      "background": "kitchen",
+      "background": "same breakfast nook and mirror",
       "caption": "",
       "retention_purpose": "loop",
-      "camera": "bowl-level push then rack focus",
-      "action": "Otter taps the tray with its tail; a second cube flies toward camera until it fills the frame.",
+      "camera": "cookie-level push toward lens",
+      "action": "Mouse tugs a second cookie; it rockets past the smiling red panda straight into the camera until it fills the frame.",
       "actors": [
         {
-          "type": "otter",
+          "type": "red_panda",
           "x": 0.5,
           "y": 0.64,
-          "scale": 0.78,
+          "scale": 0.76,
+          "emotion": "playful"
+        },
+        {
+          "type": "mouse",
+          "x": 0.3,
+          "y": 0.7,
+          "scale": 0.34,
           "emotion": "mischievous"
         }
       ]
