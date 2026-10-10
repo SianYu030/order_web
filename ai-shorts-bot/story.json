@@ -1,174 +1,252 @@
 {
-  "story_id": "20261007-red-panda-cookie-mirror",
-  "title": "Why Does The Cookie Keep Escaping?",
-  "description": "Original 40-second visual animal mystery-comedy built around repeated expectation resets, a fair visual clue, reveal payoff, and seamless loop.",
+  "story_id": "20261010-fox-acorn-domino-crown",
+  "title": "One Acorn Started THIS?!",
+  "description": "An original 41-second, no-dialogue woodland chain-reaction comedy. One runaway acorn sets off a spectacular surprise for a tiny fox.",
   "hashtags": [
     "#shorts",
     "#animalstory",
-    "#redpanda",
-    "#aishorts"
+    "#aishorts",
+    "#satisfying"
   ],
   "category_id": "15",
   "made_for_kids": false,
   "synthetic_media": true,
-  "content_format": "guess_reveal",
-  "duration_seconds": 40,
-  "hook": "A red panda reaches for a cookie in the first frame, but the cookie suddenly shoots away by itself.",
+  "content_format": "oddly_satisfying_story",
+  "duration_seconds": 41,
+  "hook": "Frame one: a tiny fox drops an acorn directly toward camera; its impact starts a runaway chain reaction. By 2.6 seconds the viewer must wonder what the machine will trigger.",
+  "script": "A fox drops an acorn; the acorn tips a pinecone seesaw. Three walnuts race through log grooves. A springy mushroom fires a crimson leaf. The leaf tips a bark seesaw, sending dew pearls through leaf channels. Dew vibrates a harmless silk web and releases berries into a hollow-log xylophone. A hidden squirrel helps the last acorn lift a counterweight. A circular autumn-leaf garland unfolds and crowns the fox. The fox's happy tail flick tips a second acorn into the identical opening frame.",
+  "character_bible": {
+    "fox": "Tiny rust-orange fox, cream muzzle and chest, white-tipped fluffy tail, dark expressive eyes, forest-green neckerchief, no changes across shots.",
+    "squirrel": "Tiny brown squirrel with a striped tail and small blue acorn pouch; glimpse only at 12.3s, full appearance at 27.5s.",
+    "world": "One geographically continuous golden-hour autumn clearing: hollow oak center-left, mossy fallen log right, stump foreground, leaf-channel water run, pinecone spiral and branch garland all visible in coherent relative positions.",
+    "props": "Exactly two identifiable acorns: first triggers chain; second is loop reset. Three walnuts, one crimson maple leaf, five dew drops, red berries, bark seesaw, harmless unoccupied silk web, hollow log xylophone, leaf garland.",
+    "visual_style": "Warm stylized 3D film with tactile fur, amber backlight, gentle depth of field, realistic gravity and contact physics; no static tableaux."
+  },
   "retention_beats": [
-    "0-3s cookie escapes at first touch",
-    "3-7s second grab fails as reflection seems wrong",
-    "7-12s cookie slips behind a cup and crumbs point toward mirror",
-    "12-17s red panda traps the cookie but it moves again",
-    "17-23s mirror reflection appears to lag, creating a false supernatural explanation",
-    "23-29s thin thread briefly catches light and the chase accelerates",
-    "29-36s reveal: a tiny mouse behind the mirror has been pulling the cookie and shares it",
-    "36-40s a second cookie snaps toward lens to restart the chase"
+    "0–4s hook: A single acorn drops and starts an apparently unstoppable woodland contraption.; 0.0 acorn drops; 1.2 fox misses; 2.6 pinecone lever flips.",
+    "4–9s escalation: The runaway acorn starts a rhythmic three-track chain reaction.; 4.1 three walnuts start; 5.6 first groove split; 7.7 center walnut surges.",
+    "9–14s micro-payoff: A surprise leaf launch creates a new target and plants a fair hidden-squirrel clue.; 9.2 mushroom compresses; 10.7 leaf rockets up; 12.3 squirrel tail flicks.",
+    "14–19s escalation: A leaf landing reveals a beautiful, faster water-marble mechanism.; 14.0 leaf lands; 15.3 cup tips; 17.1 dew splits into five tracks.",
+    "19–24s misdirection: The perfect chain seems about to become a chaotic berry mess.; 19.2 silk vibrates; 20.8 latch releases; 22.5 fox ducks.",
+    "24–29s escalation: Musical payoff reveals an unseen helper, but its goal remains hidden.; 24.0 first log note; 25.8 rapid knocks; 27.5 squirrel nudge.",
+    "29–34s reveal: The whole contraption was an elaborate surprise decoration.; 29.0 counterweight rises; 30.6 vine uncoils; 32.4 leaf ring completes.",
+    "34–38s micro-payoff: A visually satisfying, emotionally warm payoff.; 34.0 crown lands; 35.3 fox blinks; 36.6 squirrel claps.",
+    "38–41s loop: The same chain can start again without an abrupt reset.; 38.0 tail swishes; 39.3 second acorn tips; 40.5 frame and click match."
   ],
-  "rewatch_trigger": "A tiny mouse ear is visible for a fraction of a second at the mirror edge early in the story, fairly foreshadowing the reveal.",
-  "loop_bridge": "The second cookie fills the final frame moving in the same direction and speed as the escaping cookie in frame one, with the same crisp slide sound.",
+  "rewatch_trigger": "At ~12.3s the squirrel's striped tail peeks behind the oak branch, fairly revealing someone is setting up the chain before the 27.5s full reveal.",
+  "loop_bridge": "40.5–41s the second acorn fills the frame from the same angle and direction as the first at 0s, with an identical wood-click sound and continuous falling motion.",
+  "editing_notes": "Cut on physical contact, match acorn/walnut/berry motion direction, lead sound into next shot, shift camera or visual information every 1–3s; no dialogue or captions needed; original or demonstrably licensed Foley/BGM only.",
+  "production_gate": "Render at least 8 distinct high-quality coherent animated shots; do not substitute Pillow stickers, one 2s repeated clip, fake scene changes, copyrighted assets, paid generation or auto-upgrades. If free generation unavailable, save story only and skip video/upload.",
   "scenes": [
     {
-      "background": "cozy breakfast nook with floor mirror",
-      "caption": "HEY!",
+      "start_seconds": 0,
+      "duration_seconds": 4,
+      "background": "stump beside hollow oak in one sunny autumn clearing",
+      "caption": "",
       "retention_purpose": "hook",
-      "camera": "macro cookie close-up into fast pullback",
-      "action": "Red panda paw almost touches a cookie; it suddenly shoots sideways before contact.",
+      "retention_reason": "A single acorn drops and starts an apparently unstoppable woodland contraption.",
+      "camera": "Macro acorn shot; fast whip-pan to fox paw; low impact angle.",
+      "action": "The acorn that should be sitting on the stump suddenly falls straight toward the lens. A tiny rust-orange fox lunges after it but misses. It strikes a pinecone seesaw, which flips upward.",
+      "microbeats": "0.0 acorn drops; 1.2 fox misses; 2.6 pinecone lever flips.",
       "actors": [
         {
-          "type": "red_panda",
-          "x": 0.48,
+          "type": "fox",
+          "x": 0.52,
           "y": 0.66,
-          "scale": 0.86,
+          "scale": 0.84,
           "emotion": "startled"
         }
-      ]
+      ],
+      "scene_prompt": "Vertical 9:16 cinematic stylized 3D animation, one continuous sunny autumn woodland clearing around a hollow oak and mossy fallen log. Same tiny rust-orange fox with cream muzzle, white-tipped tail, green neckerchief; same small striped squirrel with a blue acorn pouch when visible. The acorn that should be sitting on the stump suddenly falls straight toward the lens. A tiny rust-orange fox lunges after it but misses. It strikes a pinecone seesaw, which flips upward. Macro acorn shot; fast whip-pan to fox paw; low impact angle. Rich natural motion, clear causality, physical continuity, no on-screen text, no logos, no watermark."
     },
     {
-      "background": "same breakfast nook and mirror",
-      "caption": "AGAIN?",
+      "start_seconds": 4,
+      "duration_seconds": 5,
+      "background": "same hollow oak and fallen log, clearing",
+      "caption": "",
       "retention_purpose": "escalation",
-      "camera": "low tracking shot with quick reaction cut",
-      "action": "Red panda lunges again; cookie changes direction while its mirror reflection seems one beat late.",
+      "retention_reason": "The runaway acorn starts a rhythmic three-track chain reaction.",
+      "camera": "Ground-level tracking with rhythmic jump cuts following each walnut.",
+      "action": "The pinecone knocks three polished walnuts into three separate grooves carved in a fallen log; they roll in sync, then the middle walnut overtakes the others.",
+      "microbeats": "4.1 three walnuts start; 5.6 first groove split; 7.7 center walnut surges.",
       "actors": [
         {
-          "type": "red_panda",
+          "type": "fox",
           "x": 0.52,
-          "y": 0.67,
-          "scale": 0.9,
-          "emotion": "confused"
-        }
-      ]
-    },
-    {
-      "background": "same breakfast nook and mirror",
-      "caption": "A CLUE?",
-      "retention_purpose": "micro-payoff",
-      "camera": "follow crumbs into slow push toward mirror",
-      "action": "Cookie slips behind a cup; a fresh crumb trail points toward the mirror. A tiny ear briefly peeks from its edge.",
-      "actors": [
-        {
-          "type": "red_panda",
-          "x": 0.4,
           "y": 0.66,
-          "scale": 0.76,
-          "emotion": "curious"
-        }
-      ]
-    },
-    {
-      "background": "same breakfast nook and mirror",
-      "caption": "GOT YOU.",
-      "retention_purpose": "misdirection",
-      "camera": "top-down snap to close-up",
-      "action": "Red panda traps the cookie under both paws and smiles; the cookie slowly slides out anyway.",
-      "actors": [
-        {
-          "type": "red_panda",
-          "x": 0.5,
-          "y": 0.64,
-          "scale": 0.92,
-          "emotion": "proud"
-        }
-      ]
-    },
-    {
-      "background": "same breakfast nook and mirror",
-      "caption": "WHAT?!",
-      "retention_purpose": "misdirection",
-      "camera": "tight push on mirror then rack focus",
-      "action": "The mirror image appears to move late, making the red panda stare at its own reflection while the cookie escapes behind it.",
-      "actors": [
-        {
-          "type": "red_panda",
-          "x": 0.5,
-          "y": 0.65,
-          "scale": 0.88,
-          "emotion": "shocked"
-        }
-      ]
-    },
-    {
-      "background": "same breakfast nook and mirror",
-      "caption": "WAIT…",
-      "retention_purpose": "escalation",
-      "camera": "fast lateral chase with brief slow-motion glint",
-      "action": "A nearly invisible thread catches sunlight for an instant as the cookie races toward the mirror.",
-      "actors": [
-        {
-          "type": "red_panda",
-          "x": 0.58,
-          "y": 0.67,
-          "scale": 0.86,
+          "scale": 0.84,
           "emotion": "determined"
         }
-      ]
+      ],
+      "scene_prompt": "Vertical 9:16 cinematic stylized 3D animation, one continuous sunny autumn woodland clearing around a hollow oak and mossy fallen log. Same tiny rust-orange fox with cream muzzle, white-tipped tail, green neckerchief; same small striped squirrel with a blue acorn pouch when visible. The pinecone knocks three polished walnuts into three separate grooves carved in a fallen log; they roll in sync, then the middle walnut overtakes the others. Ground-level tracking with rhythmic jump cuts following each walnut. Rich natural motion, clear causality, physical continuity, no on-screen text, no logos, no watermark."
     },
     {
-      "background": "behind the floor mirror in same nook",
-      "caption": "OH.",
-      "retention_purpose": "reveal",
-      "camera": "whip around mirror into warm close-up",
-      "action": "A tiny mouse is revealed holding the thread. It breaks the cookie in two and offers half; red panda softens and accepts.",
+      "start_seconds": 9,
+      "duration_seconds": 5,
+      "background": "same clearing, mushroom at base of oak",
+      "caption": "",
+      "retention_purpose": "micro-payoff",
+      "retention_reason": "A surprise leaf launch creates a new target and plants a fair hidden-squirrel clue.",
+      "camera": "Impact close-up; vertical tilt; fox reaction insert.",
+      "action": "A walnut hits a springy mushroom and launches one crimson maple leaf into the air. The fox leaps for it. A small striped squirrel tail briefly disappears behind the oak branch.",
+      "microbeats": "9.2 mushroom compresses; 10.7 leaf rockets up; 12.3 squirrel tail flicks.",
       "actors": [
         {
-          "type": "red_panda",
-          "x": 0.58,
+          "type": "fox",
+          "x": 0.52,
+          "y": 0.66,
+          "scale": 0.84,
+          "emotion": "determined"
+        }
+      ],
+      "scene_prompt": "Vertical 9:16 cinematic stylized 3D animation, one continuous sunny autumn woodland clearing around a hollow oak and mossy fallen log. Same tiny rust-orange fox with cream muzzle, white-tipped tail, green neckerchief; same small striped squirrel with a blue acorn pouch when visible. A walnut hits a springy mushroom and launches one crimson maple leaf into the air. The fox leaps for it. A small striped squirrel tail briefly disappears behind the oak branch. Impact close-up; vertical tilt; fox reaction insert. Rich natural motion, clear causality, physical continuity, no on-screen text, no logos, no watermark."
+    },
+    {
+      "start_seconds": 14,
+      "duration_seconds": 5,
+      "background": "same clearing, leaf channels under oak",
+      "caption": "",
+      "retention_purpose": "escalation",
+      "retention_reason": "A leaf landing reveals a beautiful, faster water-marble mechanism.",
+      "camera": "Match cut leaf fall to seesaw; overhead curve following droplets.",
+      "action": "The falling maple leaf lands on a bark seesaw and tips a wooden acorn cup. Five round dew drops race through curved overlapping leaves like glass marbles.",
+      "microbeats": "14.0 leaf lands; 15.3 cup tips; 17.1 dew splits into five tracks.",
+      "actors": [
+        {
+          "type": "fox",
+          "x": 0.52,
+          "y": 0.66,
+          "scale": 0.84,
+          "emotion": "determined"
+        }
+      ],
+      "scene_prompt": "Vertical 9:16 cinematic stylized 3D animation, one continuous sunny autumn woodland clearing around a hollow oak and mossy fallen log. Same tiny rust-orange fox with cream muzzle, white-tipped tail, green neckerchief; same small striped squirrel with a blue acorn pouch when visible. The falling maple leaf lands on a bark seesaw and tips a wooden acorn cup. Five round dew drops race through curved overlapping leaves like glass marbles. Match cut leaf fall to seesaw; overhead curve following droplets. Rich natural motion, clear causality, physical continuity, no on-screen text, no logos, no watermark."
+    },
+    {
+      "start_seconds": 19,
+      "duration_seconds": 5,
+      "background": "same clearing, pinecone spiral beside log",
+      "caption": "",
+      "retention_purpose": "misdirection",
+      "retention_reason": "The perfect chain seems about to become a chaotic berry mess.",
+      "camera": "Macro ripple-to-vibration; quick pullback to spinning berry spiral and fox's alarmed eyes.",
+      "action": "Dew drops land on a harmless empty web of silk between twigs. The web vibrates, releases a hanging vine latch, and sends a cluster of red berries spinning down a pinecone spiral. The fox braces for a splattery disaster.",
+      "microbeats": "19.2 silk vibrates; 20.8 latch releases; 22.5 fox ducks.",
+      "actors": [
+        {
+          "type": "fox",
+          "x": 0.52,
+          "y": 0.66,
+          "scale": 0.84,
+          "emotion": "determined"
+        }
+      ],
+      "scene_prompt": "Vertical 9:16 cinematic stylized 3D animation, one continuous sunny autumn woodland clearing around a hollow oak and mossy fallen log. Same tiny rust-orange fox with cream muzzle, white-tipped tail, green neckerchief; same small striped squirrel with a blue acorn pouch when visible. Dew drops land on a harmless empty web of silk between twigs. The web vibrates, releases a hanging vine latch, and sends a cluster of red berries spinning down a pinecone spiral. The fox braces for a splattery disaster. Macro ripple-to-vibration; quick pullback to spinning berry spiral and fox's alarmed eyes. Rich natural motion, clear causality, physical continuity, no on-screen text, no logos, no watermark."
+    },
+    {
+      "start_seconds": 24,
+      "duration_seconds": 5,
+      "background": "same hollow log and oak",
+      "caption": "",
+      "retention_purpose": "escalation",
+      "retention_reason": "Musical payoff reveals an unseen helper, but its goal remains hidden.",
+      "camera": "Five beat-matched impact cuts; rack-focus to squirrel paw.",
+      "action": "The berries tumble neatly into a hollow log, making five musical knocks. A tiny striped squirrel darts out to nudge the last rolling acorn, revealing that the mechanism was built on purpose.",
+      "microbeats": "24.0 first log note; 25.8 rapid knocks; 27.5 squirrel nudge.",
+      "actors": [
+        {
+          "type": "fox",
+          "x": 0.57,
           "y": 0.65,
-          "scale": 0.76,
+          "scale": 0.75,
+          "emotion": "astonished"
+        },
+        {
+          "type": "squirrel",
+          "x": 0.3,
+          "y": 0.68,
+          "scale": 0.33,
+          "emotion": "mischievous"
+        }
+      ],
+      "scene_prompt": "Vertical 9:16 cinematic stylized 3D animation, one continuous sunny autumn woodland clearing around a hollow oak and mossy fallen log. Same tiny rust-orange fox with cream muzzle, white-tipped tail, green neckerchief; same small striped squirrel with a blue acorn pouch when visible. The berries tumble neatly into a hollow log, making five musical knocks. A tiny striped squirrel darts out to nudge the last rolling acorn, revealing that the mechanism was built on purpose. Five beat-matched impact cuts; rack-focus to squirrel paw. Rich natural motion, clear causality, physical continuity, no on-screen text, no logos, no watermark."
+    },
+    {
+      "start_seconds": 29,
+      "duration_seconds": 5,
+      "background": "same oak branch above fox",
+      "caption": "",
+      "retention_purpose": "reveal",
+      "retention_reason": "The whole contraption was an elaborate surprise decoration.",
+      "camera": "Counterweight insert; rising orbit following unfolding garland.",
+      "action": "The last acorn lifts a woven vine counterweight. A concealed garland of red, gold, and amber leaves unfurls in one smooth circular wave above the fox.",
+      "microbeats": "29.0 counterweight rises; 30.6 vine uncoils; 32.4 leaf ring completes.",
+      "actors": [
+        {
+          "type": "fox",
+          "x": 0.57,
+          "y": 0.65,
+          "scale": 0.75,
+          "emotion": "astonished"
+        },
+        {
+          "type": "squirrel",
+          "x": 0.3,
+          "y": 0.68,
+          "scale": 0.33,
+          "emotion": "mischievous"
+        }
+      ],
+      "scene_prompt": "Vertical 9:16 cinematic stylized 3D animation, one continuous sunny autumn woodland clearing around a hollow oak and mossy fallen log. Same tiny rust-orange fox with cream muzzle, white-tipped tail, green neckerchief; same small striped squirrel with a blue acorn pouch when visible. The last acorn lifts a woven vine counterweight. A concealed garland of red, gold, and amber leaves unfurls in one smooth circular wave above the fox. Counterweight insert; rising orbit following unfolding garland. Rich natural motion, clear causality, physical continuity, no on-screen text, no logos, no watermark."
+    },
+    {
+      "start_seconds": 34,
+      "duration_seconds": 4,
+      "background": "same clearing, same fox and squirrel",
+      "caption": "",
+      "retention_purpose": "micro-payoff",
+      "retention_reason": "A visually satisfying, emotionally warm payoff.",
+      "camera": "Centered crown landing; reaction close-up; warm wide shot.",
+      "action": "The garland drops perfectly onto the fox's head as a fluffy autumn crown. The squirrel claps, the fox freezes in disbelief, then gives a delighted little tail wag.",
+      "microbeats": "34.0 crown lands; 35.3 fox blinks; 36.6 squirrel claps.",
+      "actors": [
+        {
+          "type": "fox",
+          "x": 0.57,
+          "y": 0.65,
+          "scale": 0.75,
           "emotion": "delighted"
         },
         {
-          "type": "mouse",
-          "x": 0.35,
-          "y": 0.69,
-          "scale": 0.38,
-          "emotion": "shy"
-        }
-      ]
-    },
-    {
-      "background": "same breakfast nook and mirror",
-      "caption": "",
-      "retention_purpose": "loop",
-      "camera": "cookie-level push toward lens",
-      "action": "Mouse tugs a second cookie; it rockets past the smiling red panda straight into the camera until it fills the frame.",
-      "actors": [
-        {
-          "type": "red_panda",
-          "x": 0.5,
-          "y": 0.64,
-          "scale": 0.76,
-          "emotion": "playful"
-        },
-        {
-          "type": "mouse",
+          "type": "squirrel",
           "x": 0.3,
-          "y": 0.7,
-          "scale": 0.34,
+          "y": 0.68,
+          "scale": 0.33,
           "emotion": "mischievous"
         }
-      ]
+      ],
+      "scene_prompt": "Vertical 9:16 cinematic stylized 3D animation, one continuous sunny autumn woodland clearing around a hollow oak and mossy fallen log. Same tiny rust-orange fox with cream muzzle, white-tipped tail, green neckerchief; same small striped squirrel with a blue acorn pouch when visible. The garland drops perfectly onto the fox's head as a fluffy autumn crown. The squirrel claps, the fox freezes in disbelief, then gives a delighted little tail wag. Centered crown landing; reaction close-up; warm wide shot. Rich natural motion, clear causality, physical continuity, no on-screen text, no logos, no watermark."
+    },
+    {
+      "start_seconds": 38,
+      "duration_seconds": 3,
+      "background": "same stump and oak",
+      "caption": "",
+      "retention_purpose": "loop",
+      "retention_reason": "The same chain can start again without an abrupt reset.",
+      "camera": "Tail close-up; macro match cut to first frame, no fade.",
+      "action": "The fox's wagging tail gently nudges a second acorn to the stump edge. It tips into the exact opening-frame position; the last 0.5 seconds match the first acorn's scale, direction, and crisp wooden click.",
+      "microbeats": "38.0 tail swishes; 39.3 second acorn tips; 40.5 frame and click match.",
+      "actors": [
+        {
+          "type": "fox",
+          "x": 0.52,
+          "y": 0.66,
+          "scale": 0.84,
+          "emotion": "determined"
+        }
+      ],
+      "scene_prompt": "Vertical 9:16 cinematic stylized 3D animation, one continuous sunny autumn woodland clearing around a hollow oak and mossy fallen log. Same tiny rust-orange fox with cream muzzle, white-tipped tail, green neckerchief; same small striped squirrel with a blue acorn pouch when visible. The fox's wagging tail gently nudges a second acorn to the stump edge. It tips into the exact opening-frame position; the last 0.5 seconds match the first acorn's scale, direction, and crisp wooden click. Tail close-up; macro match cut to first frame, no fade. Rich natural motion, clear causality, physical continuity, no on-screen text, no logos, no watermark."
     }
-  ],
-  "compliance_trigger": "2026-10-07T21:20:00+08:00"
+  ]
 }
