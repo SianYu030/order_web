@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<rect width="1200" height="800" fill="#f4f7fb"/>
+<rect x="70" y="70" width="1060" height="660" rx="34" fill="#ffffff" stroke="#1d5b8f" stroke-width="8"/>
+<text x="600" y="260" text-anchor="middle" font-family="Arial, sans-serif" font-size="70" font-weight="700" fill="#164d7a">Photo Agent Auto Download Test</text>
+<text x="600" y="390" text-anchor="middle" font-family="Arial, sans-serif" font-size="58" fill="#222">MR2026101299</text>
+<text x="600" y="500" text-anchor="middle" font-family="Arial, sans-serif" font-size="52" fill="#222">Report Photo</text>
+<text x="600" y="610" text-anchor="middle" font-family="Arial, sans-serif" font-size="36" fill="#66788a">If this file appears in NAS, auto-download works.</text>
+</svg>
