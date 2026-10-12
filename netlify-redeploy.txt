@@ -1,0 +1,1 @@
+Trigger Netlify rebuild after restoring the last stable showroom UI on 2026-09-17.
