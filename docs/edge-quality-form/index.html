@@ -1672,11 +1672,13 @@ function inlineGuideBounds(canvas){
 function inlineLabelInsideGuide(label,canvas){
   if(!label)return false;
   const guide=inlineGuideBounds(canvas);
-  // 框線是操作參考，不是像素級硬邊界；手機手抖及 video crop 可偏差。
-  // 白標籤不能被鏡頭真實邊緣裁切，但允許略超出導引框。
-  const padX=.065,padY=.090;
-  return label.x0>=guide.x0-padX && label.x1<=guide.x1+padX &&
-         label.y0>=guide.y0-padY && label.y1<=guide.y1+padY;
+  // 提早觸發的根因：舊版允許標籤明顯超出框線仍直接OCR。
+  // 保留些微偵測誤差，但四邊都需完整在框線內，且不得接觸影格實際邊緣。
+  const pad=.012;
+  return label.x0>=Math.max(.018,guide.x0-pad) &&
+         label.x1<=Math.min(.982,guide.x1+pad) &&
+         label.y0>=Math.max(.018,guide.y0-pad) &&
+         label.y1<=Math.min(.982,guide.y1+pad);
 }
 
 async function inlineQuickQrHit(canvas){
@@ -1860,14 +1862,10 @@ async function inlineScanLoop(ts){
   try{hit=await inlineQuickQrHit(frame);}catch(e){}
   if(!INLINE_SCANNING || session!==INLINE_SCAN_SESSION)return;
 
-  // QR 可當作第二條定位路徑：白色連通塊偵測可能因文字、反光而失敗。
-  // 只要連續讀到有效的圖形 QR 且 QR 在畫面中央範圍，就能開始累積，
-  // 不再被白紙色差/導引框的硬門檻卡住。
-  const centralQr=!!(hit && hit.x!=null && hit.y!=null &&
-      hit.x>=.10 && hit.x<=.90 && hit.y>=.10 && hit.y<=.90);
+  // 必須「清楚的完整白色標籤＋框內QR」同時成立。
+  // QR單獨在畫面中央不足以代表整張標籤已對準。
   const qrWithinLabel=inlineQrInsideLabel(hit,label);
-  const valid=!!(q.ok && hit &&
-      (inGuide && qrWithinLabel || centralQr));
+  const valid=!!(q.ok && label && inGuide && hit && qrWithinLabel);
   const qr=valid?hit.data:'';
   const nowMs=performance.now();
 
@@ -1914,21 +1912,25 @@ async function inlineScanLoop(ts){
 
   const status=document.getElementById('inlineScanStatus');
   const meta=document.getElementById('inlineScanMeta');
-  if(hit && !ready){
-    status.textContent='📸 已找到 QR，正在確認清楚畫面…';
+  if(!label){
+    status.textContent='⬜ 請讓整張白色標籤完整進入框線';
+  }else if(!inGuide){
+    status.textContent='↔️ 標籤四邊還沒進框，請稍微退後';
   }else if(!hit){
-    status.textContent='🔎 請讓整張標籤對準鏡頭，正在找圖形 QR…';
+    status.textContent='🔎 標籤已進框，正在尋找 QR';
   }else if(!valid){
-    status.textContent='🎯 QR 已找到，請放慢移動讓畫面清楚';
+    status.textContent='🎯 請保持標籤清楚、稍微放慢移動';
+  }else if(!ready){
+    status.textContent='📸 標籤及 QR 已鎖定，正在收集影格';
   }else{
-    status.textContent='🟢 QR 已確認，開始辨識…';
+    status.textContent='🟢 整張標籤已確認，開始辨識';
   }
-  meta.textContent='標籤定位：'+(label?'已看到':'QR路徑備援')+
+  meta.textContent='標籤：'+(inGuide?'完整進框':(label?'未完整進框':'未找到'))+
     '｜QR：'+(INLINE_LOCKED_QR||'搜尋中')+
     '｜有效影格：'+INLINE_SCAN_SAMPLES.length+
     '｜確認：'+(lockDuration/1000).toFixed(1)+' 秒';
   if(nowMs-INLINE_SCAN_STARTED>11000&&!ready){
-    meta.textContent+='｜仍未鎖定時，可以按「立即辨識目前畫面」';
+    meta.textContent+='｜未完成對準時不會自動辨識';
   }
 
   if(ready){
@@ -1994,6 +1996,30 @@ async function inlineScanLoop(ts){
   requestAnimationFrame(inlineScanLoop);
 }
 
+async function readUpperLabelFields_(worker,labelCanvas){
+  // 讀整排頂端文字，避免單號/B碼實際位置偏離狹窄固定裁切框。
+  // 只抓目前缺少的資料；OCR仍在手機本機執行。
+  const specs=[
+    [0.005,0.00,0.95,0.25,1650,'contrast',6],
+    [0.005,0.05,0.84,0.27,1600,null,6],
+    [0.005,0.00,0.95,0.21,1550,'binary',6]
+  ];
+  const reads=[];
+  for(const s of specs){
+    const crop=cropFastLabel_(labelCanvas,s[0],s[1],s[2],s[3],s[4],s[5]);
+    reads.push(await fastOcr_(worker,crop,'B0123456789',s[6]));
+    const order=chooseFastOrderCandidate_(reads);
+    const b=chooseFastBCodeCandidate_(reads);
+    if(order.code && b.code && reads.length>=2){
+      return {orderNo:order.code,bCode:b.code};
+    }
+  }
+  return {
+    orderNo:chooseFastOrderCandidate_(reads).code,
+    bCode:chooseFastBCodeCandidate_(reads).code
+  };
+}
+
 async function handleLabelPhoto(event) {
   const input = event.target;
 
@@ -2029,20 +2055,18 @@ async function handleLabelPhoto(event) {
     status.textContent = '🎯 ' + t('quickRecognition') + '：QR定位';
     showLoading(true, status.textContent);
 
-    let normalized = await normalizeLabelByQrAnchor(image);
-    let locateMode = 'QR';
-
-    if (!normalized) {
-      status.textContent = '⬜ ' + t('enhancedRecognition') + '：標籤定位';
-      showLoading(true, status.textContent);
-      normalized = normalizeWhiteLabel(image);
-      locateMode = normalized && normalized.located ? 'LABEL' : 'FULL';
+    // 文字欄在標籤上沿：QR錨點容易把第一排的單號/B碼裁掉。
+    // 優先定位整張白色標籤，QR錨點當備援，避免只讀得到QR。
+    let normalized=normalizeWhiteLabel(image);
+    let locateMode=normalized&&normalized.located?'LABEL':'FULL';
+    if(!normalized || !normalized.located){
+      const byQr=await normalizeLabelByQrAnchor(image);
+      if(byQr){
+        normalized=byQr;
+        locateMode='QR';
+      }
     }
-
-    if (!normalized) {
-      normalized = makeFullImageFallback(image);
-      locateMode = 'FULL';
-    }
+    if(!normalized)normalized=makeFullImageFallback(image);
 
     const worker = await getFastLabelOcrWorker(function(percent) {
       const pct = Math.max(0, Math.min(100, Math.round(percent || 0)));
@@ -2052,12 +2076,30 @@ async function handleLabelPhoto(event) {
       }
     });
 
-    const data = await readFastLabelFields(
+    let data = await readFastLabelFields(
       worker,
       normalized.canvas,
       normalized.anchor === 'QR' ? normalized.qr : '',
       normalized.anchor === 'QR' ? 'QR' : ''
     );
+
+    // 標籤上沿完整文字備援：QR 與單號/B碼可能來自不同裁切路徑。
+    // 只在主辨識缺欄時啟動，避免增加正常掃描時間。
+    if(!data.orderNo || !data.bCode){
+      const supplement=await readUpperLabelFields_(worker,normalized.canvas);
+      if(!data.orderNo && supplement.orderNo)data.orderNo=supplement.orderNo;
+      if(!data.bCode && supplement.bCode)data.bCode=supplement.bCode;
+
+      // 若白標籤定位不成功，再用展開的QR錨點做第二條定位路徑。
+      if((!data.orderNo || !data.bCode) && locateMode!=='QR'){
+        const qrNorm=await normalizeLabelByQrAnchor(image);
+        if(qrNorm){
+          const supplementQr=await readUpperLabelFields_(worker,qrNorm.canvas);
+          if(!data.orderNo && supplementQr.orderNo)data.orderNo=supplementQr.orderNo;
+          if(!data.bCode && supplementQr.bCode)data.bCode=supplementQr.bCode;
+        }
+      }
+    }
 
     document.getElementById('labelOrderNo').value = data.orderNo || '';
     document.getElementById('labelBCode').value = data.bCode || '';
@@ -2762,10 +2804,10 @@ async function normalizeLabelByQrAnchor(image) {
   const p0 = tl;
 
   let quad = [
-    addQrVector_(p0,u,-3.55,v,-3.05),
-    addQrVector_(p0,u, 4.35,v,-3.05),
-    addQrVector_(p0,u, 4.35,v, 2.65),
-    addQrVector_(p0,u,-3.55,v, 2.65)
+    addQrVector_(p0,u,-3.85,v,-4.15),
+    addQrVector_(p0,u, 4.65,v,-4.15),
+    addQrVector_(p0,u, 4.65,v, 2.65),
+    addQrVector_(p0,u,-3.85,v, 2.65)
   ];
 
   quad = quad.map(function(p) {
