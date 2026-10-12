@@ -705,7 +705,7 @@
             </div>
             <div id="inlineScanStatus" class="inline-scan-status">相機準備中…</div>
             <div id="inlineScanMeta" class="inline-scan-meta">手持掃描會自動判讀；如果沒有觸發，也可按「立即辨識目前畫面」。</div>
-            <button id="inlineSnapBtn" class="inline-stop-btn" type="button" onclick="captureInlineNow()" style="background:#0f7a54;color:#fff;">📸 立即辨識目前畫面</button>
+            <button id="inlineSnapBtn" class="inline-stop-btn" type="button" onclick="captureInlineNow()" style="background:#0f7a54;color:#fff;display:none;">📸 立即辨識目前畫面</button>
             <button id="inlineStopBtn" class="inline-stop-btn" type="button" onclick="stopInlineScanner()">關閉相機</button>
           </div>
 
@@ -1546,6 +1546,7 @@ let INLINE_LOCKED_QR='';
 let INLINE_LABEL_LOCK_STARTED=0;
 let INLINE_LAST_LABEL_AT=0;
 let INLINE_SCAN_SESSION=0;
+let INLINE_OCR_ATTEMPTS=0;
 
 function inlineCaptureFrame(video,maxW){
   if(!video || !video.videoWidth || !video.videoHeight)return null;
@@ -1798,6 +1799,23 @@ async function startInlineScanner(){
   INLINE_LAST_LABEL_AT=0;
   INLINE_SCAN_STARTED=performance.now();
   INLINE_SCAN_LAST=0;
+  INLINE_OCR_ATTEMPTS=0;
+
+  // 每次開始掃新標籤，舊QR/單號/B碼都清除；避免舊資料被誤認成這次成功。
+  document.getElementById('workpieceQr').value='';
+  document.getElementById('labelOrderNo').value='';
+  document.getElementById('labelBCode').value='';
+  selected.workpieceQr='';
+  selected.labelOrderNo='';
+  selected.labelBCode='';
+  const qrResult=document.getElementById('qrResult');
+  if(qrResult){qrResult.textContent='';qrResult.className='qr-result';}
+  document.getElementById('labelFields').classList.add('hidden');
+  showQrFallback(false);
+  clearOcrWarnings();
+  updateSummary();
+  const manual=document.getElementById('inlineSnapBtn');
+  if(manual)manual.style.display='none';
 
   try{
     INLINE_CAMERA_STREAM=await navigator.mediaDevices.getUserMedia({
@@ -1906,9 +1924,9 @@ async function inlineScanLoop(ts){
   const lockDuration=INLINE_LABEL_LOCK_STARTED?nowMs-INLINE_LABEL_LOCK_STARTED:0;
   const fresh=INLINE_LAST_LABEL_AT && nowMs-INLINE_LAST_LABEL_AT<450;
   // 不再有「3.2秒到了就辨識」的備援：沒有QR與白色完整標籤，永遠不自動拍。
-  const ready=!!(fresh && valid && qr===INLINE_LOCKED_QR &&
-    votes>=3 && INLINE_SCAN_SAMPLES.length>=4 &&
-    lockDuration>=1800);
+  const ready=!!(INLINE_OCR_ATTEMPTS<2 && fresh && valid &&
+    qr===INLINE_LOCKED_QR && votes>=3 &&
+    INLINE_SCAN_SAMPLES.length>=4 && lockDuration>=1800);
 
   const status=document.getElementById('inlineScanStatus');
   const meta=document.getElementById('inlineScanMeta');
@@ -1929,7 +1947,10 @@ async function inlineScanLoop(ts){
     '｜QR：'+(INLINE_LOCKED_QR||'搜尋中')+
     '｜有效影格：'+INLINE_SCAN_SAMPLES.length+
     '｜確認：'+(lockDuration/1000).toFixed(1)+' 秒';
-  if(nowMs-INLINE_SCAN_STARTED>11000&&!ready){
+  if(INLINE_OCR_ATTEMPTS>=2){
+    status.textContent='⚠️ QR已找到，但文字連續兩次未完整辨識；請調整距離再點「立即辨識目前畫面」，或改用拍照';
+    meta.textContent='QR '+(INLINE_LOCKED_QR||'等待中')+'｜單號與B碼必須確認後才能送出';
+  }else if(nowMs-INLINE_SCAN_STARTED>11000&&!ready){
     meta.textContent+='｜未完成對準時不會自動辨識';
   }
 
@@ -1939,8 +1960,9 @@ async function inlineScanLoop(ts){
     const samples=INLINE_SCAN_SAMPLES.slice().sort((a,b)=>b.score-a.score);
     const best=samples[0],second=samples[1]||null;
     const verifiedQr=INLINE_LOCKED_QR;
-    await stopInlineScanner(false);
-    INLINE_SCAN_BUSY=true;
+    // 只暫停取樣，不停止相機。QR讀得到但單號/B碼沒讀到時，
+    // 仍留在目前的相機畫面，讓員工調整距離直接重試。
+    INLINE_OCR_ATTEMPTS++;
     try{
       status.textContent='🧠 QR 已鎖定，正在判讀 QR／單號／B碼…';
       const file=await inlineCanvasToFile(best.canvas,'inline-best.jpg');
@@ -1975,17 +1997,52 @@ async function inlineScanLoop(ts){
       }
 
       const check=readCurrentLabelResult();
-      const all=!!check.qr&&!!check.order&&!!check.b;
-      status.textContent=all
-        ? '✅ 掃描完成：QR、單號、B碼已直接填入'
-        : '⚠️ 辨識已完成：尚有欄位需要人工確認';
-      meta.textContent='同一頁完成，請核對欄位後送出';
-      setTimeout(function(){
-        const box=document.getElementById('inlineCameraBox');
-        if(box)box.classList.remove('show');
-      },800);
+      const validResult=/^\d{8}$/.test(check.qr)&&/^20\d{10}$/.test(check.order)&&/^B\d{9}$/.test(check.b);
+      if(validResult){
+        status.textContent='✅ QR／單號／B碼都已辨識，請核對後送出';
+        meta.textContent='完整三欄已填入同一頁';
+        await stopInlineScanner(false);
+        const labelStatus=document.getElementById('labelOcrStatus');
+        if(labelStatus)labelStatus.textContent='✅ QR／單號／B碼辨識完成，請核對內容後送出';
+        setTimeout(function(){
+          const box=document.getElementById('inlineCameraBox');
+          if(box)box.classList.remove('show');
+        },950);
+      }else{
+        const missing=[!/^20\d{10}$/.test(check.order)?'單號':'',!/^B\d{9}$/.test(check.b)?'B碼':'',
+                       !/^\d{8}$/.test(check.qr)?'QR':''].filter(Boolean).join('、');
+        status.textContent='⚠️ 未完成辨識：'+missing+' 尚未讀到，請稍微靠近並維持整張標籤進框';
+        meta.textContent='正在保留相機並準備重新取樣（第 '+INLINE_OCR_ATTEMPTS+'/2 次）';
+        const labelStatus=document.getElementById('labelOcrStatus');
+        if(labelStatus)labelStatus.textContent='⚠️ 只讀到部分資料：'+missing+' 待辨識；尚未完成';
+        INLINE_SCAN_SAMPLES=[];
+        INLINE_RECENT_QR=[];
+        INLINE_LOCKED_QR='';
+        INLINE_LABEL_LOCK_STARTED=0;
+        INLINE_LAST_LABEL_AT=0;
+        INLINE_SCAN_STARTED=performance.now();
+        INLINE_SCAN_LAST=0;
+        if(INLINE_OCR_ATTEMPTS>=2){
+          const manual=document.getElementById('inlineSnapBtn');
+          if(manual)manual.style.display='block';
+        }
+        INLINE_SCANNING=true;
+        requestAnimationFrame(inlineScanLoop);
+      }
     }catch(err){
-      status.textContent='❌ '+(err&&err.message?err.message:'掃描辨識失敗');
+      status.textContent='⚠️ 這次OCR失敗，請調整畫面重新掃描：'+(err&&err.message?err.message:'辨識錯誤');
+      INLINE_SCAN_SAMPLES=[];
+      INLINE_RECENT_QR=[];
+      INLINE_LABEL_LOCK_STARTED=0;
+      INLINE_LOCKED_QR='';
+      INLINE_LAST_LABEL_AT=0;
+      INLINE_SCAN_STARTED=performance.now();
+      if(INLINE_OCR_ATTEMPTS>=2){
+        const manual=document.getElementById('inlineSnapBtn');
+        if(manual)manual.style.display='block';
+      }
+      INLINE_SCANNING=true;
+      requestAnimationFrame(inlineScanLoop);
     }finally{
       INLINE_SCAN_BUSY=false;
     }
