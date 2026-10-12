@@ -6,7 +6,7 @@
 <meta http-equiv="Expires" content="0">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>封邊標籤辨識｜無感返回版 v29</title>
+<title>封邊標籤辨識｜視窗直傳版 v29</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;color:#14212b;background:#f3f6f8}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:#f3f6f8}
@@ -29,7 +29,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>封邊標籤辨識｜無感返回版 v29</h1>
+    <h1>封邊標籤辨識｜視窗直傳版 v29</h1>
     <div class="muted">主流程改成「自動辨識」：先讓員工對準標籤，再確認 QR 與畫面連續穩定；穩定後才自動挑最佳影格辨識。第一張不完整時才自動換第二張複核。</div>
     <div class="actions">
       <button id="autoScanBtn" class="autoScan" type="button">🎯 掃描＋AI辨識</button>
@@ -81,7 +81,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-size:16px;font-weight:
 </div>
 
 <script>
-// v29 2026-10-12：手持防抖掃描器＋Google Apps Script 無感返回；辨識成功直接自動回原品質檢查，辨識有疑慮時才讓使用者決定是否採用結果
+// v29 2026-10-12：手持防抖掃描器＋postMessage 視窗直傳；正式 Google 頁面保持原狀，掃描完成直接把 QR／單號／B碼送回原頁並關閉掃描頁
 const $=id=>document.getElementById(id);
 let workerPromise=null;
 const now=()=>performance.now();
@@ -1468,8 +1468,50 @@ function buildFormalResultUrl(data){
 
 let LAST_RECOGNIZED_DATA=null;
 
+
+function canSendToOpener(){
+  try{
+    return !!(window.opener && !window.opener.closed);
+  }catch(e){ return false; }
+}
+
+function sendResultToOpener(data){
+  if(!canSendToOpener())return false;
+  try{
+    window.opener.postMessage({
+      type:'EDGE_LABEL_SCAN_RESULT',
+      source:'edge-quality-v29',
+      qr:String((data&&data.qr)||''),
+      orderNo:String((data&&data.order)||''),
+      bCode:String((data&&data.bcode)||''),
+      trusted:!!(data&&data.qr&&data.order&&data.bcode)
+    }, '*');
+    try{ window.opener.focus(); }catch(e){}
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function finishScannerWindow(data){
+  if(sendResultToOpener(data)){
+    $('status').textContent='✅ 辨識完成';
+    const btn=$('useResultBtn');
+    if(btn)btn.style.display='none';
+    setTimeout(()=>{
+      try{ window.close(); }catch(e){}
+    },220);
+    return true;
+  }
+  return false;
+}
+
 function finishToFormal(data){
-  const url=buildFormalResultUrl(data||LAST_RECOGNIZED_DATA||{});
+  const payload=data||LAST_RECOGNIZED_DATA||{};
+  if(finishScannerWindow(payload))return;
+
+  // 若瀏覽器沒有保留 opener（少數 Android / App 內建瀏覽器），才使用舊網址返回法。
+  const url=buildFormalResultUrl(payload);
   if(!url)return;
   location.replace(url);
 }
@@ -1487,7 +1529,7 @@ function finishRecognitionFlow(data,auto=false){
   // 辨識可信：現場人員不用再按任何「回填/返回」按鈕，直接完成。
   if(auto){
     if(btn)btn.style.display='none';
-    $('status').textContent='✅ 辨識完成，正在回到品質檢查…';
+    $('status').textContent='✅ 辨識完成，辨識完成…';
     setTimeout(()=>finishToFormal(data),450);
     return;
   }
