@@ -753,6 +753,8 @@ const GAS_WEBAPP_URL='https://script.google.com/macros/s/AKfycby7w11utJGHOc23gMk
 const GAS_BRIDGE_URL=GAS_WEBAPP_URL+'?bridge=1';
 const GAS_RPC_TIMEOUT=30000;
 let GAS_BRIDGE_READY=false;
+let GAS_BRIDGE_SOURCE=null;
+let GAS_BRIDGE_ORIGIN=null;
 let GAS_RPC_SEQ=1;
 const GAS_RPC_PENDING=new Map();
 const GAS_RPC_QUEUE=[];
@@ -767,8 +769,8 @@ function ensureGasBridge(){
   iframe.style.position='fixed';
   iframe.style.left='-10000px';
   iframe.style.top='-10000px';
-  iframe.style.width='1px';
-  iframe.style.height='1px';
+  iframe.style.width='320px';
+  iframe.style.height='240px';
   iframe.style.opacity='0';
   iframe.style.pointerEvents='none';
   document.body.appendChild(iframe);
@@ -777,25 +779,36 @@ function ensureGasBridge(){
 
 function postGasRpc(msg){
   const iframe=ensureGasBridge();
-  if(!GAS_BRIDGE_READY){
+  if(!GAS_BRIDGE_READY || !GAS_BRIDGE_SOURCE){
     GAS_RPC_QUEUE.push(msg);
     return;
   }
-  iframe.contentWindow.postMessage(msg,'*');
+  GAS_BRIDGE_SOURCE.postMessage(msg,GAS_BRIDGE_ORIGIN);
 }
 
 window.addEventListener('message',function(event){
-  const iframe=document.getElementById('gasBridgeFrame');
-  if(!iframe || event.source!==iframe.contentWindow)return;
   const msg=event.data||{};
   if(msg.type==='GAS_BRIDGE_READY'){
+    // HtmlService is nested one iframe deeper than the public web app.
+    let trusted=false;
+    try {
+      const u=new URL(event.origin);
+      const h=u.hostname.toLowerCase();
+      trusted=u.protocol==='https:' &&
+        (h==='script.google.com' || h==='script.googleusercontent.com' ||
+         h.endsWith('.googleusercontent.com'));
+    } catch(e) {}
+    if(!trusted)return;
+    GAS_BRIDGE_SOURCE=event.source;
+    GAS_BRIDGE_ORIGIN=event.origin;
     GAS_BRIDGE_READY=true;
     while(GAS_RPC_QUEUE.length){
-      iframe.contentWindow.postMessage(GAS_RPC_QUEUE.shift(),'*');
+      GAS_BRIDGE_SOURCE.postMessage(GAS_RPC_QUEUE.shift(),GAS_BRIDGE_ORIGIN);
     }
     return;
   }
   if(msg.type!=='GAS_RPC_RESULT' || !msg.id)return;
+  if(event.source!==GAS_BRIDGE_SOURCE || event.origin!==GAS_BRIDGE_ORIGIN)return;
   const pending=GAS_RPC_PENDING.get(msg.id);
   if(!pending)return;
   GAS_RPC_PENDING.delete(msg.id);
@@ -809,7 +822,9 @@ function gasCall(method,args){
     const id='rpc_'+(GAS_RPC_SEQ++);
     const timer=setTimeout(function(){
       GAS_RPC_PENDING.delete(id);
-      reject(new Error('Google 後端連線逾時，請重新整理後再試'));
+      reject(new Error(GAS_BRIDGE_READY
+        ? 'Google 後端已連線，但處理逾時：'+method
+        : 'Google 資料橋接無法建立：請確認 Apps Script 使用最新版且已重新部署'));
     },GAS_RPC_TIMEOUT);
     GAS_RPC_PENDING.set(id,{resolve,reject,timer});
     postGasRpc({type:'GAS_RPC_CALL',id:id,method:String(method),args:Array.isArray(args)?args:[]});
