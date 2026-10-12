@@ -583,6 +583,10 @@
     .history-result-head { font-size:15px; font-weight:800; margin-bottom:5px; }
     .history-empty { margin-top:12px; padding:12px; border-radius:10px; background:#f3f5f7; color:#666; }
 
+    .backend-offline{display:none;margin:12px 14px;padding:14px 15px;background:#fff7df;border:1px solid #e6c77a;border-radius:13px;color:#49380e;line-height:1.65;font-size:16px}
+    .backend-offline.show{display:block}
+    .backend-offline button{margin-top:10px;min-height:48px;width:100%;border:0;border-radius:10px;background:#215884;color:white;font-weight:800;font-size:16px}
+    .backend-offline .details{font-size:13px;color:#7e651a;margin-top:6px}
   </style>
 </head>
 
@@ -603,6 +607,12 @@
     <button type="button" class="nav-btn" onclick="goHome()">🏠 <span data-i18n="home">首頁</span></button>
   </div>
 
+  <div id="backendOffline" class="backend-offline" role="alert">
+    <strong>⚠️ Google 資料暫時無法讀取</strong>
+    <div>系統尚未連到 Google 試算表，因此現在不能進行正式巡檢或送出。</div>
+    <button type="button" onclick="location.reload()">重新連線</button>
+    <div class="details">如果從 LINE 開啟仍失敗，請從選單改用 Safari／手機瀏覽器測試。資料沒載入前請勿當成正式可用。</div>
+  </div>
   <div class="content">
     <div class="card">
       <div class="section-title"><span class="section-no">①</span> <span data-i18n="selectFactory">選擇廠別</span></div>
@@ -1080,10 +1090,19 @@ window.addEventListener('load', function() {
     .withSuccessHandler(initApp)
     .withFailureHandler(handleError)
     .getInitialData();
+  setTimeout(function(){
+    if(APP_DATA)return;
+    const offline=document.getElementById('backendOffline');
+    if(offline)offline.classList.add('show');
+    const clock=document.getElementById('systemTime');
+    if(clock)clock.textContent='⚠️ 尚未連到 Google 資料';
+  },9000);
 });
 
 function initApp(data) {
   APP_DATA = data;
+  const offline=document.getElementById('backendOffline');
+  if(offline)offline.classList.remove('show');
   document.getElementById('systemTime').textContent = t('systemPrefix') + data.currentTime;
   fillTimes();
   updateNavigation();
