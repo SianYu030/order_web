@@ -1650,8 +1650,8 @@ async function inlineQuickQrHit(canvas){
   let native=null,js=null;
   try{if(typeof decodeNativeQr_==='function')native=await decodeNativeQr_(canvas);}catch(e){}
   try{if(typeof decodeQrDetailed_==='function')js=decodeQrDetailed_(canvas);}catch(e){}
-  const picked=(native&&/^\\d{8}$/.test(String(native.data||'').trim()))?native:
-    ((js&&/^\\d{8}$/.test(String(js.data||'').trim()))?js:null);
+  const picked=(native&&/^\d{8}$/.test(String(native.data||'').trim()))?native:
+    ((js&&/^\d{8}$/.test(String(js.data||'').trim()))?js:null);
   if(!picked)return null;
   const points=(picked.points&&picked.points.length>=4)?picked.points:
      (picked.location ? [picked.location.topLeftCorner,picked.location.topRightCorner,
