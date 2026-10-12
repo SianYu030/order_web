@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.05：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.06：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -1646,6 +1646,36 @@ function inlineWhiteLabelBounds(canvas){
   return best;
 }
 
+function inlineGuideBounds(canvas){
+  // 相機預覽採 object-fit:cover，真正可見的範圍可能裁掉原始影格左右側。
+  // 把畫面白色導引框轉回原始相機影格座標，避免「標籤超出框卻自動拍」。
+  const video=document.getElementById('inlineLiveVideo');
+  const wrap=video?video.parentElement:null;
+  if(!video||!wrap||!video.videoWidth||!video.videoHeight){
+    return {x0:.08,y0:.17,x1:.92,y1:.83};
+  }
+  const bw=wrap.clientWidth||canvas.width;
+  const bh=wrap.clientHeight||canvas.height;
+  const rawW=video.videoWidth,rawH=video.videoHeight;
+  const scale=Math.max(bw/rawW,bh/rawH);
+  const visibleW=bw/scale,visibleH=bh/scale;
+  const rawLeft=(rawW-visibleW)/2,rawTop=(rawH-visibleH)/2;
+  return {
+    x0:(rawLeft+visibleW*.07)/rawW,
+    x1:(rawLeft+visibleW*.93)/rawW,
+    y0:(rawTop+visibleH*.16)/rawH,
+    y1:(rawTop+visibleH*.84)/rawH
+  };
+}
+
+function inlineLabelInsideGuide(label,canvas){
+  if(!label)return false;
+  const guide=inlineGuideBounds(canvas);
+  const pad=.012;
+  return label.x0>=guide.x0+pad && label.x1<=guide.x1-pad &&
+         label.y0>=guide.y0+pad && label.y1<=guide.y1-pad;
+}
+
 async function inlineQuickQrHit(canvas){
   let native=null,js=null;
   try{if(typeof decodeNativeQr_==='function')native=await decodeNativeQr_(canvas);}catch(e){}
@@ -1790,11 +1820,12 @@ async function inlineScanLoop(ts){
 
   const q=inlineFrameQuality(frame);
   const label=inlineWhiteLabelBounds(frame);
+  const inGuide=inlineLabelInsideGuide(label,frame);
   let hit=null;
   try{hit=await inlineQuickQrHit(frame);}catch(e){}
   if(!INLINE_SCANNING || session!==INLINE_SCAN_SESSION)return;
 
-  const valid=!!(q.ok && label && inlineQrInsideLabel(hit,label));
+  const valid=!!(q.ok && inGuide && inlineQrInsideLabel(hit,label));
   const qr=valid?hit.data:'';
   const nowMs=performance.now();
 
@@ -1835,7 +1866,7 @@ async function inlineScanLoop(ts){
   const lockDuration=INLINE_LABEL_LOCK_STARTED?nowMs-INLINE_LABEL_LOCK_STARTED:0;
   const fresh=INLINE_LAST_LABEL_AT && nowMs-INLINE_LAST_LABEL_AT<450;
   // 不再有「3.2秒到了就辨識」的備援：沒有QR與白色完整標籤，永遠不自動拍。
-  const ready=!!(fresh && label && qr===INLINE_LOCKED_QR &&
+  const ready=!!(fresh && inGuide && qr===INLINE_LOCKED_QR &&
     votes>=3 && INLINE_SCAN_SAMPLES.length>=4 &&
     lockDuration>=1500);
 
@@ -1843,6 +1874,8 @@ async function inlineScanLoop(ts){
   const meta=document.getElementById('inlineScanMeta');
   if(!label){
     status.textContent='⬜ 請先把整張白色標籤放進框內';
+  }else if(!inGuide){
+    status.textContent='↔️ 標籤超出白色框線，請稍微退後，讓四邊全部進框';
   }else if(!hit){
     status.textContent='🔎 已看到白色標籤，正在尋找標籤上的 QR 碼…';
   }else if(!valid){
@@ -1852,7 +1885,7 @@ async function inlineScanLoop(ts){
   }else{
     status.textContent='🟢 標籤與 QR 已確認，開始辨識…';
   }
-  meta.textContent= '標籤：'+(label?'已定位':'未定位')+
+  meta.textContent= '標籤：'+(inGuide?'完整進框':(label?'尚未完整進框':'未定位'))+
     '｜QR：'+(INLINE_LOCKED_QR||'等待中')+
     '｜清楚影格：'+INLINE_SCAN_SAMPLES.length+
     '｜鎖定：'+(lockDuration/1000).toFixed(1)+'秒';
