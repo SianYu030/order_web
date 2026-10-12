@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.0：真正一頁到底＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.04：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -587,6 +587,10 @@
     .backend-offline.show{display:block}
     .backend-offline button{margin-top:10px;min-height:48px;width:100%;border:0;border-radius:10px;background:#215884;color:white;font-weight:800;font-size:16px}
     .backend-offline .details{font-size:13px;color:#7e651a;margin-top:6px}
+    .backend-offline .open-external{background:#0f7a54}
+    .backend-offline .retry{background:#215884}
+    .backend-offline .link-note{font-size:13px;word-break:break-all;margin-top:9px;font-weight:600}
+    .backend-offline .diagnostics{font-size:12px;color:#765d25;line-height:1.6;margin-top:8px}
   </style>
 </head>
 
@@ -608,10 +612,16 @@
   </div>
 
   <div id="backendOffline" class="backend-offline" role="alert">
-    <strong>⚠️ Google 資料暫時無法讀取</strong>
-    <div>系統尚未連到 Google 試算表，因此現在不能進行正式巡檢或送出。</div>
-    <button type="button" onclick="location.reload()">重新連線</button>
-    <div class="details">如果從 LINE 開啟仍失敗，請從選單改用 Safari／手機瀏覽器測試。資料沒載入前請勿當成正式可用。</div>
+    <strong id="backendOfflineTitle">⚠️ Google 資料暫時無法讀取</strong>
+    <div id="backendOfflineReason">系統尚未連到 Google 試算表，因此現在不能進行正式巡檢或送出。</div>
+    <button type="button" class="retry" onclick="retryGoogleBackend()">重新連線</button>
+    <div id="lineBrowserHelp" class="hidden">
+      <div class="details"><b>LINE 內建瀏覽器可能阻擋 Google 隱藏連線。</b>請從 LINE 網頁右上角選單選「在 Safari／預設瀏覽器中開啟」。如果找不到，請複製下方網址，再貼到 Safari 網址列開啟。仍無法載入時請勿送出。</div>
+      <button type="button" class="open-external" onclick="copyQualitySiteLink()">📋 複製網址（到 Safari 開啟）</button>
+      <div class="link-note">https://sianyu030.github.io/order_web/edge-quality-form/</div>
+    </div>
+    <div id="backendDiagnostics" class="diagnostics"></div>
+    <div class="details">只有成功顯示機台及人員資料後，才能作為正式巡檢使用。</div>
   </div>
   <div class="content">
     <div class="card">
@@ -768,6 +778,68 @@ let GAS_BRIDGE_ORIGIN=null;
 let GAS_RPC_SEQ=1;
 const GAS_RPC_PENDING=new Map();
 const GAS_RPC_QUEUE=[];
+let GAS_BRIDGE_TRIES=0;
+let GAS_BRIDGE_RETRY_TIMER=null;
+
+function qualityIsLineBrowser(){
+  return /Line\\/|LIFF/i.test(navigator.userAgent||'');
+}
+
+function showGoogleOffline(reason){
+  if(window.APP_DATA)return;
+  const box=document.getElementById('backendOffline');
+  if(box)box.classList.add('show');
+  const title=document.getElementById('backendOfflineTitle');
+  if(title)title.textContent=qualityIsLineBrowser()
+    ? '⚠️ LINE 內建瀏覽器連不上 Google 資料'
+    : '⚠️ Google 資料暫時無法讀取';
+  const msg=document.getElementById('backendOfflineReason');
+  if(msg)msg.textContent=qualityIsLineBrowser()
+    ? '電腦版可正常使用，但目前 LINE 手機版的資料橋接尚未建立，請用 Safari／手機完整瀏覽器測試。'
+    : '系統尚未連到 Google 試算表，因此現在不能進行正式巡檢或送出。';
+  const help=document.getElementById('lineBrowserHelp');
+  if(help)help.classList.toggle('hidden',!qualityIsLineBrowser());
+  const diag=document.getElementById('backendDiagnostics');
+  if(diag)diag.textContent='連線狀態：'+(GAS_BRIDGE_READY?'Google 橋接已啟動，等待資料':'Google 橋接尚未啟動')+
+    '｜嘗試次數：'+GAS_BRIDGE_TRIES+(reason?'｜'+reason:'');
+  const clock=document.getElementById('systemTime');
+  if(clock)clock.textContent='⚠️ Google 資料尚未連線';
+}
+
+async function copyQualitySiteLink(){
+  const url='https://sianyu030.github.io/order_web/edge-quality-form/';
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(url);
+    } else {
+      const input=document.createElement('textarea');
+      input.value=url;input.style.position='fixed';input.style.opacity='0';
+      document.body.appendChild(input);input.select();
+      const ok=document.execCommand('copy');
+      input.remove();
+      if(!ok)throw new Error('copy unsupported');
+    }
+    showToast('✅ 網址已複製，請貼到 Safari 網址列','success');
+  }catch(e){
+    window.prompt('請複製此網址並到 Safari 開啟',url);
+  }
+}
+
+function retryGoogleBackend(){
+  location.reload();
+}
+
+function retryBridgeFrameOnce(){
+  if(GAS_BRIDGE_READY || window.APP_DATA || GAS_BRIDGE_TRIES>=2)return;
+  GAS_BRIDGE_TRIES++;
+  const old=document.getElementById('gasBridgeFrame');
+  if(old)old.remove();
+  const iframe=ensureGasBridge();
+  const u=new URL(GAS_BRIDGE_URL);
+  u.searchParams.set('retry',String(GAS_BRIDGE_TRIES));
+  iframe.src=u.toString();
+}
+
 
 function ensureGasBridge(){
   let iframe=document.getElementById('gasBridgeFrame');
@@ -777,13 +849,17 @@ function ensureGasBridge(){
   iframe.src=GAS_BRIDGE_URL;
   iframe.setAttribute('aria-hidden','true');
   iframe.style.position='fixed';
-  iframe.style.left='-10000px';
-  iframe.style.top='-10000px';
-  iframe.style.width='320px';
-  iframe.style.height='240px';
-  iframe.style.opacity='0';
+  // iOS WebKit 可能延後或暫停完全移出畫面的 iframe。
+  // 讓 Google 橋接實際位於視窗內，但不遮擋現場操作。
+  iframe.style.left='0';
+  iframe.style.top='0';
+  iframe.style.width='2px';
+  iframe.style.height='2px';
+  iframe.style.opacity='0.01';
   iframe.style.pointerEvents='none';
+  iframe.style.zIndex='-1';
   document.body.appendChild(iframe);
+  if(!GAS_BRIDGE_TRIES)GAS_BRIDGE_TRIES=1;
   return iframe;
 }
 
@@ -812,6 +888,7 @@ window.addEventListener('message',function(event){
     GAS_BRIDGE_SOURCE=event.source;
     GAS_BRIDGE_ORIGIN=event.origin;
     GAS_BRIDGE_READY=true;
+    if(GAS_BRIDGE_RETRY_TIMER)clearTimeout(GAS_BRIDGE_RETRY_TIMER);
     while(GAS_RPC_QUEUE.length){
       GAS_BRIDGE_SOURCE.postMessage(GAS_RPC_QUEUE.shift(),GAS_BRIDGE_ORIGIN);
     }
@@ -868,7 +945,11 @@ window.google=window.google||{};
 google.script=google.script||{};
 google.script.run=makeGasRunner(null,null);
 
-window.addEventListener('load',function(){ ensureGasBridge(); });
+window.addEventListener('load',function(){
+  ensureGasBridge();
+  // 一次自動重試，避免 LINE/iOS WebKit 延遲啟動內嵌服務後一直卡住。
+  GAS_BRIDGE_RETRY_TIMER=setTimeout(retryBridgeFrameOnce,3800);
+});
 
 const LANGUAGE_STORAGE_KEY = 'edgeInspectionLanguage';
 let CURRENT_LANGUAGE = 'zh';
@@ -1085,22 +1166,21 @@ let selected = {
 
 window.addEventListener('load', function() {
   applyLanguage();
-  prewarmFastLabelOcr();
+  // 先取得機台與人員資料；iPhone LINE 不要在橋接啟動時同時預熱 OCR。
   google.script.run
     .withSuccessHandler(initApp)
     .withFailureHandler(handleError)
     .getInitialData();
   setTimeout(function(){
     if(APP_DATA)return;
-    const offline=document.getElementById('backendOffline');
-    if(offline)offline.classList.add('show');
-    const clock=document.getElementById('systemTime');
-    if(clock)clock.textContent='⚠️ 尚未連到 Google 資料';
-  },9000);
+    showGoogleOffline('等待超過 7 秒');
+  },7000);
 });
 
 function initApp(data) {
   APP_DATA = data;
+  if(GAS_BRIDGE_RETRY_TIMER)clearTimeout(GAS_BRIDGE_RETRY_TIMER);
+  setTimeout(prewarmFastLabelOcr,1500);
   const offline=document.getElementById('backendOffline');
   if(offline)offline.classList.remove('show');
   document.getElementById('systemTime').textContent = t('systemPrefix') + data.currentTime;
@@ -1165,6 +1245,10 @@ function goHome() {
 }
 
 function selectFactory(factory) {
+  if(!APP_DATA || !APP_DATA.factories){
+    showGoogleOffline('機台資料尚未載入');
+    return;
+  }
   selected.factory = factory;
   selected.machine = '';
   selected.leadInspector = '';
@@ -3696,6 +3780,10 @@ function validateClient(form) {
 }
 
 function submitForm(forceUpdate) {
+  if(!APP_DATA || !GAS_BRIDGE_READY){
+    showGoogleOffline('禁止在未連線狀態送出');
+    return;
+  }
   if (MACHINE_STOPPED) {
     showToast(t('machineStoppedNow'),'error');
     return;
@@ -3936,6 +4024,7 @@ function showToast(message,type) {
 }
 
 function handleError(error) {
+  if(!APP_DATA)showGoogleOffline(error&&error.message?String(error.message):'資料服務沒有回應');
   let message = t('errorGeneric');
   if (error && error.message) message = localizeServerMessage(error.message);
   else if (error) message = localizeServerMessage(String(error));
