@@ -1,0 +1,3912 @@
+<!DOCTYPE html>
+<!-- 封邊品質檢查 Web App v3.0：真正一頁到底＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<html lang="zh-TW">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    :root { --factory-color:#1F4E78; }
+    body {
+      margin:0;
+      background:#f3f5f7;
+      color:#222;
+      font-family:Arial,"Noto Sans TC","Microsoft JhengHei",sans-serif;
+    }
+    button,select,input { font-family:inherit; }
+    .app { width:100%; max-width:700px; margin:0 auto; padding-bottom:100px; }
+    .topbar {
+      padding:21px 18px;
+      background:#1F4E78;
+      color:#fff;
+      box-shadow:0 2px 10px rgba(0,0,0,.15);
+      transition:.2s;
+    }
+    .top-title { font-size:23px; font-weight:800; letter-spacing:.5px; }
+    .top-sub { margin-top:6px; font-size:13px; opacity:.88; }
+    .language-switch {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:6px;
+      margin-top:13px;
+      padding:4px;
+      border-radius:11px;
+      background:rgba(255,255,255,.15);
+    }
+    .lang-btn {
+      min-height:38px;
+      border:0;
+      border-radius:8px;
+      background:transparent;
+      color:#fff;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      opacity:.82;
+    }
+    .lang-btn.active {
+      background:#fff;
+      color:#1F4E78;
+      opacity:1;
+      box-shadow:0 1px 5px rgba(0,0,0,.14);
+    }
+    .nav-bar {
+      position:sticky;
+      top:0;
+      z-index:40;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      padding:8px 14px;
+      background:rgba(243,245,247,.96);
+      backdrop-filter:blur(8px);
+      -webkit-backdrop-filter:blur(8px);
+      border-bottom:1px solid rgba(0,0,0,.06);
+    }
+    .nav-btn {
+      min-height:44px;
+      border:1px solid #cdd3d8;
+      border-radius:11px;
+      background:#fff;
+      color:#263238;
+      font-size:15px;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow:0 1px 5px rgba(0,0,0,.05);
+    }
+    .nav-btn:active { transform:translateY(1px); }
+    .content { padding:14px; }
+    .card {
+      margin-bottom:13px;
+      padding:17px;
+      background:#fff;
+      border-radius:15px;
+      box-shadow:0 2px 10px rgba(0,0,0,.07);
+    }
+    .section-title { margin-bottom:12px; font-size:16px; font-weight:800; }
+    .section-no { color:var(--factory-color); }
+    .factory-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+    .factory-btn {
+      height:60px;
+      border:2px solid #d9dde1;
+      border-radius:12px;
+      background:#fff;
+      color:#222;
+      font-size:20px;
+      font-weight:800;
+      cursor:pointer;
+      transition:.15s;
+    }
+    .factory-btn.active {
+      border-color:transparent;
+      color:#fff;
+      box-shadow:0 3px 8px rgba(0,0,0,.15);
+      transform:translateY(-1px);
+    }
+    .field { margin-bottom:17px; }
+    .field:last-child { margin-bottom:0; }
+    .label { display:block; margin-bottom:8px; font-size:15px; font-weight:800; }
+    .required { color:#c62828; }
+    select,input {
+      width:100%;
+      height:52px;
+      padding:0 13px;
+      border:1px solid #cdd3d8;
+      border-radius:10px;
+      outline:none;
+      background:#fff;
+      font-size:16px;
+    }
+    select:focus,input:focus {
+      border-color:var(--factory-color);
+      box-shadow:0 0 0 3px rgba(31,78,120,.10);
+    }
+    .machine-state {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:12px;
+      border-radius:10px;
+      background:#f7f8f9;
+    }
+    .state-left { min-width:0; }
+    .state-title { font-size:14px; color:#666; }
+    .state-value { margin-top:4px; font-size:16px; font-weight:800; }
+    .state-value.normal { color:#2e7d32; }
+    .state-value.stopped { color:#1c4587; }
+    .stop-btn {
+      flex:0 0 auto;
+      min-width:115px;
+      height:43px;
+      padding:0 12px;
+      border:0;
+      border-radius:9px;
+      background:#d9e2f3;
+      color:#1c4587;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .stop-btn.resume { background:#d9ead3; color:#274e13; }
+    .time-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+    .time-btn {
+      height:49px;
+      border:1px solid #cdd3d8;
+      border-radius:10px;
+      background:#fff;
+      color:#222;
+      font-size:16px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .time-btn.active { border-color:var(--factory-color); background:var(--factory-color); color:#fff; }
+    .judge-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .judge-btn {
+      height:54px;
+      border:2px solid #ddd;
+      border-radius:11px;
+      background:#fff;
+      font-size:16px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .judge-btn.pass.active { border-color:#6aa84f; background:#d9ead3; color:#274e13; }
+    .judge-btn.fail.active { border-color:#cc0000; background:#f4cccc; color:#990000; }
+    .basis {
+      margin-top:9px;
+      padding:9px 11px;
+      border-radius:8px;
+      background:#f5f5f5;
+      color:#666;
+      font-size:13px;
+    }
+    .qr-row { display:grid; grid-template-columns:minmax(0,1fr) 128px; gap:8px; }
+    .qr-btn {
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      height:52px;
+      border:0;
+      border-radius:10px;
+      background:var(--factory-color);
+      color:#fff;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      overflow:hidden;
+      user-select:none;
+      -webkit-user-select:none;
+      -webkit-tap-highlight-color:transparent;
+    }
+    /* iPhone / LINE / Apps Script：讓真正的 file input 覆蓋整個按鈕。
+       不再使用 JavaScript input.click()，避免 iOS 阻擋合成點擊。 */
+    .qr-native-input {
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      opacity:0;
+      cursor:pointer;
+      font-size:100px;
+    }
+    .qr-result { min-height:20px; margin-top:8px; font-size:13px; font-weight:700; line-height:1.5; }
+    .qr-success { color:#2e7d32; }
+    .qr-warning { color:#b45f06; }
+    .live-scan-btn {
+      width:100%;
+      height:62px;
+      margin-bottom:12px;
+      border:0;
+      border-radius:12px;
+      background:#0f7a54;
+      color:#fff;
+      font-size:19px;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow:0 2px 8px rgba(0,0,0,.10);
+    }
+    .live-scan-btn:active { transform:translateY(1px); }
+    .inline-camera-box {
+      display:none;
+      margin:0 0 12px;
+      padding:10px;
+      border-radius:14px;
+      background:#0d1114;
+      color:#fff;
+    }
+    .inline-camera-box.show { display:block; }
+    .inline-video-wrap {
+      position:relative;
+      overflow:hidden;
+      border-radius:12px;
+      background:#111;
+      aspect-ratio:4/3;
+    }
+    .inline-video-wrap video {
+      display:block;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      background:#111;
+    }
+    .inline-guide {
+      position:absolute;
+      left:7%;
+      right:7%;
+      top:16%;
+      bottom:16%;
+      border:3px solid rgba(255,255,255,.96);
+      border-radius:14px;
+      box-shadow:0 0 0 9999px rgba(0,0,0,.20);
+      pointer-events:none;
+    }
+    .inline-guide::before {
+      content:'請把整張白色標籤放進框內';
+      position:absolute;
+      left:50%;
+      top:-34px;
+      transform:translateX(-50%);
+      padding:5px 9px;
+      border-radius:7px;
+      background:rgba(0,0,0,.72);
+      color:#fff;
+      font-size:13px;
+      white-space:nowrap;
+    }
+    .inline-scan-status {
+      margin-top:9px;
+      padding:9px 11px;
+      border-radius:9px;
+      background:#172128;
+      color:#fff;
+      font-size:14px;
+      font-weight:800;
+      line-height:1.45;
+    }
+    .inline-scan-meta {
+      margin-top:5px;
+      color:#b6c2ca;
+      font-size:12px;
+      line-height:1.45;
+    }
+    .inline-stop-btn {
+      width:100%;
+      min-height:46px;
+      margin-top:8px;
+      border:0;
+      border-radius:9px;
+      background:#e9eef1;
+      color:#243744;
+      font-size:15px;
+      font-weight:800;
+    }
+    .label-photo-btn {
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:100%;
+      height:54px;
+      border:0;
+      border-radius:11px;
+      background:#674EA7;
+      color:#fff;
+      font-size:16px;
+      font-weight:800;
+      cursor:pointer;
+      overflow:hidden;
+      user-select:none;
+      -webkit-user-select:none;
+    }
+    .label-photo-input {
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      opacity:0;
+      cursor:pointer;
+      font-size:100px;
+    }
+    .label-ocr-status {
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:9px;
+      background:#f5f1fb;
+      color:#5d3f8f;
+      font-size:14px;
+      font-weight:700;
+      line-height:1.55;
+    }
+    .label-fields {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+      margin-top:13px;
+    }
+    .label-fields .field { margin-bottom:0; }
+    .optional { color:#777; font-size:.85em; font-weight:600; }
+    .label-hint {
+      margin-top:11px;
+      padding:10px 12px;
+      border-radius:8px;
+      background:#f7f7f7;
+      color:#666;
+      font-size:13px;
+      line-height:1.55;
+    }
+    .ocr-check {
+      margin-left:6px;
+      color:#b45f06;
+      font-size:.84em;
+      font-weight:800;
+    }
+    input.ocr-needs-check {
+      border-color:#d99b22 !important;
+      background:#fffaf0;
+      box-shadow:0 0 0 3px rgba(217,155,34,.12);
+    }
+    .summary { padding:13px; border-radius:10px; background:#f7f9fb; font-size:14px; line-height:1.85; }
+    .submit-wrap {
+      position:fixed;
+      left:0; right:0; bottom:0;
+      z-index:500;
+      padding:12px 15px calc(16px + env(safe-area-inset-bottom));
+      background:rgba(243,245,247,.95);
+      backdrop-filter:blur(8px);
+    }
+    .submit-inner { max-width:670px; margin:auto; }
+    .submit-btn {
+      width:100%;
+      height:57px;
+      border:0;
+      border-radius:13px;
+      background:var(--factory-color);
+      color:#fff;
+      font-size:18px;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow:0 4px 12px rgba(0,0,0,.15);
+    }
+    .qr-modal {
+      position:fixed;
+      inset:0;
+      z-index:3000;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:17px;
+      background:rgba(0,0,0,.82);
+    }
+    .qr-modal.show { display:flex; }
+    .qr-card { width:100%; max-width:480px; overflow:hidden; border-radius:16px; background:#fff; }
+    .qr-title { padding:16px; text-align:center; font-size:18px; font-weight:800; }
+    #qrReader { width:100%; }
+    .qr-help { padding:11px 15px; text-align:center; color:#666; font-size:13px; }
+    .qr-close {
+      width:calc(100% - 30px);
+      height:48px;
+      margin:0 15px 15px;
+      border:0;
+      border-radius:9px;
+      background:#555;
+      color:#fff;
+      font-size:16px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    /* Apps Script HTMLService 會限制 getUserMedia；
+       改用手機原生相機拍照後解析 QR。 */
+    .qr-reader-offscreen {
+      position:fixed;
+      left:-10000px;
+      top:-10000px;
+      width:320px;
+      height:320px;
+      overflow:hidden;
+      opacity:0;
+      pointer-events:none;
+    }
+
+    .loading {
+      position:fixed;
+      inset:0;
+      z-index:4000;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,.38);
+    }
+    .loading.show { display:flex; }
+    .loading-box { padding:23px 31px; border-radius:14px; background:#fff; font-weight:800; box-shadow:0 4px 20px rgba(0,0,0,.2); }
+    .toast {
+      position:fixed;
+      top:16px;
+      left:50%;
+      z-index:5000;
+      max-width:92%;
+      padding:12px 18px;
+      border-radius:9px;
+      background:#333;
+      color:#fff;
+      text-align:center;
+      font-size:14px;
+      opacity:0;
+      pointer-events:none;
+      transform:translate(-50%,-25px);
+      transition:.22s;
+    }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    .toast.success { background:#2e7d32; }
+    .toast.error { background:#b71c1c; }
+    .toast.warning { background:#b45f06; }
+    .hidden { display:none !important; }
+    /* 手機大字版：現場操作優先，字體與按鈕都加大 */
+    @media (max-width:600px) {
+      body { font-size:17px; }
+      .content { padding:11px; }
+      .card { padding:16px; margin-bottom:12px; }
+
+      .topbar { padding:20px 16px; }
+      .top-title { font-size:24px; line-height:1.3; }
+      .top-sub { font-size:15px; line-height:1.5; }
+
+      .section-title { font-size:19px; line-height:1.4; }
+      .label { font-size:18px; margin-bottom:9px; }
+
+      .factory-btn {
+        height:64px;
+        font-size:21px;
+      }
+
+      select,input {
+        height:58px;
+        font-size:18px;
+        padding:0 14px;
+      }
+
+      .machine-state {
+        align-items:stretch;
+        flex-direction:column;
+        padding:14px;
+      }
+      .state-title { font-size:16px; }
+      .state-value { font-size:19px; }
+      .stop-btn {
+        width:100%;
+        height:50px;
+        font-size:17px;
+      }
+
+      .time-btn {
+        height:56px;
+        font-size:19px;
+      }
+
+      .judge-btn {
+        height:60px;
+        font-size:19px;
+      }
+
+      .basis {
+        font-size:16px;
+        line-height:1.55;
+        padding:11px 12px;
+      }
+
+      .qr-row {
+        grid-template-columns:minmax(0,1fr) 132px;
+      }
+      .qr-btn {
+        height:58px;
+        font-size:17px;
+      }
+      .qr-result {
+        font-size:16px;
+        line-height:1.6;
+      }
+
+      .label-photo-btn {
+        height:60px;
+        font-size:19px;
+      }
+      .label-ocr-status {
+        font-size:16px;
+        line-height:1.6;
+      }
+      .label-fields {
+        grid-template-columns:1fr;
+        gap:14px;
+      }
+      .label-hint {
+        font-size:15px;
+        line-height:1.6;
+      }
+
+      .summary {
+        font-size:17px;
+        line-height:1.9;
+        padding:14px;
+      }
+
+      .submit-btn {
+        height:62px;
+        font-size:21px;
+      }
+
+      .toast { font-size:16px; }
+      .loading-box { font-size:17px; }
+    }
+  
+    .history-toggle {
+      width:100%; min-height:52px; border:1px solid #cdd3d8; border-radius:12px;
+      background:#fff; font-size:17px; font-weight:800; cursor:pointer;
+    }
+    .history-panel { margin-top:12px; }
+    .history-row { display:grid; grid-template-columns:1fr auto; gap:8px; }
+    .history-search-btn {
+      min-width:92px; min-height:52px; border:0; border-radius:10px;
+      background:#37474F; color:#fff; font-size:16px; font-weight:800; cursor:pointer;
+    }
+    .history-note { margin-top:8px; font-size:13px; color:#666; line-height:1.5; }
+    .history-count { margin:12px 0 8px; font-weight:800; }
+    .history-result-card {
+      margin-top:10px; padding:13px; border:1px solid #d9dde1; border-radius:12px;
+      background:#fafbfc; line-height:1.65; font-size:14px;
+    }
+    .history-result-head { font-size:15px; font-weight:800; margin-bottom:5px; }
+    .history-empty { margin-top:12px; padding:12px; border-radius:10px; background:#f3f5f7; color:#666; }
+
+  </style>
+</head>
+
+<body>
+<div class="app">
+  <div id="topbar" class="topbar">
+    <div class="top-title" data-i18n="appTitle">系統櫃廠－封邊品質檢查</div>
+    <div id="systemTime" class="top-sub" data-i18n="systemLoading">系統載入中…</div>
+    <div class="language-switch" aria-label="Language">
+      <button type="button" class="lang-btn" data-lang="zh" onclick="setLanguage('zh')">中文</button>
+      <button type="button" class="lang-btn" data-lang="th" onclick="setLanguage('th')">ไทย</button>
+      <button type="button" class="lang-btn" data-lang="vi" onclick="setLanguage('vi')">Tiếng Việt</button>
+    </div>
+  </div>
+
+  <div id="navBar" class="nav-bar hidden" aria-label="Navigation">
+    <button type="button" class="nav-btn" onclick="goBack()">← <span data-i18n="back">返回</span></button>
+    <button type="button" class="nav-btn" onclick="goHome()">🏠 <span data-i18n="home">首頁</span></button>
+  </div>
+
+  <div class="content">
+    <div class="card">
+      <div class="section-title"><span class="section-no">①</span> <span data-i18n="selectFactory">選擇廠別</span></div>
+      <div class="factory-grid">
+        <button type="button" class="factory-btn" data-factory="E3" onclick="selectFactory('E3')">E3</button>
+        <button type="button" class="factory-btn" data-factory="E4" onclick="selectFactory('E4')">E4</button>
+        <button type="button" class="factory-btn" data-factory="W8" onclick="selectFactory('W8')">W8</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <button type="button" class="history-toggle" onclick="toggleHistoryPanel()" data-i18n="historySearch">🔎 歷史追溯查詢</button>
+      <div id="historyPanel" class="history-panel hidden">
+        <div class="history-row">
+          <input id="historyKeyword" type="text" autocomplete="off" placeholder="輸入單號、B碼或工件QR" data-i18n-placeholder="historyPlaceholder">
+          <button type="button" class="history-search-btn" onclick="runHistorySearch()" data-i18n="search">查詢</button>
+        </div>
+        <div class="history-note" data-i18n="historyNote">可跨 E3 / E4 / W8 查詢完整相符的單號、B碼或工件號碼(QR Code)。</div>
+        <div id="historyResults"></div>
+      </div>
+    </div>
+
+    <div id="baseArea" class="hidden">
+      <div class="card">
+        <div class="field">
+          <label class="label"><span data-i18n="machine">機台</span> <span class="required">*</span></label>
+          <select id="machine"><option value="" data-i18n="selectMachine">請選擇機台</option></select>
+        </div>
+        <div class="field">
+          <label class="label"><span data-i18n="leadInspector">主手</span> <span class="required">*</span></label>
+          <select id="leadInspector"><option value="" data-i18n="selectLead">請選擇主手</option></select>
+        </div>
+        <div class="field">
+          <label class="label"><span data-i18n="assistantInspector">副手</span> <span class="required">*</span></label>
+          <select id="assistantInspector"><option value="" data-i18n="selectAssistant">請選擇副手</option></select>
+        </div>
+
+        <div id="machineStateBox" class="machine-state hidden">
+          <div class="state-left">
+            <div class="state-title" data-i18n="todayMachineStatus">今日機台狀態</div>
+            <div id="machineStateText" class="state-value normal" data-i18n="normalInspection">正常檢查</div>
+          </div>
+          <button id="machineStateBtn" type="button" class="stop-btn" onclick="toggleMachineStop()" data-i18n="todayStoppedButton">⏸ 今日停機</button>
+        </div>
+      </div>
+
+      <div id="inspectionArea" class="hidden">
+        <div class="card">
+          <div class="section-title"><span class="section-no">②</span> <span data-i18n="inspectionTime">檢查時段</span></div>
+          <div id="timeGrid" class="time-grid"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><span class="section-no">③</span> <span data-i18n="adhesionStatus">貼附接著狀態</span></div>
+          <div class="judge-grid">
+            <button type="button" class="judge-btn pass" data-group="adhesion" onclick="chooseJudge('adhesion','合格',this)">✅ <span data-i18n="pass">合格</span></button>
+            <button type="button" class="judge-btn fail" data-group="adhesion" onclick="chooseJudge('adhesion','不合格',this)">❌ <span data-i18n="fail">不合格</span></button>
+          </div>
+          <div class="basis" data-i18n="adhesionBasis">檢查基準：浮起、間隙不可</div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><span class="section-no">④</span> <span data-i18n="appearance">外觀</span></div>
+          <div class="judge-grid">
+            <button type="button" class="judge-btn pass" data-group="appearance" onclick="chooseJudge('appearance','合格',this)">✅ <span data-i18n="pass">合格</span></button>
+            <button type="button" class="judge-btn fail" data-group="appearance" onclick="chooseJudge('appearance','不合格',this)">❌ <span data-i18n="fail">不合格</span></button>
+          </div>
+          <div class="basis" data-i18n="appearanceBasis">檢查基準：汙損不可</div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">⑤ <span data-i18n="labelPhotoRecognition">標籤拍照辨識</span></div>
+
+          <button id="liveScanBtn" type="button" class="live-scan-btn" onclick="startInlineScanner()">🎯 掃描＋AI辨識</button>
+
+          <div id="inlineCameraBox" class="inline-camera-box">
+            <div class="inline-video-wrap">
+              <video id="inlineLiveVideo" autoplay muted playsinline></video>
+              <div class="inline-guide"></div>
+            </div>
+            <div id="inlineScanStatus" class="inline-scan-status">相機準備中…</div>
+            <div id="inlineScanMeta" class="inline-scan-meta">手持即可，不需要完全不動；系統會自動挑清楚影格。</div>
+            <button id="inlineStopBtn" class="inline-stop-btn" type="button" onclick="stopInlineScanner()">關閉相機</button>
+          </div>
+
+          <label class="label-photo-btn">
+            <span data-i18n="takeLabelPhoto">📸 拍標籤自動辨識（備援）</span>
+            <input
+              id="labelCapture"
+              class="label-photo-input"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onchange="handleLabelPhoto(event)"
+            >
+          </label>
+
+          <div id="labelOcrStatus" class="label-ocr-status" data-i18n="labelAutoRecognize">
+            拍照後會自動辨識：工件號碼(QR Code)、單號、B碼
+          </div>
+
+          <div id="qrResult" class="qr-result"></div>
+
+          <div id="qrFallback" class="field hidden">
+            <label class="label" data-i18n="qrManualLabel">⚠️ QR 未辨識，請手動輸入</label>
+            <input id="workpieceQr" type="text" inputmode="numeric" autocomplete="off" placeholder="請輸入標籤上的工件號碼(QR Code)" data-i18n-placeholder="qrManualPlaceholder">
+          </div>
+
+          <div id="labelFields" class="label-fields hidden">
+            <div class="field">
+              <label class="label"><span data-i18n="orderNo">單號</span> <span id="warnLabelOrderNo" class="ocr-check hidden" data-i18n="pleaseConfirm">⚠️ 請確認</span></label>
+              <input id="labelOrderNo" type="text" inputmode="numeric" autocomplete="off" placeholder="例如 202605221446" data-i18n-placeholder="orderExample">
+            </div>
+
+            <div class="field">
+              <label class="label"><span data-i18n="bCode">B碼</span> <span id="warnLabelBCode" class="ocr-check hidden" data-i18n="pleaseConfirm">⚠️ 請確認</span></label>
+              <input id="labelBCode" type="text" autocomplete="off" placeholder="例如 B260525007" data-i18n-placeholder="bCodeExample">
+            </div>
+          </div>
+
+          <div class="label-hint" data-i18n="labelHint">
+            建議直接按「掃描＋AI辨識」：相機會在本頁直接開啟，手持對準標籤即可；系統會連續取樣並挑最佳影格，自動填入 工件QR／單號／B碼。紫色拍照按鈕保留作為備援。
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title" data-i18n="currentInspectionData">本次品質檢查資料</div>
+          <div id="summary" class="summary" data-i18n="completeInspectionData">請完成品質檢查資料</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="submitWrap" class="submit-wrap hidden">
+  <div class="submit-inner">
+    <button id="submitBtn" type="button" class="submit-btn" onclick="submitForm(false)" data-i18n="submitInspection">送出品質檢查</button>
+  </div>
+</div>
+
+<div id="qrReader" class="qr-reader-offscreen"></div>
+
+<div id="loading" class="loading"><div class="loading-box" data-i18n="processing">資料處理中…</div></div>
+<div id="toast" class="toast"></div>
+
+<script>
+const GAS_WEBAPP_URL='https://script.google.com/macros/s/AKfycby7w11utJGHOc23gMkA20WX32M5pSsUEG9FDLiS7NISOjsKQhguaU7JEMjD1E7Z-AY1/exec';
+const GAS_BRIDGE_URL=GAS_WEBAPP_URL+'?bridge=1';
+const GAS_RPC_TIMEOUT=30000;
+let GAS_BRIDGE_READY=false;
+let GAS_RPC_SEQ=1;
+const GAS_RPC_PENDING=new Map();
+const GAS_RPC_QUEUE=[];
+
+function ensureGasBridge(){
+  let iframe=document.getElementById('gasBridgeFrame');
+  if(iframe)return iframe;
+  iframe=document.createElement('iframe');
+  iframe.id='gasBridgeFrame';
+  iframe.src=GAS_BRIDGE_URL;
+  iframe.setAttribute('aria-hidden','true');
+  iframe.style.position='fixed';
+  iframe.style.left='-10000px';
+  iframe.style.top='-10000px';
+  iframe.style.width='1px';
+  iframe.style.height='1px';
+  iframe.style.opacity='0';
+  iframe.style.pointerEvents='none';
+  document.body.appendChild(iframe);
+  return iframe;
+}
+
+function postGasRpc(msg){
+  const iframe=ensureGasBridge();
+  if(!GAS_BRIDGE_READY){
+    GAS_RPC_QUEUE.push(msg);
+    return;
+  }
+  iframe.contentWindow.postMessage(msg,'*');
+}
+
+window.addEventListener('message',function(event){
+  const iframe=document.getElementById('gasBridgeFrame');
+  if(!iframe || event.source!==iframe.contentWindow)return;
+  const msg=event.data||{};
+  if(msg.type==='GAS_BRIDGE_READY'){
+    GAS_BRIDGE_READY=true;
+    while(GAS_RPC_QUEUE.length){
+      iframe.contentWindow.postMessage(GAS_RPC_QUEUE.shift(),'*');
+    }
+    return;
+  }
+  if(msg.type!=='GAS_RPC_RESULT' || !msg.id)return;
+  const pending=GAS_RPC_PENDING.get(msg.id);
+  if(!pending)return;
+  GAS_RPC_PENDING.delete(msg.id);
+  clearTimeout(pending.timer);
+  if(msg.ok)pending.resolve(msg.result);
+  else pending.reject(new Error(msg.error||'Google 後端處理失敗'));
+});
+
+function gasCall(method,args){
+  return new Promise(function(resolve,reject){
+    const id='rpc_'+(GAS_RPC_SEQ++);
+    const timer=setTimeout(function(){
+      GAS_RPC_PENDING.delete(id);
+      reject(new Error('Google 後端連線逾時，請重新整理後再試'));
+    },GAS_RPC_TIMEOUT);
+    GAS_RPC_PENDING.set(id,{resolve,reject,timer});
+    postGasRpc({type:'GAS_RPC_CALL',id:id,method:String(method),args:Array.isArray(args)?args:[]});
+  });
+}
+
+function makeGasRunner(success,failure){
+  return new Proxy({},{
+    get:function(target,prop){
+      if(prop==='withSuccessHandler'){
+        return function(fn){ return makeGasRunner(fn,failure); };
+      }
+      if(prop==='withFailureHandler'){
+        return function(fn){ return makeGasRunner(success,fn); };
+      }
+      if(prop==='then')return undefined;
+      return function(){
+        const args=Array.from(arguments);
+        gasCall(prop,args).then(function(result){
+          if(typeof success==='function')success(result);
+        }).catch(function(err){
+          if(typeof failure==='function')failure(err);
+          else console.error(err);
+        });
+      };
+    }
+  });
+}
+
+window.google=window.google||{};
+google.script=google.script||{};
+google.script.run=makeGasRunner(null,null);
+
+window.addEventListener('load',function(){ ensureGasBridge(); });
+
+const LANGUAGE_STORAGE_KEY = 'edgeInspectionLanguage';
+let CURRENT_LANGUAGE = 'zh';
+let LAST_HISTORY_RESULT = null;
+
+const I18N = {
+  zh: {
+    appTitle:'系統櫃廠－封邊品質檢查', systemLoading:'系統載入中…', systemPrefix:'系統櫃廠 櫥櫃課｜', back:'返回', home:'首頁',
+    selectFactory:'選擇廠別', historySearch:'🔎 歷史追溯查詢', historyPlaceholder:'輸入單號、B碼或工件QR', search:'查詢',
+    historyNote:'可跨 E3 / E4 / W8 查詢完整相符的單號、B碼或工件號碼(QR Code)。', machine:'機台', selectMachine:'請選擇機台',
+    leadInspector:'主手', selectLead:'請選擇主手', assistantInspector:'副手', selectAssistant:'請選擇副手', todayMachineStatus:'今日機台狀態',
+    normalInspection:'✅ 正常檢查', todayStopped:'今日停機', todayStoppedButton:'⏸ 今日停機', resumeStop:'▶ 解除停機', inspectionTime:'檢查時段',
+    adhesionStatus:'貼附接著狀態', appearance:'外觀', pass:'合格', fail:'不合格', adhesionBasis:'檢查基準：浮起、間隙不可', appearanceBasis:'檢查基準：汙損不可',
+    labelPhotoRecognition:'標籤拍照辨識', takeLabelPhoto:'📸 拍標籤自動辨識', labelAutoRecognize:'拍照後會自動辨識：工件號碼(QR Code)、單號、B碼',
+    qrManualLabel:'⚠️ QR 未辨識，請手動輸入', qrManualPlaceholder:'請輸入標籤上的工件號碼(QR Code)', orderNo:'單號', bCode:'B碼', pleaseConfirm:'⚠️ 請確認',
+    orderExample:'例如 202605221446', bCodeExample:'例如 B260525007', labelHint:'拍照時請讓完整標籤入鏡並對焦清楚，可稍微斜拍。系統會優先用 QR 定位並自動校正，再辨識工件號碼(QR Code)、單號、B碼；有疑慮的欄位會標示「⚠️ 請確認」。',
+    currentInspectionData:'本次品質檢查資料', completeInspectionData:'請完成品質檢查資料', submitInspection:'送出品質檢查', processing:'資料處理中…',
+    sameInspector:'主手與副手不可選同一人', selectFactoryFirst:'請先選擇廠別', selectMachineFirst:'請先選擇機台', selectLeadFirst:'請先選擇主手', selectAssistantFirst:'請先選擇副手',
+    confirmResumeStop:'確定要解除「今日停機」嗎？', stopReasonPrompt:'請輸入今日停機原因：', stopReasonDefault:'今日停機', confirmStop:'確定登記今日停機？', factory:'廠別', reason:'原因',
+    stopSaved:'已登記今日停機', stopResumed:'已解除停機', noStopRecord:'目前沒有停機紀錄',
+    photoReading:'📷 讀取照片…', firstLoadOcr:'📦 第一次載入 OCR 模型', quickRecognition:'🔍 快速辨識', enhancedRecognition:'🔎 強化辨識', textRecognizedDone:'✅ 文字已辨識，完成',
+    insufficientEnhanced:'⚡ 資料不足，自動啟動強化辨識', stillUncertain:'⚡ 仍有疑慮，再加強一次', qrRecognized:'✅ 已辨識工件 QR：', qrMissingManual:'⚠️ 工件QR沒有辨識到，請在下方手動輸入',
+    recognized:'已辨識', checkEspecially:'請特別確認', recognitionDoneCheckYellow:'辨識完成，黃色欄位請確認', textRecognizedNeedQr:'文字已辨識，但 QR 未讀到，請手動補 QR。',
+    textRecognizedNeedQrToast:'文字已辨識，請補 QR', labelRecognitionDone:'✅ 標籤辨識完成', noLabelData:'⚠️ 沒有抓到標籤資料，請靠近標籤、對焦清楚後再拍一次；若只缺 QR，可手動輸入。',
+    labelRecognitionRetry:'標籤辨識不到，請重拍', textRecognitionFailed:'⚠️ 文字辨識失敗。可重拍，或手動確認必要資料。', textRecognitionFailedToast:'文字辨識失敗，請確認資料', ocrComponentFail:'OCR元件載入失敗', photoReadFail:'照片讀取失敗',
+    selectInspectionTime:'請選擇檢查時段', selectAdhesion:'請選擇貼附接著狀態', selectAppearance:'請選擇外觀', confirmOrder:'請確認單號', confirmBCode:'請確認B碼', needWorkpieceQr:'請拍標籤辨識工件QR，或手動輸入工件號碼(QR Code)', machineStoppedNow:'此機台目前為今日停機',
+    duplicateTitle:'此時段已經有品質檢查紀錄。', originalAdhesion:'原接著', originalAppearance:'原外觀', originalOrder:'原單號', originalBCode:'原B碼', originalQr:'原工件QR', originalLead:'原主手', originalAssistant:'原副手', confirmCorrection:'確定要更正原本資料嗎？',
+    inspectionSaved:'✅ 品質檢查資料已儲存', inspectionCorrected:'✅ 品質檢查資料已更正', time:'時段', adhesion:'貼附接著', workpieceIdentity:'工件識別', workpieceNo:'工件號碼(QR Code)', createdAt:'建立時間',
+    historyInputRequired:'請輸入單號、B碼或工件QR', querying:'🔎 查詢歷史品質檢查紀錄…', queryingShort:'查詢中…', noHistory:'查無品質檢查紀錄', foundCountPrefix:'共找到 ', foundCountSuffix:' 筆',
+    errorGeneric:'發生錯誤', systemSheetError:'系統資料表設定異常，請聯絡管理員', stoppedServer:'此機台已登記今日停機，如已恢復生產請先解除停機。', alreadyInspectedCannotStop:'此機台今天已有品質檢查紀錄，不能再登記為整日停機。',
+    qrShort:'QR'
+  },
+  th: {
+    appTitle:'โรงงานตู้ระบบ－ตรวจสอบคุณภาพการปิดขอบ', systemLoading:'กำลังโหลดระบบ…', systemPrefix:'แผนกตู้ระบบ｜', back:'ย้อนกลับ', home:'หน้าหลัก',
+    selectFactory:'เลือกโรงงาน', historySearch:'🔎 ค้นหาประวัติย้อนหลัง', historyPlaceholder:'กรอกเลขที่ใบงาน, รหัส B หรือ QR ชิ้นงาน', search:'ค้นหา',
+    historyNote:'ค้นหาข้อมูลที่ตรงกันจาก E3 / E4 / W8 ด้วยเลขที่ใบงาน รหัส B หรือหมายเลขชิ้นงาน (QR Code)', machine:'เครื่องจักร', selectMachine:'กรุณาเลือกเครื่องจักร',
+    leadInspector:'ผู้ปฏิบัติงานหลัก', selectLead:'กรุณาเลือกผู้ปฏิบัติงานหลัก', assistantInspector:'ผู้ช่วย', selectAssistant:'กรุณาเลือกผู้ช่วย', todayMachineStatus:'สถานะเครื่องวันนี้',
+    normalInspection:'✅ ตรวจสอบได้ตามปกติ', todayStopped:'หยุดเครื่องวันนี้', todayStoppedButton:'⏸ หยุดเครื่องวันนี้', resumeStop:'▶ ยกเลิกการหยุดเครื่อง', inspectionTime:'ช่วงเวลาตรวจสอบ',
+    adhesionStatus:'สถานะการยึดติด', appearance:'ลักษณะภายนอก', pass:'ผ่าน', fail:'ไม่ผ่าน', adhesionBasis:'เกณฑ์ตรวจ: ห้ามมีขอบยกหรือช่องว่าง', appearanceBasis:'เกณฑ์ตรวจ: ห้ามมีคราบหรือความเสียหาย',
+    labelPhotoRecognition:'ถ่ายรูปฉลากเพื่ออ่านข้อมูล', takeLabelPhoto:'📸 ถ่ายฉลากเพื่ออ่านอัตโนมัติ', labelAutoRecognize:'หลังถ่ายรูป ระบบจะอ่าน: หมายเลขชิ้นงาน (QR Code), เลขที่ใบงาน, รหัส B',
+    qrManualLabel:'⚠️ อ่าน QR ไม่ได้ กรุณากรอกเอง', qrManualPlaceholder:'กรอกหมายเลขชิ้นงาน (QR Code) บนฉลาก', orderNo:'เลขที่ใบงาน', bCode:'รหัส B', pleaseConfirm:'⚠️ กรุณาตรวจสอบ',
+    orderExample:'ตัวอย่าง 202605221446', bCodeExample:'ตัวอย่าง B260525007', labelHint:'ถ่ายให้เห็นฉลากทั้งใบและโฟกัสให้ชัด สามารถเอียงกล้องเล็กน้อยได้ ระบบจะใช้ QR จัดตำแหน่งและแก้ภาพก่อนอ่านหมายเลขชิ้นงาน เลขที่ใบงาน และรหัส B ช่องที่น่าสงสัยจะแสดง “⚠️ กรุณาตรวจสอบ”',
+    currentInspectionData:'ข้อมูลการตรวจสอบคุณภาพครั้งนี้', completeInspectionData:'กรุณากรอกข้อมูลการตรวจสอบให้ครบ', submitInspection:'ส่งผลตรวจสอบคุณภาพ', processing:'กำลังประมวลผล…',
+    sameInspector:'ผู้ปฏิบัติงานหลักและผู้ช่วยต้องเป็นคนละคน', selectFactoryFirst:'กรุณาเลือกโรงงานก่อน', selectMachineFirst:'กรุณาเลือกเครื่องจักรก่อน', selectLeadFirst:'กรุณาเลือกผู้ปฏิบัติงานหลักก่อน', selectAssistantFirst:'กรุณาเลือกผู้ช่วยก่อน',
+    confirmResumeStop:'ยืนยันยกเลิก “หยุดเครื่องวันนี้” หรือไม่?', stopReasonPrompt:'กรอกสาเหตุที่หยุดเครื่องวันนี้:', stopReasonDefault:'หยุดเครื่องวันนี้', confirmStop:'ยืนยันบันทึกหยุดเครื่องวันนี้?', factory:'โรงงาน', reason:'สาเหตุ',
+    stopSaved:'บันทึกหยุดเครื่องวันนี้แล้ว', stopResumed:'ยกเลิกการหยุดเครื่องแล้ว', noStopRecord:'ไม่มีรายการหยุดเครื่องในขณะนี้',
+    photoReading:'📷 กำลังอ่านรูป…', firstLoadOcr:'📦 กำลังโหลด OCR ครั้งแรก', quickRecognition:'🔍 อ่านข้อมูลอย่างรวดเร็ว', enhancedRecognition:'🔎 อ่านข้อมูลแบบละเอียด', textRecognizedDone:'✅ อ่านข้อความเสร็จแล้ว',
+    insufficientEnhanced:'⚡ ข้อมูลยังไม่ครบ กำลังอ่านเพิ่มอัตโนมัติ', stillUncertain:'⚡ ยังมีข้อมูลไม่แน่ชัด กำลังอ่านเพิ่มอีกครั้ง', qrRecognized:'✅ อ่าน QR ชิ้นงานแล้ว: ', qrMissingManual:'⚠️ อ่าน QR ชิ้นงานไม่ได้ กรุณากรอกด้านล่าง',
+    recognized:'อ่านได้', checkEspecially:'กรุณาตรวจสอบเป็นพิเศษ', recognitionDoneCheckYellow:'อ่านข้อมูลเสร็จแล้ว กรุณาตรวจสอบช่องสีเหลือง', textRecognizedNeedQr:'อ่านข้อความได้ แต่ยังอ่าน QR ไม่ได้ กรุณากรอก QR เอง',
+    textRecognizedNeedQrToast:'อ่านข้อความแล้ว กรุณากรอก QR', labelRecognitionDone:'✅ อ่านฉลากเสร็จแล้ว', noLabelData:'⚠️ อ่านข้อมูลบนฉลากไม่ได้ กรุณาถ่ายใกล้ขึ้นและโฟกัสให้ชัด หากขาดเฉพาะ QR สามารถกรอกเองได้',
+    labelRecognitionRetry:'อ่านฉลากไม่ได้ กรุณาถ่ายใหม่', textRecognitionFailed:'⚠️ อ่านข้อความไม่สำเร็จ กรุณาถ่ายใหม่หรือตรวจสอบข้อมูลเอง', textRecognitionFailedToast:'อ่านข้อความไม่สำเร็จ กรุณาตรวจสอบข้อมูล', ocrComponentFail:'โหลดระบบ OCR ไม่สำเร็จ', photoReadFail:'อ่านรูปไม่สำเร็จ',
+    selectInspectionTime:'กรุณาเลือกช่วงเวลาตรวจสอบ', selectAdhesion:'กรุณาเลือกสถานะการยึดติด', selectAppearance:'กรุณาเลือกลักษณะภายนอก', confirmOrder:'กรุณาตรวจสอบเลขที่ใบงาน', confirmBCode:'กรุณาตรวจสอบรหัส B', needWorkpieceQr:'กรุณาถ่ายฉลากเพื่ออ่าน QR หรือกรอกหมายเลขชิ้นงาน (QR Code) เอง', machineStoppedNow:'เครื่องนี้ถูกตั้งเป็นหยุดเครื่องวันนี้',
+    duplicateTitle:'ช่วงเวลานี้มีบันทึกการตรวจสอบอยู่แล้ว', originalAdhesion:'การยึดติดเดิม', originalAppearance:'ลักษณะเดิม', originalOrder:'เลขที่ใบงานเดิม', originalBCode:'รหัส B เดิม', originalQr:'QR ชิ้นงานเดิม', originalLead:'ผู้ปฏิบัติงานหลักเดิม', originalAssistant:'ผู้ช่วยเดิม', confirmCorrection:'ยืนยันแก้ไขข้อมูลเดิมหรือไม่?',
+    inspectionSaved:'✅ บันทึกผลตรวจสอบคุณภาพแล้ว', inspectionCorrected:'✅ แก้ไขผลตรวจสอบคุณภาพแล้ว', time:'เวลา', adhesion:'การยึดติด', workpieceIdentity:'ข้อมูลชิ้นงาน', workpieceNo:'หมายเลขชิ้นงาน (QR Code)', createdAt:'เวลาบันทึก',
+    historyInputRequired:'กรุณากรอกเลขที่ใบงาน รหัส B หรือ QR ชิ้นงาน', querying:'🔎 กำลังค้นหาประวัติการตรวจสอบ…', queryingShort:'กำลังค้นหา…', noHistory:'ไม่พบประวัติการตรวจสอบ', foundCountPrefix:'พบทั้งหมด ', foundCountSuffix:' รายการ',
+    errorGeneric:'เกิดข้อผิดพลาด', systemSheetError:'การตั้งค่าตารางข้อมูลระบบผิดปกติ กรุณาแจ้งผู้ดูแล', stoppedServer:'เครื่องนี้ถูกบันทึกว่าหยุดวันนี้ หากกลับมาผลิตแล้ว กรุณายกเลิกการหยุดเครื่องก่อน', alreadyInspectedCannotStop:'เครื่องนี้มีบันทึกการตรวจสอบวันนี้แล้ว จึงไม่สามารถตั้งเป็นหยุดทั้งวันได้',
+    qrShort:'QR'
+  },
+  vi: {
+    appTitle:'Xưởng tủ hệ thống－Kiểm tra chất lượng dán cạnh', systemLoading:'Đang tải hệ thống…', systemPrefix:'Bộ phận tủ hệ thống｜', back:'Quay lại', home:'Trang chủ',
+    selectFactory:'Chọn xưởng', historySearch:'🔎 Tra cứu lịch sử', historyPlaceholder:'Nhập số đơn, mã B hoặc QR chi tiết', search:'Tra cứu',
+    historyNote:'Tra cứu dữ liệu khớp chính xác trên E3 / E4 / W8 bằng số đơn, mã B hoặc mã chi tiết (QR Code).', machine:'Máy', selectMachine:'Vui lòng chọn máy',
+    leadInspector:'Nhân viên chính', selectLead:'Vui lòng chọn nhân viên chính', assistantInspector:'Nhân viên phụ', selectAssistant:'Vui lòng chọn nhân viên phụ', todayMachineStatus:'Trạng thái máy hôm nay',
+    normalInspection:'✅ Kiểm tra bình thường', todayStopped:'Dừng máy hôm nay', todayStoppedButton:'⏸ Dừng máy hôm nay', resumeStop:'▶ Hủy dừng máy', inspectionTime:'Khung giờ kiểm tra',
+    adhesionStatus:'Tình trạng bám dính', appearance:'Ngoại quan', pass:'Đạt', fail:'Không đạt', adhesionBasis:'Tiêu chuẩn: không được bong mép hoặc có khe hở', appearanceBasis:'Tiêu chuẩn: không được bẩn hoặc hư hỏng',
+    labelPhotoRecognition:'Chụp nhãn để nhận dạng', takeLabelPhoto:'📸 Chụp nhãn để nhận dạng tự động', labelAutoRecognize:'Sau khi chụp, hệ thống sẽ đọc: mã chi tiết (QR Code), số đơn, mã B',
+    qrManualLabel:'⚠️ Không đọc được QR, vui lòng nhập tay', qrManualPlaceholder:'Nhập mã chi tiết (QR Code) trên nhãn', orderNo:'Số đơn', bCode:'Mã B', pleaseConfirm:'⚠️ Vui lòng kiểm tra',
+    orderExample:'Ví dụ 202605221446', bCodeExample:'Ví dụ B260525007', labelHint:'Khi chụp, hãy để toàn bộ nhãn trong khung hình và lấy nét rõ; có thể chụp hơi nghiêng. Hệ thống ưu tiên dùng QR để định vị và chỉnh phối cảnh trước khi đọc mã chi tiết, số đơn và mã B. Dữ liệu cần chú ý sẽ hiện “⚠️ Vui lòng kiểm tra”.',
+    currentInspectionData:'Dữ liệu kiểm tra chất lượng lần này', completeInspectionData:'Vui lòng hoàn tất dữ liệu kiểm tra', submitInspection:'Gửi kết quả kiểm tra', processing:'Đang xử lý dữ liệu…',
+    sameInspector:'Nhân viên chính và nhân viên phụ không được trùng nhau', selectFactoryFirst:'Vui lòng chọn xưởng trước', selectMachineFirst:'Vui lòng chọn máy trước', selectLeadFirst:'Vui lòng chọn nhân viên chính trước', selectAssistantFirst:'Vui lòng chọn nhân viên phụ trước',
+    confirmResumeStop:'Xác nhận hủy “Dừng máy hôm nay”?', stopReasonPrompt:'Nhập lý do dừng máy hôm nay:', stopReasonDefault:'Dừng máy hôm nay', confirmStop:'Xác nhận ghi nhận dừng máy hôm nay?', factory:'Xưởng', reason:'Lý do',
+    stopSaved:'Đã ghi nhận dừng máy hôm nay', stopResumed:'Đã hủy dừng máy', noStopRecord:'Hiện không có bản ghi dừng máy',
+    photoReading:'📷 Đang đọc ảnh…', firstLoadOcr:'📦 Đang tải OCR lần đầu', quickRecognition:'🔍 Nhận dạng nhanh', enhancedRecognition:'🔎 Nhận dạng tăng cường', textRecognizedDone:'✅ Đã nhận dạng xong văn bản',
+    insufficientEnhanced:'⚡ Dữ liệu chưa đủ, tự động nhận dạng tăng cường', stillUncertain:'⚡ Vẫn còn dữ liệu chưa chắc chắn, nhận dạng thêm lần nữa', qrRecognized:'✅ Đã nhận dạng QR chi tiết: ', qrMissingManual:'⚠️ Không đọc được QR chi tiết, vui lòng nhập bên dưới',
+    recognized:'Đã nhận dạng', checkEspecially:'Cần kiểm tra kỹ', recognitionDoneCheckYellow:'Đã nhận dạng xong, vui lòng kiểm tra các ô màu vàng', textRecognizedNeedQr:'Đã đọc được chữ nhưng chưa đọc được QR, vui lòng nhập QR bằng tay.',
+    textRecognizedNeedQrToast:'Đã đọc chữ, vui lòng bổ sung QR', labelRecognitionDone:'✅ Đã nhận dạng nhãn', noLabelData:'⚠️ Không đọc được dữ liệu trên nhãn. Hãy chụp gần hơn và lấy nét rõ; nếu chỉ thiếu QR, có thể nhập tay.',
+    labelRecognitionRetry:'Không nhận dạng được nhãn, vui lòng chụp lại', textRecognitionFailed:'⚠️ Nhận dạng chữ thất bại. Có thể chụp lại hoặc kiểm tra dữ liệu thủ công.', textRecognitionFailedToast:'Nhận dạng chữ thất bại, vui lòng kiểm tra dữ liệu', ocrComponentFail:'Tải thành phần OCR thất bại', photoReadFail:'Đọc ảnh thất bại',
+    selectInspectionTime:'Vui lòng chọn khung giờ kiểm tra', selectAdhesion:'Vui lòng chọn tình trạng bám dính', selectAppearance:'Vui lòng chọn ngoại quan', confirmOrder:'Vui lòng kiểm tra số đơn', confirmBCode:'Vui lòng kiểm tra mã B', needWorkpieceQr:'Vui lòng chụp nhãn để đọc QR hoặc nhập mã chi tiết (QR Code) bằng tay', machineStoppedNow:'Máy này đang ở trạng thái dừng hôm nay',
+    duplicateTitle:'Khung giờ này đã có bản ghi kiểm tra.', originalAdhesion:'Bám dính cũ', originalAppearance:'Ngoại quan cũ', originalOrder:'Số đơn cũ', originalBCode:'Mã B cũ', originalQr:'QR chi tiết cũ', originalLead:'Nhân viên chính cũ', originalAssistant:'Nhân viên phụ cũ', confirmCorrection:'Xác nhận sửa dữ liệu cũ?',
+    inspectionSaved:'✅ Đã lưu dữ liệu kiểm tra chất lượng', inspectionCorrected:'✅ Đã sửa dữ liệu kiểm tra chất lượng', time:'Thời gian', adhesion:'Bám dính', workpieceIdentity:'Thông tin chi tiết', workpieceNo:'Mã chi tiết (QR Code)', createdAt:'Thời gian tạo',
+    historyInputRequired:'Vui lòng nhập số đơn, mã B hoặc QR chi tiết', querying:'🔎 Đang tra cứu lịch sử kiểm tra…', queryingShort:'Đang tra cứu…', noHistory:'Không tìm thấy bản ghi kiểm tra', foundCountPrefix:'Tìm thấy ', foundCountSuffix:' bản ghi',
+    errorGeneric:'Đã xảy ra lỗi', systemSheetError:'Cấu hình bảng dữ liệu hệ thống có lỗi, vui lòng báo quản trị viên', stoppedServer:'Máy này đã được ghi nhận dừng hôm nay. Nếu đã sản xuất lại, vui lòng hủy trạng thái dừng máy trước.', alreadyInspectedCannotStop:'Máy này đã có bản ghi kiểm tra hôm nay nên không thể ghi nhận dừng cả ngày.',
+    qrShort:'QR'
+  }
+};
+
+const MACHINE_I18N = {
+  th: {
+    '直線封邊機':'เครื่องปิดขอบตรง', '軟成型封邊機':'เครื่องปิดขอบซอฟต์ฟอร์ม', '六面無縫封邊機':'เครื่องปิดขอบไร้รอยต่อ 6 ด้าน', '窄邊封邊機':'เครื่องปิดขอบชิ้นงานแคบ', '斜背封邊機':'เครื่องปิดขอบหลังเฉียง',
+    '異形封邊機(柯耐)':'เครื่องปิดขอบรูปทรงพิเศษ (柯耐)', '半自動手工封邊機(貝特)':'เครื่องปิดขอบกึ่งอัตโนมัติแบบมือ (貝特)', '半自動手工封邊機(豪美)':'เครื่องปิดขอบกึ่งอัตโนมัติแบบมือ (豪美)', '半自動手工封邊機2(洪業)':'เครื่องปิดขอบกึ่งอัตโนมัติแบบมือ 2 (洪業)',
+    '直線封邊機1號':'เครื่องปิดขอบตรง หมายเลข 1', '直線封邊機2號':'เครื่องปิดขอบตรง หมายเลข 2', '直線封邊機3號':'เครื่องปิดขอบตรง หมายเลข 3', '直線封邊機3號(聯機)':'เครื่องปิดขอบตรง หมายเลข 3 (เชื่อมไลน์)', '直線封邊機4號(聯機)':'เครื่องปิดขอบตรง หมายเลข 4 (เชื่อมไลน์)'
+  },
+  vi: {
+    '直線封邊機':'Máy dán cạnh thẳng', '軟成型封邊機':'Máy dán cạnh Softforming', '六面無縫封邊機':'Máy dán cạnh không đường nối 6 mặt', '窄邊封邊機':'Máy dán cạnh hẹp', '斜背封邊機':'Máy dán cạnh lưng xiên',
+    '異形封邊機(柯耐)':'Máy dán cạnh định hình (柯耐)', '半自動手工封邊機(貝特)':'Máy dán cạnh thủ công bán tự động (貝特)', '半自動手工封邊機(豪美)':'Máy dán cạnh thủ công bán tự động (豪美)', '半自動手工封邊機2(洪業)':'Máy dán cạnh thủ công bán tự động 2 (洪業)',
+    '直線封邊機1號':'Máy dán cạnh thẳng số 1', '直線封邊機2號':'Máy dán cạnh thẳng số 2', '直線封邊機3號':'Máy dán cạnh thẳng số 3', '直線封邊機3號(聯機)':'Máy dán cạnh thẳng số 3 (liên kết dây chuyền)', '直線封邊機4號(聯機)':'Máy dán cạnh thẳng số 4 (liên kết dây chuyền)'
+  }
+};
+
+function t(key) {
+  const lang = I18N[CURRENT_LANGUAGE] || I18N.zh;
+  return lang[key] || I18N.zh[key] || key;
+}
+
+function listSeparator() {
+  return CURRENT_LANGUAGE === 'zh' ? '、' : ', ';
+}
+
+function getMachineDisplayName(machine) {
+  const raw = String(machine || '');
+  if (CURRENT_LANGUAGE === 'zh') return raw;
+  const table = MACHINE_I18N[CURRENT_LANGUAGE] || {};
+  return table[raw] || raw;
+}
+
+function displayJudgeValue(value) {
+  if (value === '合格') return t('pass');
+  if (value === '不合格') return t('fail');
+  return value || '－';
+}
+
+function getInitialLanguage() {
+  try {
+    const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (saved && I18N[saved]) return saved;
+  } catch (e) {}
+  return 'zh';
+}
+
+function setLanguage(lang) {
+  if (!I18N[lang]) return;
+  CURRENT_LANGUAGE = lang;
+  try { localStorage.setItem(LANGUAGE_STORAGE_KEY, lang); } catch (e) {}
+  applyLanguage();
+}
+
+function applyLanguage() {
+  document.documentElement.lang = CURRENT_LANGUAGE === 'zh' ? 'zh-TW' : CURRENT_LANGUAGE;
+  document.title = t('appTitle');
+
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+    el.setAttribute('placeholder', t(el.dataset.i18nPlaceholder));
+  });
+  document.querySelectorAll('.lang-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.lang === CURRENT_LANGUAGE);
+  });
+
+  refreshLanguageSensitiveOptions();
+  if (APP_DATA && APP_DATA.currentTime) {
+    document.getElementById('systemTime').textContent = t('systemPrefix') + APP_DATA.currentTime;
+  }
+  if (selected && selected.machine) {
+    setMachineStateUI({stopped:MACHINE_STOPPED, reason:MACHINE_STOP_REASON});
+  }
+  updateSummary();
+  if (LAST_HISTORY_RESULT) renderHistoryResults(LAST_HISTORY_RESULT);
+}
+
+function refreshLanguageSensitiveOptions() {
+  const machine = document.getElementById('machine');
+  if (machine) {
+    Array.from(machine.options).forEach(function(option, index) {
+      option.textContent = index === 0 ? t('selectMachine') : getMachineDisplayName(option.value);
+    });
+  }
+  const lead = document.getElementById('leadInspector');
+  if (lead && lead.options.length) lead.options[0].textContent = t('selectLead');
+  const assistant = document.getElementById('assistantInspector');
+  if (assistant && assistant.options.length) assistant.options[0].textContent = t('selectAssistant');
+}
+
+function localizeServerMessage(message) {
+  const raw = String(message || '').trim();
+  const exact = {
+    '請輸入單號、B碼或工件號碼(QR Code)': 'historyInputRequired',
+    '此機台已登記今日停機。\n如已恢復生產，請先解除停機。': 'stoppedServer',
+    '此機台今天已有巡檢紀錄，不能再登記為整日停機。': 'alreadyInspectedCannotStop',
+    '請選擇廠別':'selectFactoryFirst', '請選擇正確機台':'selectMachineFirst', '請選擇檢查時段':'selectInspectionTime',
+    '請選擇貼附接著狀態':'selectAdhesion', '請選擇外觀':'selectAppearance', '請輸入單號':'confirmOrder', '請輸入B碼':'confirmBCode',
+    '請輸入工件號碼(QR Code)':'needWorkpieceQr', '請選擇主手':'selectLeadFirst', '請選擇副手':'selectAssistantFirst', '主手與副手不可選同一人':'sameInspector',
+    '廠別錯誤':'selectFactoryFirst', '機台錯誤':'selectMachineFirst'
+  };
+  if (exact[raw]) return t(exact[raw]);
+  if (raw.indexOf('找不到工作表：') === 0) return t('systemSheetError');
+  return CURRENT_LANGUAGE === 'zh' ? raw : t('errorGeneric') + (raw ? '：' + raw : '');
+}
+
+CURRENT_LANGUAGE = getInitialLanguage();
+let APP_DATA = null;
+let MACHINE_STOPPED = false;
+let MACHINE_STOP_REASON = '';
+let qrScanner = null;
+
+// v2.21：沿用 v2.20 三語手機介面與異動紀錄修正；新增手機返回 / 首頁導覽。
+let LABEL_OCR_WORKER_PROMISE = null;
+let LABEL_OCR_PROGRESS_CALLBACK = null;
+let LABEL_OCR_ACTIVE_PASS = 0;
+let LABEL_OCR_MAX_PASSES = 3;
+let selected = {
+  factory:'',
+  machine:'',
+  inspectionTime:'',
+  adhesion:'',
+  appearance:'',
+  workpieceQr:'',
+  leadInspector:'',
+  assistantInspector:'',
+  labelOrderNo:'',
+  labelBCode:''
+};
+
+window.addEventListener('load', function() {
+  applyLanguage();
+  prewarmFastLabelOcr();
+  google.script.run
+    .withSuccessHandler(initApp)
+    .withFailureHandler(handleError)
+    .getInitialData();
+});
+
+function initApp(data) {
+  APP_DATA = data;
+  document.getElementById('systemTime').textContent = t('systemPrefix') + data.currentTime;
+  fillTimes();
+  updateNavigation();
+}
+
+function updateNavigation() {
+  const nav = document.getElementById('navBar');
+  if (!nav) return;
+  nav.classList.toggle('hidden', !selected.factory);
+}
+
+function goBack() {
+  if (selected.machine) selected.machine = '';
+  else return goHome();
+
+  const machine = document.getElementById('machine');
+  if (machine) machine.value = '';
+  resetInspectionFields();
+  MACHINE_STOPPED = false;
+  MACHINE_STOP_REASON = '';
+  document.getElementById('machineStateBox').classList.add('hidden');
+  document.getElementById('inspectionArea').classList.add('hidden');
+  document.getElementById('submitWrap').classList.add('hidden');
+  updateNavigation();
+  updateSummary();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function goHome() {
+  selected.factory = '';
+  selected.machine = '';
+  selected.leadInspector = '';
+  selected.assistantInspector = '';
+  MACHINE_STOPPED = false;
+  MACHINE_STOP_REASON = '';
+  resetInspectionFields();
+
+  const machine = document.getElementById('machine');
+  const lead = document.getElementById('leadInspector');
+  const assistant = document.getElementById('assistantInspector');
+  if (machine) machine.value = '';
+  if (lead) lead.value = '';
+  if (assistant) assistant.value = '';
+
+  document.querySelectorAll('.factory-btn').forEach(function(button) {
+    button.classList.remove('active');
+    button.style.background = '#FFFFFF';
+    button.style.color = '#222';
+  });
+
+  document.documentElement.style.setProperty('--factory-color', '#1F4E78');
+  document.getElementById('topbar').style.background = '#1F4E78';
+  document.getElementById('baseArea').classList.add('hidden');
+  document.getElementById('machineStateBox').classList.add('hidden');
+  document.getElementById('inspectionArea').classList.add('hidden');
+  document.getElementById('submitWrap').classList.add('hidden');
+  updateNavigation();
+  updateSummary();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function selectFactory(factory) {
+  selected.factory = factory;
+  selected.machine = '';
+  selected.leadInspector = '';
+  selected.assistantInspector = '';
+  MACHINE_STOPPED = false;
+  MACHINE_STOP_REASON = '';
+  resetInspectionFields();
+  updateNavigation();
+
+  const cfg = APP_DATA.factories[factory];
+  document.documentElement.style.setProperty('--factory-color', cfg.color);
+  document.getElementById('topbar').style.background = cfg.color;
+
+  document.querySelectorAll('.factory-btn').forEach(button => {
+    button.classList.remove('active');
+    button.style.background = '#FFFFFF';
+    button.style.color = '#222';
+  });
+
+  const activeButton = document.querySelector('[data-factory="' + factory + '"]');
+  activeButton.classList.add('active');
+  activeButton.style.background = cfg.color;
+  activeButton.style.color = '#FFFFFF';
+
+  fillMachines(cfg.machines);
+  fillInspectors(cfg.inspectors);
+  document.getElementById('baseArea').classList.remove('hidden');
+  document.getElementById('machineStateBox').classList.add('hidden');
+  document.getElementById('inspectionArea').classList.add('hidden');
+  document.getElementById('submitWrap').classList.add('hidden');
+  updateSummary();
+}
+
+function fillMachines(machines) {
+  const element = document.getElementById('machine');
+  element.innerHTML = '<option value="">' + escapeHtml(t('selectMachine')) + '</option>';
+  machines.forEach(machine => {
+    const option = document.createElement('option');
+    option.value = machine;
+    option.textContent = getMachineDisplayName(machine);
+    element.appendChild(option);
+  });
+  element.onchange = function() {
+    selected.machine = this.value;
+    resetInspectionFields();
+    if (selected.machine) {
+      refreshMachineState();
+    } else {
+      document.getElementById('machineStateBox').classList.add('hidden');
+      document.getElementById('inspectionArea').classList.add('hidden');
+      document.getElementById('submitWrap').classList.add('hidden');
+    }
+    updateSummary();
+  };
+}
+
+function fillInspectors(inspectors) {
+  const lead = document.getElementById('leadInspector');
+  const assistant = document.getElementById('assistantInspector');
+
+  lead.innerHTML = '<option value="">' + escapeHtml(t('selectLead')) + '</option>';
+  assistant.innerHTML = '<option value="">' + escapeHtml(t('selectAssistant')) + '</option>';
+
+  inspectors.forEach(person => {
+    const leadOption = document.createElement('option');
+    leadOption.value = person;
+    leadOption.textContent = person;
+    lead.appendChild(leadOption);
+
+    const assistantOption = document.createElement('option');
+    assistantOption.value = person;
+    assistantOption.textContent = person;
+    assistant.appendChild(assistantOption);
+  });
+
+  lead.onchange = function() {
+    selected.leadInspector = this.value;
+
+    if (
+      selected.assistantInspector &&
+      selected.assistantInspector ===
+      selected.leadInspector
+    ) {
+      selected.assistantInspector = '';
+      assistant.value = '';
+      showToast(t('sameInspector'),'warning');
+    }
+
+    updatePersonnelOptions();
+    updateSummary();
+  };
+
+  assistant.onchange = function() {
+    selected.assistantInspector = this.value;
+
+    if (
+      selected.leadInspector &&
+      selected.leadInspector ===
+      selected.assistantInspector
+    ) {
+      selected.assistantInspector = '';
+      assistant.value = '';
+      showToast(t('sameInspector'),'warning');
+    }
+
+    updatePersonnelOptions();
+    updateSummary();
+  };
+
+  updatePersonnelOptions();
+}
+
+function updatePersonnelOptions() {
+  const lead = document.getElementById('leadInspector');
+  const assistant = document.getElementById('assistantInspector');
+
+  Array.from(lead.options).forEach(option => {
+    option.disabled =
+      !!selected.assistantInspector &&
+      option.value === selected.assistantInspector;
+  });
+
+  Array.from(assistant.options).forEach(option => {
+    option.disabled =
+      !!selected.leadInspector &&
+      option.value === selected.leadInspector;
+  });
+}
+
+function refreshMachineState() {
+  if (!selected.factory || !selected.machine) return;
+  showLoading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      showLoading(false);
+      setMachineStateUI(result);
+    })
+    .withFailureHandler(function(error) {
+      showLoading(false);
+      handleError(error);
+    })
+    .getMachineState(selected.factory, selected.machine);
+}
+
+function setMachineStateUI(result) {
+  MACHINE_STOPPED = !!result.stopped;
+  MACHINE_STOP_REASON = result.reason || '';
+  const box = document.getElementById('machineStateBox');
+  const text = document.getElementById('machineStateText');
+  const button = document.getElementById('machineStateBtn');
+  box.classList.remove('hidden');
+
+  if (MACHINE_STOPPED) {
+    const reasonText = MACHINE_STOP_REASON === '今日停機' ? t('todayStopped') : MACHINE_STOP_REASON;
+    text.textContent = '⏸ ' + t('todayStopped') + (reasonText ? '｜' + reasonText : '');
+    text.className = 'state-value stopped';
+    button.textContent = t('resumeStop');
+    button.className = 'stop-btn resume';
+    document.getElementById('inspectionArea').classList.add('hidden');
+    document.getElementById('submitWrap').classList.add('hidden');
+  } else {
+    text.textContent = t('normalInspection');
+    text.className = 'state-value normal';
+    button.textContent = t('todayStoppedButton');
+    button.className = 'stop-btn';
+    document.getElementById('inspectionArea').classList.remove('hidden');
+    document.getElementById('submitWrap').classList.remove('hidden');
+  }
+  updateSummary();
+}
+
+function toggleMachineStop() {
+  if (!selected.factory || !selected.machine) {
+    showToast(t('selectMachineFirst'),'error');
+    return;
+  }
+
+  if (!selected.leadInspector) {
+    showToast(t('selectLeadFirst'),'error');
+    return;
+  }
+
+  if (!selected.assistantInspector) {
+    showToast(t('selectAssistantFirst'),'error');
+    return;
+  }
+
+  if (
+    selected.leadInspector ===
+    selected.assistantInspector
+  ) {
+    showToast(t('sameInspector'),'error');
+    return;
+  }
+
+  if (MACHINE_STOPPED) {
+    if (!window.confirm(t('confirmResumeStop') + '\n\n' + getMachineDisplayName(selected.machine))) return;
+
+    showLoading(true);
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        showLoading(false);
+        showToast('✅ ' + t('stopResumed'),'success');
+        refreshMachineState();
+      })
+      .withFailureHandler(function(error) {
+        showLoading(false);
+        handleError(error);
+      })
+      .resumeMachine({
+        factory:selected.factory,
+        machine:selected.machine,
+        leadInspector:selected.leadInspector,
+        assistantInspector:selected.assistantInspector
+      });
+
+    return;
+  }
+
+  let reason = window.prompt(t('stopReasonPrompt'), t('stopReasonDefault'));
+  if (reason === null) return;
+
+  reason = reason.trim() || t('stopReasonDefault');
+
+  if (
+    !window.confirm(
+      t('confirmStop') + '\n\n' +
+      t('factory') + '：' + selected.factory +
+      '\n' + t('machine') + '：' + getMachineDisplayName(selected.machine) +
+      '\n' + t('leadInspector') + '：' + selected.leadInspector +
+      '\n' + t('assistantInspector') + '：' + selected.assistantInspector +
+      '\n' + t('reason') + '：' + reason
+    )
+  ) return;
+
+  showLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      showLoading(false);
+      showToast('✅ ' + t('stopSaved'),'success');
+      refreshMachineState();
+    })
+    .withFailureHandler(function(error) {
+      showLoading(false);
+      handleError(error);
+    })
+    .setMachineStopped({
+      factory:selected.factory,
+      machine:selected.machine,
+      leadInspector:selected.leadInspector,
+      assistantInspector:selected.assistantInspector,
+      reason:reason
+    });
+}
+
+function fillTimes() {
+  const grid = document.getElementById('timeGrid');
+  grid.innerHTML = '';
+  APP_DATA.times.forEach(time => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'time-btn';
+    button.textContent = time;
+    button.dataset.time = time;
+    button.onclick = function() {
+      selected.inspectionTime = time;
+      document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      updateSummary();
+    };
+    grid.appendChild(button);
+  });
+}
+
+function chooseJudge(group,value,button) {
+  selected[group] = value;
+  document.querySelectorAll('[data-group="' + group + '"]').forEach(btn => btn.classList.remove('active'));
+  button.classList.add('active');
+  updateSummary();
+}
+
+
+let INLINE_CAMERA_STREAM=null;
+let INLINE_SCANNING=false;
+let INLINE_SCAN_BUSY=false;
+let INLINE_SCAN_SAMPLES=[];
+let INLINE_SCAN_STARTED=0;
+let INLINE_SCAN_LAST=0;
+let INLINE_RECENT_QR=[];
+
+function inlineCaptureFrame(video,maxW){
+  if(!video || !video.videoWidth || !video.videoHeight)return null;
+  const scale=Math.min(1,(maxW||1500)/video.videoWidth);
+  const c=document.createElement('canvas');
+  c.width=Math.max(1,Math.round(video.videoWidth*scale));
+  c.height=Math.max(1,Math.round(video.videoHeight*scale));
+  c.getContext('2d',{alpha:false}).drawImage(video,0,0,c.width,c.height);
+  return c;
+}
+
+function inlineCloneCanvas(src){
+  const c=document.createElement('canvas');
+  c.width=src.width;c.height=src.height;
+  c.getContext('2d',{alpha:false}).drawImage(src,0,0);
+  return c;
+}
+
+function inlineFrameQuality(canvas){
+  const w=160;
+  const h=Math.max(90,Math.round(canvas.height*w/canvas.width));
+  const t=document.createElement('canvas');t.width=w;t.height=h;
+  const ctx=t.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(canvas,0,0,w,h);
+  const d=ctx.getImageData(0,0,w,h).data;
+  const g=new Float32Array(w*h);
+  let sum=0,sum2=0,dark=0,bright=0;
+  for(let i=0,j=0;i<d.length;i+=4,j++){
+    const y=.299*d[i]+.587*d[i+1]+.114*d[i+2];
+    g[j]=y;sum+=y;sum2+=y*y;
+    if(y<35)dark++; if(y>245)bright++;
+  }
+  const n=g.length,brightness=sum/n;
+  const contrast=Math.sqrt(Math.max(0,sum2/n-brightness*brightness));
+  let lap=0,count=0;
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      const i=y*w+x;
+      const v=Math.abs(4*g[i]-g[i-1]-g[i+1]-g[i-w]-g[i+w]);
+      lap+=v;count++;
+    }
+  }
+  const sharpness=lap/Math.max(1,count);
+  const darkRatio=dark/n,brightRatio=bright/n;
+  const ok=brightness>=45&&brightness<=235&&contrast>=22&&sharpness>=4.0&&darkRatio<.72&&brightRatio<.45;
+  const score=sharpness*5+contrast*.8-Math.abs(brightness-145)*.15-(darkRatio+brightRatio)*35;
+  return {ok,brightness,contrast,sharpness,darkRatio,brightRatio,score};
+}
+
+async function inlineQuickQr(canvas){
+  try{
+    if(typeof decodeNativeQr_==='function'){
+      const n=await decodeNativeQr_(canvas);
+      if(n&&n.data)return String(n.data).trim();
+    }
+  }catch(e){}
+  try{
+    if(typeof decodeQrDetailed_==='function'){
+      const j=decodeQrDetailed_(canvas);
+      if(j&&j.data)return String(j.data).trim();
+    }
+  }catch(e){}
+  return '';
+}
+
+function inlineCanvasToFile(canvas,name){
+  return new Promise(function(resolve,reject){
+    canvas.toBlob(function(blob){
+      if(!blob)return reject(new Error('掃描影像建立失敗'));
+      resolve(new File([blob],name||'inline-scan.jpg',{type:'image/jpeg',lastModified:Date.now()}));
+    },'image/jpeg',.95);
+  });
+}
+
+function readCurrentLabelResult(){
+  return {
+    qr:(document.getElementById('workpieceQr')?.value||'').trim(),
+    order:(document.getElementById('labelOrderNo')?.value||'').trim(),
+    b:(document.getElementById('labelBCode')?.value||'').trim()
+  };
+}
+
+function applyMergedInlineResult(first,second){
+  function merge(a,b){
+    a=String(a||'').trim(); b=String(b||'').trim();
+    if(a&&b&&a!==b)return '';
+    return a||b||'';
+  }
+  const qr=merge(first.qr,second.qr);
+  const order=merge(first.order,second.order);
+  const b=merge(first.b,second.b);
+  document.getElementById('workpieceQr').value=qr;
+  document.getElementById('labelOrderNo').value=order;
+  document.getElementById('labelBCode').value=b;
+  selected.workpieceQr=qr;
+  selected.labelOrderNo=order;
+  selected.labelBCode=b;
+  document.getElementById('labelFields').classList.remove('hidden');
+  const qrResult=document.getElementById('qrResult');
+  if(qr){
+    qrResult.className='qr-result qr-success';
+    qrResult.textContent=t('qrRecognized')+qr;
+    showQrFallback(false);
+  }else{
+    qrResult.className='qr-result qr-warning';
+    qrResult.textContent=t('qrMissingManual');
+    showQrFallback(true);
+  }
+  applyOcrWarnings({orderNo:!order,bCode:!b});
+  updateSummary();
+}
+
+async function stopInlineScanner(hideBox){
+  INLINE_SCANNING=false;
+  INLINE_SCAN_BUSY=false;
+  if(INLINE_CAMERA_STREAM){
+    INLINE_CAMERA_STREAM.getTracks().forEach(function(track){try{track.stop();}catch(e){}});
+    INLINE_CAMERA_STREAM=null;
+  }
+  const video=document.getElementById('inlineLiveVideo');
+  if(video)video.srcObject=null;
+  if(hideBox!==false){
+    const box=document.getElementById('inlineCameraBox');
+    if(box)box.classList.remove('show');
+  }
+}
+
+async function startInlineScanner(){
+  if(INLINE_SCAN_BUSY)return;
+  if(!selected.factory){showToast(t('selectFactoryFirst'),'error');return;}
+  if(!selected.machine){showToast(t('selectMachineFirst'),'error');return;}
+  const box=document.getElementById('inlineCameraBox');
+  const status=document.getElementById('inlineScanStatus');
+  const meta=document.getElementById('inlineScanMeta');
+  box.classList.add('show');
+  status.textContent='正在開啟後鏡頭…';
+  meta.textContent='手持即可，不需要完全不動；請把整張白色標籤放進框內。';
+
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    status.textContent='⚠️ 目前瀏覽器不支援即時相機，可改用下方「拍標籤自動辨識（備援）」';
+    return;
+  }
+
+  await stopInlineScanner(false);
+  box.classList.add('show');
+  INLINE_SCAN_SAMPLES=[];
+  INLINE_RECENT_QR=[];
+  INLINE_SCAN_STARTED=performance.now();
+  INLINE_SCAN_LAST=0;
+
+  try{
+    INLINE_CAMERA_STREAM=await navigator.mediaDevices.getUserMedia({
+      audio:false,
+      video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}
+    });
+    const video=document.getElementById('inlineLiveVideo');
+    video.srcObject=INLINE_CAMERA_STREAM;
+    await video.play();
+    INLINE_SCANNING=true;
+    status.textContent='🎯 掃描中：把整張標籤放進框內';
+    requestAnimationFrame(inlineScanLoop);
+  }catch(err){
+    status.textContent='⚠️ 相機無法開啟，請確認瀏覽器相機權限；也可使用下方拍照備援';
+    meta.textContent=(err&&err.name?err.name:'CameraError')+(err&&err.message?'｜'+err.message:'');
+  }
+}
+
+async function inlineScanLoop(ts){
+  if(!INLINE_SCANNING||INLINE_SCAN_BUSY)return;
+  if(ts-INLINE_SCAN_LAST<180){requestAnimationFrame(inlineScanLoop);return;}
+  INLINE_SCAN_LAST=ts;
+
+  const frame=inlineCaptureFrame(document.getElementById('inlineLiveVideo'),1500);
+  if(!frame){requestAnimationFrame(inlineScanLoop);return;}
+  const q=inlineFrameQuality(frame);
+  let qr='';
+  try{qr=await inlineQuickQr(frame);}catch(e){}
+
+  INLINE_RECENT_QR.push(qr||'');
+  if(INLINE_RECENT_QR.length>5)INLINE_RECENT_QR.shift();
+
+  if(q.ok || (q.sharpness>=3.2&&q.brightness>=42&&q.brightness<=238)){
+    INLINE_SCAN_SAMPLES.push({
+      canvas:inlineCloneCanvas(frame),
+      q:q,
+      qr:qr,
+      score:q.score+(qr?38:0)
+    });
+    if(INLINE_SCAN_SAMPLES.length>6)INLINE_SCAN_SAMPLES.shift();
+  }
+
+  const counts={};
+  INLINE_RECENT_QR.forEach(function(v){if(v)counts[v]=(counts[v]||0)+1;});
+  let bestQr='',votes=0;
+  Object.keys(counts).forEach(function(k){if(counts[k]>votes){votes=counts[k];bestQr=k;}});
+  const elapsed=performance.now()-INLINE_SCAN_STARTED;
+  const ready=(elapsed>=1500&&votes>=2&&INLINE_SCAN_SAMPLES.length>=3) ||
+              (elapsed>=3200&&INLINE_SCAN_SAMPLES.length>=4);
+
+  const status=document.getElementById('inlineScanStatus');
+  const meta=document.getElementById('inlineScanMeta');
+  status.textContent=!ready
+    ? (elapsed<1500?'🎯 請把整張標籤放進框內…':(votes>=2?'📸 正在收集清楚影格…':'🔎 正在鎖定標籤，手持即可'))
+    : '🟢 已取得清楚影格，正在自動辨識…';
+  meta.textContent='清楚影格 '+INLINE_SCAN_SAMPLES.length+
+    '｜清晰 '+q.sharpness.toFixed(1)+
+    '｜亮度 '+Math.round(q.brightness)+
+    (bestQr?'｜QR一致 '+votes+'/5':'｜正在找QR');
+
+  if(ready){
+    INLINE_SCAN_BUSY=true;
+    INLINE_SCANNING=false;
+    const samples=INLINE_SCAN_SAMPLES.slice().sort(function(a,b){return b.score-a.score;});
+    const best=samples[0],second=samples[1]||null;
+    await stopInlineScanner(false);
+    try{
+      const file=await inlineCanvasToFile(best.canvas,'inline-best.jpg');
+      const fake={target:{files:[file],value:''}};
+      await handleLabelPhoto(fake);
+      const first=readCurrentLabelResult();
+
+      if((!first.qr||!first.order||!first.b) && second){
+        status.textContent='🧠 第一影格有缺欄，正在用第二影格複核…';
+        const secondFile=await inlineCanvasToFile(second.canvas,'inline-second.jpg');
+        await handleLabelPhoto({target:{files:[secondFile],value:''}});
+        const secondResult=readCurrentLabelResult();
+        applyMergedInlineResult(first,secondResult);
+      }
+
+      const finalResult=readCurrentLabelResult();
+      const all=!!finalResult.qr&&!!finalResult.order&&!!finalResult.b;
+      status.textContent=all
+        ? '✅ 掃描完成：QR、單號、B碼已直接填入'
+        : '⚠️ 掃描完成：有欄位需要人工確認';
+      meta.textContent='已在同一頁完成，不需要跳頁或返回。';
+      setTimeout(function(){box=document.getElementById('inlineCameraBox');if(box)box.classList.remove('show');},700);
+    }catch(err){
+      status.textContent='❌ '+(err&&err.message?err.message:'掃描辨識失敗');
+    }finally{
+      INLINE_SCAN_BUSY=false;
+    }
+    return;
+  }
+
+  if(elapsed>=10000){
+    INLINE_SCANNING=false;
+    await stopInlineScanner(false);
+    status.textContent='⚠️ 還沒抓到足夠清楚的標籤，請重新掃描或使用拍照備援';
+    return;
+  }
+  requestAnimationFrame(inlineScanLoop);
+}
+
+
+async function handleLabelPhoto(event) {
+  const input = event.target;
+
+  if (!selected.factory) {
+    showToast(t('selectFactoryFirst'),'error');
+    input.value = '';
+    return;
+  }
+
+  if (!selected.machine) {
+    showToast(t('selectMachineFirst'),'error');
+    input.value = '';
+    return;
+  }
+
+  const file = input.files && input.files[0];
+  if (!file) return;
+
+  const status = document.getElementById('labelOcrStatus');
+  const qrResult = document.getElementById('qrResult');
+
+  clearOcrWarnings();
+  showQrFallback(false);
+  qrResult.textContent = '';
+  qrResult.className = 'qr-result';
+  status.textContent = t('photoReading');
+  showLoading(true, t('photoReading'));
+
+  try {
+    const t0 = performance.now();
+    const image = await loadFastLabelImage(file);
+
+    status.textContent = '🎯 ' + t('quickRecognition') + '：QR定位';
+    showLoading(true, status.textContent);
+
+    let normalized = await normalizeLabelByQrAnchor(image);
+    let locateMode = 'QR';
+
+    if (!normalized) {
+      status.textContent = '⬜ ' + t('enhancedRecognition') + '：標籤定位';
+      showLoading(true, status.textContent);
+      normalized = normalizeWhiteLabel(image);
+      locateMode = normalized && normalized.located ? 'LABEL' : 'FULL';
+    }
+
+    if (!normalized) {
+      normalized = makeFullImageFallback(image);
+      locateMode = 'FULL';
+    }
+
+    const worker = await getFastLabelOcrWorker(function(percent) {
+      const pct = Math.max(0, Math.min(100, Math.round(percent || 0)));
+      if (pct > 0) {
+        status.textContent = '🔎 ' + t('quickRecognition') + ' ' + pct + '%';
+        showLoading(true, status.textContent);
+      }
+    });
+
+    const data = await readFastLabelFields(
+      worker,
+      normalized.canvas,
+      normalized.anchor === 'QR' ? normalized.qr : '',
+      normalized.anchor === 'QR' ? 'QR' : ''
+    );
+
+    document.getElementById('labelOrderNo').value = data.orderNo || '';
+    document.getElementById('labelBCode').value = data.bCode || '';
+    document.getElementById('labelFields').classList.remove('hidden');
+
+    selected.labelOrderNo = data.orderNo || '';
+    selected.labelBCode = data.bCode || '';
+
+    const warnings = {
+      orderNo:
+        !data.orderNo ||
+        (data.orderDiagnostics &&
+         data.orderDiagnostics.candidates &&
+         data.orderDiagnostics.candidates.length >= 2 &&
+         data.orderDiagnostics.agreement < 0.55),
+
+      bCode:
+        !data.bCode ||
+        (data.bDiagnostics &&
+         data.bDiagnostics.candidates &&
+         data.bDiagnostics.candidates.length >= 2 &&
+         data.bDiagnostics.agreement < 0.55)
+    };
+
+    applyOcrWarnings(warnings);
+
+    if (data.qrCode) {
+      document.getElementById('workpieceQr').value = data.qrCode;
+      selected.workpieceQr = data.qrCode;
+      qrResult.className = 'qr-result qr-success';
+      qrResult.textContent = t('qrRecognized') + data.qrCode;
+      showQrFallback(false);
+    } else {
+      document.getElementById('workpieceQr').value = '';
+      selected.workpieceQr = '';
+      qrResult.className = 'qr-result qr-warning';
+      qrResult.textContent = t('qrMissingManual');
+      showQrFallback(true);
+    }
+
+    const found = [
+      data.orderNo ? t('orderNo') : '',
+      data.bCode ? t('bCode') : '',
+      data.qrCode ? t('qrShort') : ''
+    ].filter(Boolean);
+
+    const warningLabels = [];
+    if (warnings.orderNo) warningLabels.push(t('orderNo'));
+    if (warnings.bCode) warningLabels.push(t('bCode'));
+
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+
+    if (found.length) {
+      if (warningLabels.length) {
+        status.textContent =
+          '⚠️ ' + t('recognized') + '：' +
+          found.join(listSeparator()) +
+          '｜' + t('checkEspecially') + '：' +
+          warningLabels.join(listSeparator()) +
+          '｜' + elapsed + 's';
+        showToast(t('recognitionDoneCheckYellow'),'warning');
+      } else if (!data.qrCode) {
+        status.textContent = '⚠️ ' + t('textRecognizedNeedQr') + '｜' + elapsed + 's';
+        showToast(t('textRecognizedNeedQrToast'),'warning');
+      } else {
+        const modeText =
+          locateMode === 'QR' ? 'QR定位' :
+          locateMode === 'LABEL' ? '標籤定位' :
+          '整圖備援';
+
+        status.textContent =
+          '✅ ' + t('recognized') + '：' +
+          found.join(listSeparator()) +
+          '｜' + modeText +
+          '｜' + elapsed + 's';
+
+        showToast(t('labelRecognitionDone'),'success');
+      }
+    } else {
+      status.textContent = t('noLabelData');
+      showQrFallback(true);
+      showToast(t('labelRecognitionRetry'),'warning');
+    }
+
+    updateSummary();
+  }
+  catch (error) {
+    console.error('Fast label OCR failed:', error);
+    status.textContent = t('textRecognitionFailed');
+    document.getElementById('labelFields').classList.remove('hidden');
+    showQrFallback(!getCurrentWorkpieceQr());
+    showToast(t('textRecognitionFailedToast'),'warning');
+    updateSummary();
+  }
+  finally {
+    showLoading(false);
+    input.value = '';
+  }
+}
+
+
+async function getFastLabelOcrWorker(progressCallback) {
+  if (typeof Tesseract === 'undefined') {
+    throw new Error(t('ocrComponentFail'));
+  }
+
+  LABEL_OCR_PROGRESS_CALLBACK =
+    typeof progressCallback === 'function'
+      ? progressCallback
+      : null;
+
+  if (!LABEL_OCR_WORKER_PROMISE) {
+    LABEL_OCR_WORKER_PROMISE = Tesseract.createWorker(
+      'eng',
+      1,
+      {
+        logger:function(message) {
+          const callback = LABEL_OCR_PROGRESS_CALLBACK;
+          if (typeof callback !== 'function') return;
+
+          if (message.status === 'recognizing text') {
+            callback((message.progress || 0) * 100);
+          }
+        }
+      }
+    ).catch(function(error) {
+      LABEL_OCR_WORKER_PROMISE = null;
+      throw error;
+    });
+  }
+
+  return await LABEL_OCR_WORKER_PROMISE;
+}
+
+
+function prewarmFastLabelOcr() {
+  const run = function() {
+    getFastLabelOcrWorker(null).catch(function() {});
+  };
+
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(run, {timeout:2500});
+  } else {
+    setTimeout(run, 350);
+  }
+}
+
+
+function getImageWidth_(image) {
+  return Number(image.naturalWidth || image.width || 0);
+}
+
+
+function getImageHeight_(image) {
+  return Number(image.naturalHeight || image.height || 0);
+}
+
+
+// v2.24 2026-10-01：iPhone / Android 跨手機辨識強化
+async function loadFastLabelImage(file) {
+  if ('createImageBitmap' in window) {
+    try {
+      return await createImageBitmap(file, {imageOrientation:'from-image'});
+    } catch (e) {}
+  }
+
+  return await new Promise(function(resolve, reject) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = function() {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+      reject(new Error(t('photoReadFail')));
+    };
+
+    img.src = url;
+  });
+}
+
+
+function otsuThreshold_(gray) {
+  const hist = new Uint32Array(256);
+
+  for (let i = 0; i < gray.length; i++) {
+    hist[gray[i]]++;
+  }
+
+  const total = gray.length;
+  let sum = 0;
+
+  for (let i = 0; i < 256; i++) {
+    sum += i * hist[i];
+  }
+
+  let sumB = 0;
+  let wB = 0;
+  let maxVar = -1;
+  let threshold = 160;
+
+  for (let t0 = 0; t0 < 256; t0++) {
+    wB += hist[t0];
+    if (!wB) continue;
+
+    const wF = total - wB;
+    if (!wF) break;
+
+    sumB += t0 * hist[t0];
+
+    const mB = sumB / wB;
+    const mF = (sum - sumB) / wF;
+    const value = wB * wF * (mB - mF) * (mB - mF);
+
+    if (value > maxVar) {
+      maxVar = value;
+      threshold = t0;
+    }
+  }
+
+  return threshold;
+}
+
+
+function pointDistance_(a,b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+
+function affineForTriangle_(s0,s1,s2,d0,d1,d2) {
+  const det =
+    s0.x * (s1.y - s2.y) +
+    s1.x * (s2.y - s0.y) +
+    s2.x * (s0.y - s1.y);
+
+  if (Math.abs(det) < 1e-8) return null;
+
+  return {
+    a:(d0.x*(s1.y-s2.y)+d1.x*(s2.y-s0.y)+d2.x*(s0.y-s1.y))/det,
+    c:(d0.x*(s2.x-s1.x)+d1.x*(s0.x-s2.x)+d2.x*(s1.x-s0.x))/det,
+    e:(d0.x*(s1.x*s2.y-s2.x*s1.y)+d1.x*(s2.x*s0.y-s0.x*s2.y)+d2.x*(s0.x*s1.y-s1.x*s0.y))/det,
+    b:(d0.y*(s1.y-s2.y)+d1.y*(s2.y-s0.y)+d2.y*(s0.y-s1.y))/det,
+    d:(d0.y*(s2.x-s1.x)+d1.y*(s0.x-s2.x)+d2.y*(s1.x-s0.x))/det,
+    f:(d0.y*(s1.x*s2.y-s2.x*s1.y)+d1.y*(s2.x*s0.y-s0.x*s2.y)+d2.y*(s0.x*s1.y-s1.x*s0.y))/det
+  };
+}
+
+
+function drawMappedTriangle_(ctx,image,s0,s1,s2,d0,d1,d2) {
+  const m = affineForTriangle_(s0,s1,s2,d0,d1,d2);
+  if (!m) return;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(d0.x,d0.y);
+  ctx.lineTo(d1.x,d1.y);
+  ctx.lineTo(d2.x,d2.y);
+  ctx.closePath();
+  ctx.clip();
+
+  ctx.setTransform(m.a,m.b,m.c,m.d,m.e,m.f);
+  ctx.drawImage(image,0,0);
+  ctx.restore();
+}
+
+
+function bilerpPoint_(tl,tr,br,bl,u,v) {
+  return {
+    x:
+      (1-u)*(1-v)*tl.x +
+      u*(1-v)*tr.x +
+      u*v*br.x +
+      (1-u)*v*bl.x,
+
+    y:
+      (1-u)*(1-v)*tl.y +
+      u*(1-v)*tr.y +
+      u*v*br.y +
+      (1-u)*v*bl.y
+  };
+}
+
+
+function warpQuad_(image,quad,outW) {
+  const tl = quad[0];
+  const tr = quad[1];
+  const br = quad[2];
+  const bl = quad[3];
+
+  const top = pointDistance_(tl,tr);
+  const bottom = pointDistance_(bl,br);
+  const left = pointDistance_(tl,bl);
+  const right = pointDistance_(tr,br);
+
+  const aspect =
+    ((top + bottom) / 2) /
+    Math.max(1,(left + right) / 2);
+
+  const safeAspect =
+    Math.max(1.05, Math.min(2.25, aspect));
+
+  const outH =
+    Math.max(650, Math.round(outW / safeAspect));
+
+  const out = document.createElement('canvas');
+  out.width = outW;
+  out.height = outH;
+
+  const ctx = out.getContext('2d', {willReadFrequently:true});
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0,0,outW,outH);
+
+  const cols = 10;
+  const rows = 7;
+
+  for (let j = 0; j < rows; j++) {
+    const v0 = j / rows;
+    const v1 = (j + 1) / rows;
+
+    for (let i = 0; i < cols; i++) {
+      const u0 = i / cols;
+      const u1 = (i + 1) / cols;
+
+      const s00 = bilerpPoint_(tl,tr,br,bl,u0,v0);
+      const s10 = bilerpPoint_(tl,tr,br,bl,u1,v0);
+      const s11 = bilerpPoint_(tl,tr,br,bl,u1,v1);
+      const s01 = bilerpPoint_(tl,tr,br,bl,u0,v1);
+
+      const d00 = {x:u0*outW,y:v0*outH};
+      const d10 = {x:u1*outW,y:v0*outH};
+      const d11 = {x:u1*outW,y:v1*outH};
+      const d01 = {x:u0*outW,y:v1*outH};
+
+      drawMappedTriangle_(ctx,image,s00,s10,s11,d00,d10,d11);
+      drawMappedTriangle_(ctx,image,s00,s11,s01,d00,d11,d01);
+    }
+  }
+
+  return {
+    canvas:out,
+    aspect:safeAspect
+  };
+}
+
+
+function scaledImageCanvas_(image,maxW) {
+  const imageW = getImageWidth_(image);
+  const imageH = getImageHeight_(image);
+
+  const scale = Math.min(1, maxW / imageW);
+  const width = Math.max(1, Math.round(imageW * scale));
+  const height = Math.max(1, Math.round(imageH * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  canvas
+    .getContext('2d', {willReadFrequently:true})
+    .drawImage(image,0,0,width,height);
+
+  return {
+    canvas:canvas,
+    scale:scale
+  };
+}
+
+
+function decodeQrDetailed_(canvas) {
+  if (typeof jsQR === 'undefined') return null;
+
+  try {
+    const ctx = canvas.getContext('2d', {willReadFrequently:true});
+    const imageData =
+      ctx.getImageData(0,0,canvas.width,canvas.height);
+
+    const result =
+      jsQR(
+        imageData.data,
+        canvas.width,
+        canvas.height,
+        {inversionAttempts:'attemptBoth'}
+      );
+
+    if (!result || !result.data || !result.location) {
+      return null;
+    }
+
+    return {
+      data:String(result.data || '').trim(),
+      location:result.location
+    };
+  }
+  catch (error) {
+    return null;
+  }
+}
+
+
+function addQrVector_(p,u,ux,v,vy) {
+  return {
+    x:p.x + u.x*ux + v.x*vy,
+    y:p.y + u.y*ux + v.y*vy
+  };
+}
+
+
+function qrContrastCanvas_(source,gain,binary) {
+  const canvas = document.createElement('canvas');
+  canvas.width = source.width;
+  canvas.height = source.height;
+
+  const ctx = canvas.getContext('2d', {willReadFrequently:true});
+  ctx.drawImage(source,0,0);
+
+  const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const d = imageData.data;
+
+  let mean = 0;
+  let count = 0;
+
+  for (let i = 0; i < d.length; i += 4) {
+    mean +=
+      0.299*d[i] +
+      0.587*d[i+1] +
+      0.114*d[i+2];
+
+    count++;
+  }
+
+  mean /= Math.max(1,count);
+
+  const threshold =
+    Math.max(110,Math.min(190,mean*0.92));
+
+  for (let i = 0; i < d.length; i += 4) {
+    const y =
+      0.299*d[i] +
+      0.587*d[i+1] +
+      0.114*d[i+2];
+
+    let value;
+
+    if (binary) {
+      value = y > threshold ? 255 : 0;
+    }
+    else {
+      const strength = Number(gain || 1.55);
+      value =
+        Math.max(
+          0,
+          Math.min(
+            255,
+            (y-128)*strength+128
+          )
+        );
+    }
+
+    d[i] = value;
+    d[i+1] = value;
+    d[i+2] = value;
+  }
+
+  ctx.putImageData(imageData,0,0);
+  return canvas;
+}
+
+
+async function decodeNativeQr_(canvas) {
+  if (!('BarcodeDetector' in window)) return null;
+
+  try {
+    let detector;
+
+    try {
+      detector =
+        new BarcodeDetector({formats:['qr_code']});
+    }
+    catch (error) {
+      detector =
+        new BarcodeDetector();
+    }
+
+    const results =
+      await detector.detect(canvas);
+
+    if (!results || !results.length) return null;
+
+    const result = results[0];
+    const data =
+      String(result.rawValue || '').trim();
+
+    if (!data) return null;
+
+    let points =
+      (result.cornerPoints || [])
+        .map(function(point) {
+          return {
+            x:Number(point.x || 0),
+            y:Number(point.y || 0)
+          };
+        });
+
+    if (
+      points.length < 4 &&
+      result.boundingBox
+    ) {
+      const b = result.boundingBox;
+
+      points = [
+        {x:b.x,y:b.y},
+        {x:b.x+b.width,y:b.y},
+        {x:b.x+b.width,y:b.y+b.height},
+        {x:b.x,y:b.y+b.height}
+      ];
+    }
+
+    return {
+      data:data,
+      points:
+        points.length >= 4
+          ? points.slice(0,4)
+          : null
+    };
+  }
+  catch (error) {
+    return null;
+  }
+}
+
+
+function nativeQrLocation_(points) {
+  if (!points || points.length < 4) {
+    return null;
+  }
+
+  return {
+    topLeftCorner:points[0],
+    topRightCorner:points[1],
+    bottomRightCorner:points[2],
+    bottomLeftCorner:points[3]
+  };
+}
+
+
+async function robustQrHitFromImage_(image) {
+  const widths = [1800,2300,1300];
+
+  for (let i = 0; i < widths.length; i++) {
+    const scaled =
+      scaledImageCanvas_(image,widths[i]);
+
+    const nativeHit =
+      await decodeNativeQr_(scaled.canvas);
+
+    if (nativeHit) {
+      const location =
+        nativeQrLocation_(nativeHit.points);
+
+      if (location) {
+        return {
+          data:nativeHit.data,
+          location:location,
+          scale:scaled.scale,
+          engine:'NATIVE'
+        };
+      }
+    }
+
+    let hit =
+      decodeQrDetailed_(scaled.canvas);
+
+    if (hit) {
+      return {
+        data:hit.data,
+        location:hit.location,
+        scale:scaled.scale,
+        engine:'JSQR'
+      };
+    }
+
+    const contrast =
+      qrContrastCanvas_(scaled.canvas,1.55,false);
+
+    hit = decodeQrDetailed_(contrast);
+
+    if (hit) {
+      return {
+        data:hit.data,
+        location:hit.location,
+        scale:scaled.scale,
+        engine:'JSQR_CONTRAST'
+      };
+    }
+
+    const binary =
+      qrContrastCanvas_(scaled.canvas,1.0,true);
+
+    hit = decodeQrDetailed_(binary);
+
+    if (hit) {
+      return {
+        data:hit.data,
+        location:hit.location,
+        scale:scaled.scale,
+        engine:'JSQR_BINARY'
+      };
+    }
+  }
+
+  return null;
+}
+
+
+async function decodeQrCanvasRobust_(canvas) {
+  const nativeHit =
+    await decodeNativeQr_(canvas);
+
+  if (nativeHit && nativeHit.data) {
+    return extractQrNumber(nativeHit.data);
+  }
+
+  let hit =
+    decodeQrDetailed_(canvas);
+
+  if (hit) {
+    return extractQrNumber(hit.data);
+  }
+
+  hit =
+    decodeQrDetailed_(
+      qrContrastCanvas_(canvas,1.55,false)
+    );
+
+  if (hit) {
+    return extractQrNumber(hit.data);
+  }
+
+  hit =
+    decodeQrDetailed_(
+      qrContrastCanvas_(canvas,1.0,true)
+    );
+
+  return hit
+    ? extractQrNumber(hit.data)
+    : '';
+}
+
+
+async function normalizeLabelByQrAnchor(image) {
+  const imageW = getImageWidth_(image);
+  const imageH = getImageHeight_(image);
+
+  const hit =
+    await robustQrHitFromImage_(image);
+
+  if (!hit || !hit.location) {
+    return null;
+  }
+
+  const L = hit.location;
+  const inv = 1 / hit.scale;
+
+  const tl = {
+    x:L.topLeftCorner.x * inv,
+    y:L.topLeftCorner.y * inv
+  };
+
+  const tr = {
+    x:L.topRightCorner.x * inv,
+    y:L.topRightCorner.y * inv
+  };
+
+  const br = {
+    x:L.bottomRightCorner.x * inv,
+    y:L.bottomRightCorner.y * inv
+  };
+
+  const bl = {
+    x:L.bottomLeftCorner.x * inv,
+    y:L.bottomLeftCorner.y * inv
+  };
+
+  const u = {
+    x:((tr.x-tl.x)+(br.x-bl.x))/2,
+    y:((tr.y-tl.y)+(br.y-bl.y))/2
+  };
+
+  const v = {
+    x:((bl.x-tl.x)+(br.x-tr.x))/2,
+    y:((bl.y-tl.y)+(br.y-tr.y))/2
+  };
+
+  const qSize =
+    (Math.hypot(u.x,u.y)+Math.hypot(v.x,v.y))/2;
+
+  if (qSize < 5) return null;
+
+  const p0 = tl;
+
+  let quad = [
+    addQrVector_(p0,u,-3.55,v,-3.05),
+    addQrVector_(p0,u, 4.35,v,-3.05),
+    addQrVector_(p0,u, 4.35,v, 2.65),
+    addQrVector_(p0,u,-3.55,v, 2.65)
+  ];
+
+  quad = quad.map(function(p) {
+    return {
+      x:Math.max(0,Math.min(imageW-1,p.x)),
+      y:Math.max(0,Math.min(imageH-1,p.y))
+    };
+  });
+
+  const warped =
+    warpQuad_(image,quad,1600);
+
+  return {
+    canvas:warped.canvas,
+    located:true,
+    anchor:'QR',
+    qr:extractQrNumber(hit.data),
+    qrEngine:hit.engine || '',
+    angle:
+      Math.atan2(u.y,u.x) * 180 / Math.PI,
+    aspect:warped.aspect
+  };
+}
+
+function normalizeWhiteLabel(image) {
+  const imageW = getImageWidth_(image);
+  const imageH = getImageHeight_(image);
+
+  const maxW = 900;
+  const scale = Math.min(1,maxW/imageW);
+  const width = Math.max(1,Math.round(imageW*scale));
+  const height = Math.max(1,Math.round(imageH*scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx =
+    canvas.getContext('2d', {willReadFrequently:true});
+
+  ctx.drawImage(image,0,0,width,height);
+
+  const imageData =
+    ctx.getImageData(0,0,width,height);
+
+  const d = imageData.data;
+  const gray = new Uint8Array(width*height);
+
+  let mean = 0;
+
+  for (let p = 0, i = 0; p < gray.length; p++, i += 4) {
+    const value =
+      Math.round(
+        0.299*d[i] +
+        0.587*d[i+1] +
+        0.114*d[i+2]
+      );
+
+    gray[p] = value;
+    mean += value;
+  }
+
+  mean /= gray.length;
+
+  let threshold = otsuThreshold_(gray);
+
+  threshold =
+    Math.max(
+      135,
+      Math.min(
+        225,
+        Math.max(threshold,mean+5)
+      )
+    );
+
+  const mask = new Uint8Array(width*height);
+
+  for (let i = 0; i < gray.length; i++) {
+    if (gray[i] >= threshold) {
+      mask[i] = 1;
+    }
+  }
+
+  const seen = new Uint8Array(width*height);
+  const stack = new Int32Array(width*height);
+
+  let best = null;
+  let bestScore = 0;
+  const total = width * height;
+
+  for (let seed = 0; seed < mask.length; seed++) {
+    if (!mask[seed] || seen[seed]) continue;
+
+    let sp = 0;
+    stack[sp++] = seed;
+    seen[seed] = 1;
+
+    let area = 0;
+    let minx = width;
+    let maxx = 0;
+    let miny = height;
+    let maxy = 0;
+
+    const pixels = [];
+
+    while (sp) {
+      const idx = stack[--sp];
+      const y = (idx / width) | 0;
+      const x = idx - y*width;
+
+      area++;
+      pixels.push(idx);
+
+      if (x < minx) minx = x;
+      if (x > maxx) maxx = x;
+      if (y < miny) miny = y;
+      if (y > maxy) maxy = y;
+
+      let n;
+
+      if (x > 0) {
+        n = idx - 1;
+        if (mask[n] && !seen[n]) {
+          seen[n] = 1;
+          stack[sp++] = n;
+        }
+      }
+
+      if (x < width-1) {
+        n = idx + 1;
+        if (mask[n] && !seen[n]) {
+          seen[n] = 1;
+          stack[sp++] = n;
+        }
+      }
+
+      if (y > 0) {
+        n = idx - width;
+        if (mask[n] && !seen[n]) {
+          seen[n] = 1;
+          stack[sp++] = n;
+        }
+      }
+
+      if (y < height-1) {
+        n = idx + width;
+        if (mask[n] && !seen[n]) {
+          seen[n] = 1;
+          stack[sp++] = n;
+        }
+      }
+    }
+
+    const bw = maxx-minx+1;
+    const bh = maxy-miny+1;
+    const ratio = bw/Math.max(1,bh);
+    const fill = area/(bw*bh);
+    const frac = area/total;
+
+    if (
+      frac < 0.0045 ||
+      frac > 0.72 ||
+      ratio < 0.90 ||
+      ratio > 2.70 ||
+      fill < 0.24
+    ) {
+      continue;
+    }
+
+    const aspectScore =
+      1-Math.min(1,Math.abs(ratio-1.45)/1.15);
+
+    const centerX = (minx+maxx)/2/width;
+    const centerY = (miny+maxy)/2/height;
+
+    const centerPenalty =
+      Math.min(
+        0.35,
+        Math.hypot(centerX-.5,centerY-.5)*0.25
+      );
+
+    const score =
+      area *
+      fill *
+      (0.72+0.28*aspectScore) *
+      (1-centerPenalty);
+
+    if (score > bestScore) {
+      bestScore = score;
+
+      best = {
+        area:area,
+        minx:minx,
+        maxx:maxx,
+        miny:miny,
+        maxy:maxy,
+        pixels:pixels
+      };
+    }
+  }
+
+  if (!best) {
+    return makeFullImageFallback(image);
+  }
+
+  let tl = null;
+  let tr = null;
+  let br = null;
+  let bl = null;
+
+  let minSum = 1e9;
+  let maxSum = -1e9;
+  let minDiff = 1e9;
+  let maxDiff = -1e9;
+
+  best.pixels.forEach(function(idx) {
+    const y = (idx / width) | 0;
+    const x = idx-y*width;
+    const sum = x+y;
+    const diff = x-y;
+
+    if (sum < minSum) {
+      minSum = sum;
+      tl = {x:x,y:y};
+    }
+
+    if (sum > maxSum) {
+      maxSum = sum;
+      br = {x:x,y:y};
+    }
+
+    if (diff > maxDiff) {
+      maxDiff = diff;
+      tr = {x:x,y:y};
+    }
+
+    if (diff < minDiff) {
+      minDiff = diff;
+      bl = {x:x,y:y};
+    }
+  });
+
+  if (!tl || !tr || !br || !bl) {
+    return makeFullImageFallback(image);
+  }
+
+  const inv = 1/scale;
+
+  let quad =
+    [tl,tr,br,bl]
+      .map(function(p) {
+        return {
+          x:p.x*inv,
+          y:p.y*inv
+        };
+      });
+
+  const cx =
+    quad.reduce(function(sum,p){return sum+p.x;},0)/4;
+
+  const cy =
+    quad.reduce(function(sum,p){return sum+p.y;},0)/4;
+
+  quad =
+    quad.map(function(p) {
+      return {
+        x:Math.max(
+          0,
+          Math.min(
+            imageW-1,
+            cx+(p.x-cx)*1.035
+          )
+        ),
+
+        y:Math.max(
+          0,
+          Math.min(
+            imageH-1,
+            cy+(p.y-cy)*1.035
+          )
+        )
+      };
+    });
+
+  const warped = warpQuad_(image,quad,1600);
+
+  return {
+    canvas:warped.canvas,
+    located:true,
+    anchor:'LABEL',
+    qr:'',
+    angle:
+      Math.atan2(
+        quad[1].y-quad[0].y,
+        quad[1].x-quad[0].x
+      ) * 180 / Math.PI,
+    aspect:warped.aspect
+  };
+}
+
+
+function makeFullImageFallback(image) {
+  const imageW = getImageWidth_(image);
+  const imageH = getImageHeight_(image);
+
+  const outW = 1600;
+  const outH =
+    Math.max(
+      1,
+      Math.round(
+        outW * imageH / imageW
+      )
+    );
+
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+
+  canvas
+    .getContext('2d', {willReadFrequently:true})
+    .drawImage(image,0,0,outW,outH);
+
+  return {
+    canvas:canvas,
+    located:false,
+    anchor:'FULL',
+    qr:'',
+    angle:0
+  };
+}
+
+
+function cropFastLabel_(
+  source,
+  xRatio,
+  yRatio,
+  wRatio,
+  hRatio,
+  targetWidth,
+  mode
+) {
+  const sx =
+    Math.max(
+      0,
+      Math.round(source.width*xRatio)
+    );
+
+  const sy =
+    Math.max(
+      0,
+      Math.round(source.height*yRatio)
+    );
+
+  const sw =
+    Math.max(
+      1,
+      Math.min(
+        source.width-sx,
+        Math.round(source.width*wRatio)
+      )
+    );
+
+  const sh =
+    Math.max(
+      1,
+      Math.min(
+        source.height-sy,
+        Math.round(source.height*hRatio)
+      )
+    );
+
+  const scale =
+    Math.max(1,targetWidth/sw);
+
+  const width =
+    Math.max(1,Math.round(sw*scale));
+
+  const height =
+    Math.max(1,Math.round(sh*scale));
+
+  const canvas =
+    document.createElement('canvas');
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx =
+    canvas.getContext(
+      '2d',
+      {willReadFrequently:true}
+    );
+
+  ctx.drawImage(
+    source,
+    sx,sy,sw,sh,
+    0,0,width,height
+  );
+
+  if (mode) {
+    const imageData =
+      ctx.getImageData(
+        0,0,width,height
+      );
+
+    const d = imageData.data;
+
+    for (let i = 0; i < d.length; i += 4) {
+      const y =
+        0.299*d[i] +
+        0.587*d[i+1] +
+        0.114*d[i+2];
+
+      let value = y;
+
+      if (mode === 'contrast') {
+        value =
+          Math.max(
+            0,
+            Math.min(
+              255,
+              (y-128)*1.6+128
+            )
+          );
+      }
+
+      if (mode === 'binary') {
+        value =
+          y > 150
+            ? 255
+            : 0;
+      }
+
+      d[i] = value;
+      d[i+1] = value;
+      d[i+2] = value;
+    }
+
+    ctx.putImageData(imageData,0,0);
+  }
+
+  return canvas;
+}
+
+
+function decodeQrCanvas_(canvas) {
+  const result = decodeQrDetailed_(canvas);
+  return result ? extractQrNumber(result.data) : '';
+}
+
+
+async function fastOcr_(
+  worker,
+  canvas,
+  whitelist,
+  psm
+) {
+  try {
+    await worker.setParameters({
+      tessedit_pageseg_mode:String(psm || 7),
+      tessedit_char_whitelist:whitelist,
+      preserve_interword_spaces:'1'
+    });
+  }
+  catch (error) {}
+
+  const result =
+    await worker.recognize(canvas);
+
+  return {
+    text:
+      result && result.data
+        ? String(result.data.text || '')
+        : '',
+
+    confidence:
+      result &&
+      result.data &&
+      typeof result.data.confidence === 'number'
+        ? result.data.confidence
+        : 0
+  };
+}
+
+
+function parseFastOrder_(input) {
+  const raw =
+    String(input || '')
+      .toUpperCase();
+
+  const lines =
+    raw.split(/\r?\n/);
+
+  for (let i = 0; i < lines.length; i++) {
+    const compact =
+      lines[i]
+        .replace(/[^0-9]/g,'');
+
+    const match =
+      compact.match(/20\d{10}/);
+
+    if (match) {
+      return match[0];
+    }
+  }
+
+  const tokens =
+    raw.match(
+      /20[0-9\s._-]{10,20}/g
+    ) || [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const digits =
+      tokens[i]
+        .replace(/[^0-9]/g,'');
+
+    if (/^20\d{10}$/.test(digits)) {
+      return digits;
+    }
+  }
+
+  return '';
+}
+
+
+function chooseFastOrderCandidate_(items) {
+  const valid =
+    (items || [])
+      .map(function(item) {
+        return {
+          code:parseFastOrder_(item.text),
+          confidence:Number(item.confidence || 0)
+        };
+      })
+      .filter(function(item) {
+        return /^20\d{10}$/.test(item.code);
+      });
+
+  if (!valid.length) {
+    return {
+      code:'',
+      confidence:0,
+      votes:0,
+      agreement:0,
+      candidates:[]
+    };
+  }
+
+  const groups = {};
+
+  valid.forEach(function(item) {
+    if (!groups[item.code]) {
+      groups[item.code] = {
+        code:item.code,
+        count:0,
+        score:0,
+        maxConf:0
+      };
+    }
+
+    groups[item.code].count++;
+    groups[item.code].score +=
+      Math.max(15,item.confidence);
+
+    groups[item.code].maxConf =
+      Math.max(
+        groups[item.code].maxConf,
+        item.confidence
+      );
+  });
+
+  const ranked =
+    Object.values(groups)
+      .sort(function(a,b) {
+        return (
+          (b.count-a.count) ||
+          (b.score-a.score) ||
+          (b.maxConf-a.maxConf)
+        );
+      });
+
+  let code = ranked[0].code;
+  let agreement =
+    ranked[0].count / valid.length;
+
+  if (
+    ranked[0].count < 2 &&
+    valid.length >= 2
+  ) {
+    let out = '';
+    let agreementSum = 0;
+
+    for (let pos = 0; pos < 12; pos++) {
+      const bucket = {};
+      let total = 0;
+
+      valid.forEach(function(item) {
+        const ch = item.code[pos];
+        const weight =
+          Math.max(20,item.confidence);
+
+        bucket[ch] =
+          (bucket[ch] || 0) +
+          weight;
+
+        total += weight;
+      });
+
+      const top =
+        Object.entries(bucket)
+          .sort(function(a,b) {
+            return b[1]-a[1];
+          })[0];
+
+      out += top[0];
+
+      agreementSum +=
+        total
+          ? top[1]/total
+          : 0;
+    }
+
+    if (/^20\d{10}$/.test(out)) {
+      code = out;
+      agreement = agreementSum/12;
+    }
+  }
+
+  const avgConf =
+    valid.reduce(function(sum,item) {
+      return sum+item.confidence;
+    },0) /
+    valid.length;
+
+  return {
+    code:code,
+    confidence:avgConf,
+    votes:
+      valid.filter(function(item) {
+        return item.code === code;
+      }).length,
+    agreement:agreement,
+    candidates:
+      valid.map(function(item) {
+        return item.code;
+      })
+  };
+}
+
+
+function parseFastBCode_(input) {
+  const text =
+    String(input || '')
+      .toUpperCase()
+      .replace(/[^B0-9]/g,'');
+
+  const match =
+    text.match(/B\d{9}/);
+
+  return match ? match[0] : '';
+}
+
+
+function chooseFastBCodeCandidate_(items) {
+  const valid =
+    (items || [])
+      .map(function(item) {
+        return {
+          code:parseFastBCode_(item.text),
+          confidence:Number(item.confidence || 0)
+        };
+      })
+      .filter(function(item) {
+        return /^B\d{9}$/.test(item.code);
+      });
+
+  if (!valid.length) {
+    return {
+      code:'',
+      confidence:0,
+      votes:0,
+      agreement:0,
+      candidates:[]
+    };
+  }
+
+  const groups = {};
+
+  valid.forEach(function(item) {
+    if (!groups[item.code]) {
+      groups[item.code] = {
+        code:item.code,
+        count:0,
+        score:0,
+        maxConf:0
+      };
+    }
+
+    groups[item.code].count++;
+    groups[item.code].score +=
+      Math.max(15,item.confidence);
+
+    groups[item.code].maxConf =
+      Math.max(
+        groups[item.code].maxConf,
+        item.confidence
+      );
+  });
+
+  const ranked =
+    Object.values(groups)
+      .sort(function(a,b) {
+        return (
+          (b.count-a.count) ||
+          (b.score-a.score) ||
+          (b.maxConf-a.maxConf)
+        );
+      });
+
+  let code = ranked[0].code;
+  let votes = ranked[0].count;
+  let agreement =
+    ranked[0].count / valid.length;
+
+  if (
+    ranked[0].count < 2 &&
+    valid.length >= 2
+  ) {
+    let out = 'B';
+    let agreementSum = 0;
+
+    for (let pos = 1; pos < 10; pos++) {
+      const bucket = {};
+      let total = 0;
+
+      valid.forEach(function(item) {
+        const ch = item.code[pos];
+        const weight =
+          Math.max(20,item.confidence);
+
+        bucket[ch] =
+          (bucket[ch] || 0) +
+          weight;
+
+        total += weight;
+      });
+
+      const top =
+        Object.entries(bucket)
+          .sort(function(a,b) {
+            return b[1]-a[1];
+          })[0];
+
+      out += top[0];
+
+      agreementSum +=
+        total
+          ? top[1]/total
+          : 0;
+    }
+
+    if (/^B\d{9}$/.test(out)) {
+      code = out;
+      agreement = agreementSum/9;
+      votes =
+        valid.filter(function(item) {
+          return item.code === out;
+        }).length;
+    }
+  }
+
+  const avgConf =
+    valid.reduce(function(sum,item) {
+      return sum+item.confidence;
+    },0) /
+    valid.length;
+
+  return {
+    code:code,
+    confidence:avgConf,
+    votes:votes,
+    agreement:agreement,
+    candidates:
+      valid.map(function(item) {
+        return item.code;
+      })
+  };
+}
+
+
+function parseFastQrHuman_(input) {
+  const matches =
+    String(input || '')
+      .match(/\d{7,10}/g) || [];
+
+  const eight =
+    matches.find(function(value) {
+      return value.length === 8;
+    });
+
+  return eight || matches[0] || '';
+}
+
+
+async function readFastLabelFields(
+  worker,
+  labelCanvas,
+  seedQr,
+  seedQrSource
+) {
+  let qrCode = seedQr || '';
+  let qrSource = seedQrSource || '';
+
+  if (!qrCode) {
+    const qrRegion =
+      cropFastLabel_(
+        labelCanvas,
+        0.32,0.43,0.37,0.42,
+        1000,
+        null
+      );
+
+    qrCode = await decodeQrCanvasRobust_(qrRegion);
+
+    if (!qrCode) {
+      const qrEnhanced =
+        cropFastLabel_(
+          labelCanvas,
+          0.27,0.36,0.48,0.50,
+          1200,
+          'contrast'
+        );
+
+      qrCode = await decodeQrCanvasRobust_(qrEnhanced);
+    }
+
+    if (qrCode) {
+      qrSource = 'QR';
+    }
+  }
+
+  const orderJobs = [
+    {
+      canvas:cropFastLabel_(labelCanvas,0.005,0.000,0.34,0.090,1250,null),
+      psm:7
+    },
+    {
+      canvas:cropFastLabel_(labelCanvas,0.005,0.000,0.34,0.095,1250,'contrast'),
+      psm:7
+    },
+    {
+      canvas:cropFastLabel_(labelCanvas,0.000,0.000,0.38,0.110,1350,'binary'),
+      psm:7
+    },
+    {
+      canvas:cropFastLabel_(labelCanvas,0.000,0.000,0.40,0.125,1400,'contrast'),
+      psm:6
+    },
+    {
+      canvas:cropFastLabel_(labelCanvas,0.010,0.005,0.33,0.085,1250,'contrast'),
+      psm:13
+    }
+  ];
+
+  const orderReads = [];
+
+  for (let i = 0; i < orderJobs.length; i++) {
+    orderReads.push(
+      await fastOcr_(
+        worker,
+        orderJobs[i].canvas,
+        '0123456789',
+        orderJobs[i].psm
+      )
+    );
+  }
+
+  let orderPick =
+    chooseFastOrderCandidate_(orderReads);
+
+  let orderNo = orderPick.code;
+
+  const bJobs = [
+    {
+      canvas:cropFastLabel_(labelCanvas,0.315,0.000,0.285,0.105,1200,null),
+      psm:7
+    },
+    {
+      canvas:cropFastLabel_(labelCanvas,0.315,0.000,0.285,0.105,1200,'contrast'),
+      psm:7
+    },
+    {
+      canvas:cropFastLabel_(labelCanvas,0.305,0.000,0.315,0.120,1300,'contrast'),
+      psm:6
+    },
+    {
+      canvas:cropFastLabel_(labelCanvas,0.325,0.005,0.265,0.095,1200,'binary'),
+      psm:7
+    },
+    {
+      canvas:cropFastLabel_(labelCanvas,0.285,0.000,0.350,0.135,1350,'contrast'),
+      psm:13
+    }
+  ];
+
+  const bReads = [];
+
+  for (let i = 0; i < bJobs.length; i++) {
+    bReads.push(
+      await fastOcr_(
+        worker,
+        bJobs[i].canvas,
+        'B0123456789',
+        bJobs[i].psm
+      )
+    );
+  }
+
+  let bPick =
+    chooseFastBCodeCandidate_(bReads);
+
+  let bCode = bPick.code;
+
+  let qrHumanConfidence = 0;
+
+  if (!qrCode) {
+    const humanRegion =
+      cropFastLabel_(
+        labelCanvas,
+        0.37,0.67,0.28,0.15,
+        900,
+        'contrast'
+      );
+
+    const human =
+      await fastOcr_(
+        worker,
+        humanRegion,
+        '0123456789',
+        7
+      );
+
+    const qrHuman =
+      parseFastQrHuman_(human.text);
+
+    qrHumanConfidence =
+      human.confidence;
+
+    if (qrHuman) {
+      qrCode = qrHuman;
+      qrSource = 'TEXT';
+    }
+  }
+
+  if (!orderNo) {
+    const extraOrderReads = [];
+
+    const orderSpecs = [
+      [0.0,0.0,0.42,0.14,1500,'contrast',6],
+      [0.0,0.0,0.39,0.12,1450,'binary',7]
+    ];
+
+    for (let i = 0; i < orderSpecs.length; i++) {
+      const spec = orderSpecs[i];
+
+      extraOrderReads.push(
+        await fastOcr_(
+          worker,
+          cropFastLabel_(
+            labelCanvas,
+            spec[0],spec[1],spec[2],spec[3],
+            spec[4],spec[5]
+          ),
+          '0123456789',
+          spec[6]
+        )
+      );
+    }
+
+    const extraPick =
+      chooseFastOrderCandidate_(
+        orderReads.concat(extraOrderReads)
+      );
+
+    if (extraPick.code) {
+      orderPick = extraPick;
+      orderNo = extraPick.code;
+    }
+  }
+
+  if (!bCode) {
+    const extraBReads = [];
+
+    const bSpecs = [
+      [0.27,0.0,0.38,0.15,1450,'contrast',6],
+      [0.29,0.0,0.34,0.13,1400,'binary',7]
+    ];
+
+    for (let i = 0; i < bSpecs.length; i++) {
+      const spec = bSpecs[i];
+
+      extraBReads.push(
+        await fastOcr_(
+          worker,
+          cropFastLabel_(
+            labelCanvas,
+            spec[0],spec[1],spec[2],spec[3],
+            spec[4],spec[5]
+          ),
+          'B0123456789',
+          spec[6]
+        )
+      );
+    }
+
+    const extraPick =
+      chooseFastBCodeCandidate_(
+        bReads.concat(extraBReads)
+      );
+
+    if (extraPick.code) {
+      bPick = extraPick;
+      bCode = extraPick.code;
+    }
+  }
+
+  return {
+    qrCode:extractQrNumber(qrCode),
+    orderNo:orderNo,
+    bCode:bCode,
+    qrSource:qrSource,
+
+    confidence:{
+      orderNo:orderPick.confidence || 0,
+      bCode:bPick.confidence || 0,
+      qrHuman:qrHumanConfidence
+    },
+
+    orderDiagnostics:{
+      votes:orderPick.votes || 0,
+      agreement:orderPick.agreement || 0,
+      candidates:orderPick.candidates || []
+    },
+
+    bDiagnostics:{
+      votes:bPick.votes || 0,
+      agreement:bPick.agreement || 0,
+      candidates:bPick.candidates || []
+    }
+  };
+}
+
+
+function applyOcrWarnings(warnings) {
+  warnings = warnings || {};
+
+  const orderWarn =
+    document.getElementById('warnLabelOrderNo');
+
+  const bWarn =
+    document.getElementById('warnLabelBCode');
+
+  if (orderWarn) {
+    orderWarn.classList.toggle(
+      'hidden',
+      !warnings.orderNo
+    );
+  }
+
+  if (bWarn) {
+    bWarn.classList.toggle(
+      'hidden',
+      !warnings.bCode
+    );
+  }
+
+  const orderInput =
+    document.getElementById('labelOrderNo');
+
+  const bInput =
+    document.getElementById('labelBCode');
+
+  if (orderInput) {
+    orderInput.classList.toggle(
+      'ocr-warning-input',
+      !!warnings.orderNo
+    );
+  }
+
+  if (bInput) {
+    bInput.classList.toggle(
+      'ocr-warning-input',
+      !!warnings.bCode
+    );
+  }
+}
+
+
+function clearOcrWarningForField(id) {
+  if (id === 'labelOrderNo') {
+    const warn =
+      document.getElementById('warnLabelOrderNo');
+
+    if (warn) {
+      warn.classList.add('hidden');
+    }
+  }
+
+  if (id === 'labelBCode') {
+    const warn =
+      document.getElementById('warnLabelBCode');
+
+    if (warn) {
+      warn.classList.add('hidden');
+    }
+  }
+
+  const input = document.getElementById(id);
+
+  if (input) {
+    input.classList.remove('ocr-warning-input');
+  }
+}
+
+
+function clearOcrWarnings() {
+  clearOcrWarningForField('labelOrderNo');
+  clearOcrWarningForField('labelBCode');
+}
+
+
+function extractQrNumber(raw) {
+  const text = String(raw || '').trim();
+
+  if (!text) return '';
+
+  if (/^\d+$/.test(text)) {
+    return text;
+  }
+
+  const matches =
+    text.match(/\d{6,}/g);
+
+  if (matches && matches.length) {
+    matches.sort(function(a,b) {
+      return b.length-a.length;
+    });
+
+    return matches[0];
+  }
+
+  return '';
+}
+
+
+function showQrFallback(show) {
+  const box = document.getElementById('qrFallback');
+  if (!box) return;
+  box.classList.toggle('hidden', !show);
+
+  if (show) {
+    const input = document.getElementById('workpieceQr');
+    if (input) {
+      setTimeout(function() {
+        try { input.focus(); } catch (e) {}
+      }, 80);
+    }
+  }
+}
+
+
+function getCurrentWorkpieceQr() {
+  const input = document.getElementById('workpieceQr');
+  return input ? input.value.trim() : '';
+}
+
+function collectForm() {
+  const orderNo = document.getElementById('labelOrderNo').value.trim();
+  const bCode = document.getElementById('labelBCode').value.trim();
+  const workpieceQr = getCurrentWorkpieceQr();
+
+  selected.labelOrderNo = orderNo;
+  selected.labelBCode = bCode;
+  selected.workpieceQr = workpieceQr;
+
+  return {
+    factory:selected.factory,
+    machine:selected.machine,
+    inspectionTime:selected.inspectionTime,
+    adhesion:selected.adhesion,
+    appearance:selected.appearance,
+    orderNo:orderNo,
+    bCode:bCode,
+    workpieceQr:workpieceQr,
+    leadInspector:selected.leadInspector,
+    assistantInspector:selected.assistantInspector
+  };
+}
+
+function validateClient(form) {
+  if (!form.factory) return t('selectFactoryFirst');
+  if (!form.machine) return t('selectMachineFirst');
+  if (!form.leadInspector) return t('selectLeadFirst');
+  if (!form.assistantInspector) return t('selectAssistantFirst');
+  if (form.leadInspector === form.assistantInspector) return t('sameInspector');
+  if (!form.inspectionTime) return t('selectInspectionTime');
+  if (!form.adhesion) return t('selectAdhesion');
+  if (!form.appearance) return t('selectAppearance');
+  if (!form.orderNo) return t('confirmOrder');
+  if (!form.bCode) return t('confirmBCode');
+  if (!form.workpieceQr) return t('needWorkpieceQr');
+  return '';
+}
+
+function submitForm(forceUpdate) {
+  if (MACHINE_STOPPED) {
+    showToast(t('machineStoppedNow'),'error');
+    return;
+  }
+
+  const form = collectForm();
+  const error = validateClient(form);
+
+  if (error) {
+    showToast(error,'error');
+    return;
+  }
+
+  showLoading(true);
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      showLoading(false);
+
+      if (result.duplicate) {
+        const old = result.existing;
+
+        const ok = window.confirm(
+          t('duplicateTitle') + '\n\n' +
+          t('machine') + '：' + getMachineDisplayName(old.machine) + '\n' +
+          t('time') + '：' + old.inspectionTime + '\n' +
+          t('originalAdhesion') + '：' + displayJudgeValue(old.adhesion) + '\n' +
+          t('originalAppearance') + '：' + displayJudgeValue(old.appearance) + '\n' +
+          t('originalOrder') + '：' + (old.orderNo || '－') + '\n' +
+          t('originalBCode') + '：' + (old.bCode || '－') + '\n' +
+          t('originalQr') + '：' + (old.workpieceQr || '－') + '\n' +
+          t('originalLead') + '：' + (old.leadInspector || '－') + '\n' +
+          t('originalAssistant') + '：' + (old.assistantInspector || '－') + '\n\n' +
+          t('confirmCorrection')
+        );
+
+        if (ok) submitForm(true);
+        return;
+      }
+
+      if (result.success) {
+        showToast(result.mode === '更正' ? t('inspectionCorrected') : t('inspectionSaved'),'success');
+        resetAfterSubmit();
+      }
+    })
+    .withFailureHandler(function(error) {
+      showLoading(false);
+      handleError(error);
+    })
+    .submitInspection(form, !!forceUpdate);
+}
+
+function resetAfterSubmit() {
+  selected.machine = '';
+  document.getElementById('machine').value = '';
+  resetInspectionFields();
+  MACHINE_STOPPED = false;
+  MACHINE_STOP_REASON = '';
+  document.getElementById('machineStateBox').classList.add('hidden');
+  document.getElementById('inspectionArea').classList.add('hidden');
+  document.getElementById('submitWrap').classList.add('hidden');
+  updateSummary();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function resetInspectionFields() {
+  selected.inspectionTime = '';
+  selected.adhesion = '';
+  selected.appearance = '';
+  selected.workpieceQr = '';
+  document.querySelectorAll('.time-btn').forEach(button => button.classList.remove('active'));
+  document.querySelectorAll('.judge-btn').forEach(button => button.classList.remove('active'));
+  const order = document.getElementById('workpieceQr');
+  if (order) order.value = '';
+  const qr = document.getElementById('qrResult');
+  if (qr) {
+    qr.textContent = '';
+    qr.className = 'qr-result';
+  }
+  showQrFallback(false);
+
+  selected.labelOrderNo = '';
+  selected.labelBCode = '';
+
+  ['labelOrderNo','labelBCode'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  const fields = document.getElementById('labelFields');
+  if (fields) fields.classList.add('hidden');
+
+  clearOcrWarnings();
+
+  const status = document.getElementById('labelOcrStatus');
+  if (status) {
+    status.textContent = t('labelAutoRecognize');
+  }
+}
+
+function updateSummary() {
+  const summary = document.getElementById('summary');
+  if (!summary) return;
+
+  const workpieceQr = getCurrentWorkpieceQr();
+  const orderNo = document.getElementById('labelOrderNo').value.trim();
+  const bCode = document.getElementById('labelBCode').value.trim();
+
+  selected.workpieceQr = workpieceQr;
+  selected.labelOrderNo = orderNo;
+  selected.labelBCode = bCode;
+
+  summary.innerHTML =
+    escapeHtml(t('factory')) + '：' + escapeHtml(selected.factory || '－') +
+    '<br>' + escapeHtml(t('machine')) + '：' + escapeHtml(getMachineDisplayName(selected.machine) || '－') +
+    '<br>' + escapeHtml(t('leadInspector')) + '：' + escapeHtml(selected.leadInspector || '－') +
+    '<br>' + escapeHtml(t('assistantInspector')) + '：' + escapeHtml(selected.assistantInspector || '－') +
+    '<br>' + escapeHtml(t('time')) + '：' + escapeHtml(selected.inspectionTime || '－') +
+    '<br>' + escapeHtml(t('adhesion')) + '：' + escapeHtml(displayJudgeValue(selected.adhesion)) +
+    '<br>' + escapeHtml(t('appearance')) + '：' + escapeHtml(displayJudgeValue(selected.appearance)) +
+    '<br><br><b>' + escapeHtml(t('workpieceIdentity')) + '</b>' +
+    '<br>' + escapeHtml(t('orderNo')) + '：' + escapeHtml(orderNo || '－') +
+    '<br>' + escapeHtml(t('bCode')) + '：' + escapeHtml(bCode || '－') +
+    '<br>' + escapeHtml(t('workpieceNo')) + '：' + escapeHtml(workpieceQr || '－');
+}
+
+function toggleHistoryPanel() {
+  const panel = document.getElementById('historyPanel');
+  if (!panel) return;
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) {
+    setTimeout(function() {
+      const input = document.getElementById('historyKeyword');
+      if (input) input.focus();
+    }, 80);
+  }
+}
+
+function runHistorySearch() {
+  const input = document.getElementById('historyKeyword');
+  const keyword = input ? input.value.trim() : '';
+  if (!keyword) {
+    showToast(t('historyInputRequired'),'warning');
+    return;
+  }
+
+  const resultsBox = document.getElementById('historyResults');
+  if (resultsBox) resultsBox.innerHTML = '<div class="history-empty">' + escapeHtml(t('queryingShort')) + '</div>';
+  showLoading(true, t('querying'));
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      showLoading(false);
+      LAST_HISTORY_RESULT = result;
+      renderHistoryResults(result);
+    })
+    .withFailureHandler(function(error) {
+      showLoading(false);
+      if (resultsBox) resultsBox.innerHTML = '';
+      handleError(error);
+    })
+    .searchInspectionHistory(keyword);
+}
+
+function renderHistoryResults(result) {
+  const box = document.getElementById('historyResults');
+  if (!box) return;
+
+  const items = result && Array.isArray(result.results) ? result.results : [];
+  if (!items.length) {
+    box.innerHTML = '<div class="history-empty">' + escapeHtml(t('noHistory')) + '</div>';
+    return;
+  }
+
+  let html = '<div class="history-count">' + escapeHtml(t('foundCountPrefix')) + items.length + escapeHtml(t('foundCountSuffix')) + '</div>';
+  items.forEach(item => {
+    html +=
+      '<div class="history-result-card">' +
+        '<div class="history-result-head">' +
+          escapeHtml(item.date || '－') + '｜' +
+          escapeHtml(item.factory || '－') + '｜' +
+          escapeHtml(getMachineDisplayName(item.machine) || '－') + '｜' +
+          escapeHtml(item.inspectionTime || '－') +
+        '</div>' +
+        escapeHtml(t('orderNo')) + '：' + escapeHtml(item.orderNo || '－') + '<br>' +
+        escapeHtml(t('bCode')) + '：' + escapeHtml(item.bCode || '－') + '<br>' +
+        escapeHtml(t('workpieceNo')) + '：' + escapeHtml(item.workpieceQr || '－') + '<br>' +
+        escapeHtml(t('adhesion')) + '：' + escapeHtml(displayJudgeValue(item.adhesion)) + '｜' + escapeHtml(t('appearance')) + '：' + escapeHtml(displayJudgeValue(item.appearance)) + '<br>' +
+        escapeHtml(t('leadInspector')) + '：' + escapeHtml(item.leadInspector || '－') + '<br>' +
+        escapeHtml(t('assistantInspector')) + '：' + escapeHtml(item.assistantInspector || '－') + '<br>' +
+        escapeHtml(t('createdAt')) + '：' + escapeHtml(item.createdAt || '－') +
+      '</div>';
+  });
+  box.innerHTML = html;
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
+}
+
+document.getElementById('workpieceQr').addEventListener('input', updateSummary);
+['labelOrderNo','labelBCode'].forEach(id => {
+  document.getElementById(id).addEventListener('input', function() {
+    clearOcrWarningForField(id);
+    updateSummary();
+  });
+});
+
+const historyKeywordInput = document.getElementById('historyKeyword');
+if (historyKeywordInput) {
+  historyKeywordInput.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      runHistorySearch();
+    }
+  });
+}
+
+function showLoading(show,text) {
+  const loading = document.getElementById('loading');
+  const box = loading.querySelector('.loading-box');
+  if (box && text) box.textContent = text;
+  if (box && !show) box.textContent = t('processing');
+  loading.classList.toggle('show',show);
+}
+
+function showToast(message,type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'toast show ' + (type || '');
+  clearTimeout(window.toastTimer);
+  window.toastTimer = setTimeout(function(){ toast.className = 'toast'; },3200);
+}
+
+function handleError(error) {
+  let message = t('errorGeneric');
+  if (error && error.message) message = localizeServerMessage(error.message);
+  else if (error) message = localizeServerMessage(String(error));
+  showToast('❌ ' + message,'error');
+}
+</script>
+</body>
+</html>
