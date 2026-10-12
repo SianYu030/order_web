@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.04：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.05：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -704,7 +704,7 @@
               <div class="inline-guide"></div>
             </div>
             <div id="inlineScanStatus" class="inline-scan-status">相機準備中…</div>
-            <div id="inlineScanMeta" class="inline-scan-meta">手持即可，不需要完全不動；系統會自動挑清楚影格。</div>
+            <div id="inlineScanMeta" class="inline-scan-meta">先放入整張白標籤並鎖定 QR；未對準不會自動拍。</div>
             <button id="inlineStopBtn" class="inline-stop-btn" type="button" onclick="stopInlineScanner()">關閉相機</button>
           </div>
 
@@ -1541,6 +1541,10 @@ let INLINE_SCAN_SAMPLES=[];
 let INLINE_SCAN_STARTED=0;
 let INLINE_SCAN_LAST=0;
 let INLINE_RECENT_QR=[];
+let INLINE_LOCKED_QR='';
+let INLINE_LABEL_LOCK_STARTED=0;
+let INLINE_LAST_LABEL_AT=0;
+let INLINE_SCAN_SESSION=0;
 
 function inlineCaptureFrame(video,maxW){
   if(!video || !video.videoWidth || !video.videoHeight)return null;
@@ -1590,20 +1594,84 @@ function inlineFrameQuality(canvas){
   return {ok,brightness,contrast,sharpness,darkRatio,brightRatio,score};
 }
 
-async function inlineQuickQr(canvas){
-  try{
-    if(typeof decodeNativeQr_==='function'){
-      const n=await decodeNativeQr_(canvas);
-      if(n&&n.data)return String(n.data).trim();
+function inlineWhiteLabelBounds(canvas){
+  // 僅做快速定位，不做 OCR。純白標籤須為一塊完整、未切邊的淺色矩形。
+  // 掃到鍵盤/地板/螢幕時不會滿足 QR + 此白標籤的雙重條件。
+  const w=240,h=Math.max(120,Math.round(canvas.height*w/canvas.width));
+  const t=document.createElement('canvas'); t.width=w;t.height=h;
+  const ctx=t.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(canvas,0,0,w,h);
+  const d=ctx.getImageData(0,0,w,h).data;
+  const mask=new Uint8Array(w*h);
+  const seen=new Uint8Array(w*h);
+  const stack=new Int32Array(w*h);
+  for(let i=0,p=0;i<d.length;i+=4,p++){
+    const r=d[i],g=d[i+1],b=d[i+2];
+    const y=.299*r+.587*g+.114*b;
+    if(y>=174 && Math.max(r,g,b)-Math.min(r,g,b)<64)mask[p]=1;
+  }
+  let best=null;
+  // 白色區塊連通性：用於排除尚未放入標籤的任意清晰影格。
+  for(let seed=0;seed<mask.length;seed++){
+    if(!mask[seed]||seen[seed])continue;
+    let top=0,area=0,x0=w,y0=h,x1=0,y1=0;
+    stack[top++]=seed;seen[seed]=1;
+    while(top){
+      const idx=stack[--top],y=(idx/w)|0,x=idx-y*w;
+      area++;
+      if(x<x0)x0=x;if(x>x1)x1=x;
+      if(y<y0)y0=y;if(y>y1)y1=y;
+      let n;
+      if(x>0){n=idx-1;if(mask[n]&&!seen[n]){seen[n]=1;stack[top++]=n;}}
+      if(x<w-1){n=idx+1;if(mask[n]&&!seen[n]){seen[n]=1;stack[top++]=n;}}
+      if(y>0){n=idx-w;if(mask[n]&&!seen[n]){seen[n]=1;stack[top++]=n;}}
+      if(y<h-1){n=idx+w;if(mask[n]&&!seen[n]){seen[n]=1;stack[top++]=n;}}
     }
-  }catch(e){}
-  try{
-    if(typeof decodeQrDetailed_==='function'){
-      const j=decodeQrDetailed_(canvas);
-      if(j&&j.data)return String(j.data).trim();
+    const bw=x1-x0+1,bh=y1-y0+1;
+    const ratio=bw/Math.max(1,bh);
+    const widthFrac=bw/w,heightFrac=bh/h;
+    const fill=area/(bw*bh);
+    const centerX=(x0+x1)/(2*w),centerY=(y0+y1)/(2*h);
+    const edgeGap=Math.min(x0/w,y0/h,(w-1-x1)/w,(h-1-y1)/h);
+    if(area<0.025*w*h || ratio<0.88 || ratio>4.2 ||
+       widthFrac<0.27 || widthFrac>0.92 ||
+       heightFrac<0.14 || heightFrac>0.87 ||
+       fill<0.30 || edgeGap<0.028 ||
+       Math.abs(centerX-.5)>.25 || Math.abs(centerY-.5)>.29)continue;
+    const score=area*(.6+.4*fill);
+    if(!best||score>best.score){
+      best={score,x0:x0/w,y0:y0/h,x1:(x1+1)/w,y1:(y1+1)/h};
     }
-  }catch(e){}
-  return '';
+  }
+  return best;
+}
+
+async function inlineQuickQrHit(canvas){
+  let native=null,js=null;
+  try{if(typeof decodeNativeQr_==='function')native=await decodeNativeQr_(canvas);}catch(e){}
+  try{if(typeof decodeQrDetailed_==='function')js=decodeQrDetailed_(canvas);}catch(e){}
+  const picked=(native&&/^\\d{8}$/.test(String(native.data||'').trim()))?native:
+    ((js&&/^\\d{8}$/.test(String(js.data||'').trim()))?js:null);
+  if(!picked)return null;
+  const points=(picked.points&&picked.points.length>=4)?picked.points:
+     (picked.location ? [picked.location.topLeftCorner,picked.location.topRightCorner,
+        picked.location.bottomRightCorner,picked.location.bottomLeftCorner] : null);
+  if(!points||points.some(p=>!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))){
+    return {data:String(picked.data).trim(),x:null,y:null};
+  }
+  return {
+    data:String(picked.data).trim(),
+    x:points.reduce((s,p)=>s+p.x,0)/(points.length*canvas.width),
+    y:points.reduce((s,p)=>s+p.y,0)/(points.length*canvas.height)
+  };
+}
+
+function inlineQrInsideLabel(hit,label){
+  if(!hit||!label)return false;
+  if(hit.x==null||hit.y==null)return true;
+  const tolerance=.045;
+  return hit.x>=label.x0-tolerance&&hit.x<=label.x1+tolerance &&
+         hit.y>=label.y0-tolerance&&hit.y<=label.y1+tolerance;
 }
 
 function inlineCanvasToFile(canvas,name){
@@ -1686,8 +1754,12 @@ async function startInlineScanner(){
 
   await stopInlineScanner(false);
   box.classList.add('show');
+  INLINE_SCAN_SESSION++;
   INLINE_SCAN_SAMPLES=[];
   INLINE_RECENT_QR=[];
+  INLINE_LOCKED_QR='';
+  INLINE_LABEL_LOCK_STARTED=0;
+  INLINE_LAST_LABEL_AT=0;
   INLINE_SCAN_STARTED=performance.now();
   INLINE_SCAN_LAST=0;
 
@@ -1710,73 +1782,133 @@ async function startInlineScanner(){
 
 async function inlineScanLoop(ts){
   if(!INLINE_SCANNING||INLINE_SCAN_BUSY)return;
-  if(ts-INLINE_SCAN_LAST<180){requestAnimationFrame(inlineScanLoop);return;}
+  if(ts-INLINE_SCAN_LAST<210){requestAnimationFrame(inlineScanLoop);return;}
   INLINE_SCAN_LAST=ts;
-
-  const frame=inlineCaptureFrame(document.getElementById('inlineLiveVideo'),1500);
+  const session=INLINE_SCAN_SESSION;
+  const frame=inlineCaptureFrame(document.getElementById('inlineLiveVideo'),1600);
   if(!frame){requestAnimationFrame(inlineScanLoop);return;}
+
   const q=inlineFrameQuality(frame);
-  let qr='';
-  try{qr=await inlineQuickQr(frame);}catch(e){}
+  const label=inlineWhiteLabelBounds(frame);
+  let hit=null;
+  try{hit=await inlineQuickQrHit(frame);}catch(e){}
+  if(!INLINE_SCANNING || session!==INLINE_SCAN_SESSION)return;
 
-  INLINE_RECENT_QR.push(qr||'');
-  if(INLINE_RECENT_QR.length>5)INLINE_RECENT_QR.shift();
+  const valid=!!(q.ok && label && inlineQrInsideLabel(hit,label));
+  const qr=valid?hit.data:'';
+  const nowMs=performance.now();
 
-  if(q.ok || (q.sharpness>=3.2&&q.brightness>=42&&q.brightness<=238)){
+  // 要看到完整白標籤＋圖形QR，才算真正開始對焦／累積影格。
+  if(qr && INLINE_LOCKED_QR && qr!==INLINE_LOCKED_QR){
+    INLINE_SCAN_SAMPLES=[];
+    INLINE_RECENT_QR=[];
+    INLINE_LABEL_LOCK_STARTED=0;
+  }
+  if(qr){
+    if(INLINE_LOCKED_QR!==qr){
+      INLINE_LOCKED_QR=qr;
+      INLINE_LABEL_LOCK_STARTED=nowMs;
+      INLINE_SCAN_SAMPLES=[];
+      INLINE_RECENT_QR=[];
+    }
+    INLINE_LAST_LABEL_AT=nowMs;
     INLINE_SCAN_SAMPLES.push({
       canvas:inlineCloneCanvas(frame),
       q:q,
       qr:qr,
-      score:q.score+(qr?38:0)
+      score:q.score+40
     });
     if(INLINE_SCAN_SAMPLES.length>6)INLINE_SCAN_SAMPLES.shift();
   }
+  INLINE_RECENT_QR.push(qr);
+  if(INLINE_RECENT_QR.length>6)INLINE_RECENT_QR.shift();
 
-  const counts={};
-  INLINE_RECENT_QR.forEach(function(v){if(v)counts[v]=(counts[v]||0)+1;});
-  let bestQr='',votes=0;
-  Object.keys(counts).forEach(function(k){if(counts[k]>votes){votes=counts[k];bestQr=k;}});
-  const elapsed=performance.now()-INLINE_SCAN_STARTED;
-  const ready=(elapsed>=1500&&votes>=2&&INLINE_SCAN_SAMPLES.length>=3) ||
-              (elapsed>=3200&&INLINE_SCAN_SAMPLES.length>=4);
+  // 換走標籤或對準失敗：不能拿舊影格偷偷累積達標。
+  if(INLINE_LOCKED_QR && nowMs-INLINE_LAST_LABEL_AT>1500){
+    INLINE_LOCKED_QR='';
+    INLINE_LABEL_LOCK_STARTED=0;
+    INLINE_SCAN_SAMPLES=[];
+    INLINE_RECENT_QR=[];
+  }
+
+  const votes=INLINE_RECENT_QR.filter(v=>v&&v===INLINE_LOCKED_QR).length;
+  const lockDuration=INLINE_LABEL_LOCK_STARTED?nowMs-INLINE_LABEL_LOCK_STARTED:0;
+  const fresh=INLINE_LAST_LABEL_AT && nowMs-INLINE_LAST_LABEL_AT<450;
+  // 不再有「3.2秒到了就辨識」的備援：沒有QR與白色完整標籤，永遠不自動拍。
+  const ready=!!(fresh && label && qr===INLINE_LOCKED_QR &&
+    votes>=3 && INLINE_SCAN_SAMPLES.length>=4 &&
+    lockDuration>=1500);
 
   const status=document.getElementById('inlineScanStatus');
   const meta=document.getElementById('inlineScanMeta');
-  status.textContent=!ready
-    ? (elapsed<1500?'🎯 請把整張標籤放進框內…':(votes>=2?'📸 正在收集清楚影格…':'🔎 正在鎖定標籤，手持即可'))
-    : '🟢 已取得清楚影格，正在自動辨識…';
-  meta.textContent='清楚影格 '+INLINE_SCAN_SAMPLES.length+
-    '｜清晰 '+q.sharpness.toFixed(1)+
-    '｜亮度 '+Math.round(q.brightness)+
-    (bestQr?'｜QR一致 '+votes+'/5':'｜正在找QR');
+  if(!label){
+    status.textContent='⬜ 請先把整張白色標籤放進框內';
+  }else if(!hit){
+    status.textContent='🔎 已看到白色標籤，正在尋找標籤上的 QR 碼…';
+  }else if(!valid){
+    status.textContent='🎯 QR 已找到，請再對準標籤並稍微放慢移動';
+  }else if(!ready){
+    status.textContent='📸 標籤已鎖定，正在收集清楚畫面…';
+  }else{
+    status.textContent='🟢 標籤與 QR 已確認，開始辨識…';
+  }
+  meta.textContent= '標籤：'+(label?'已定位':'未定位')+
+    '｜QR：'+(INLINE_LOCKED_QR||'等待中')+
+    '｜清楚影格：'+INLINE_SCAN_SAMPLES.length+
+    '｜鎖定：'+(lockDuration/1000).toFixed(1)+'秒';
+  if(nowMs-INLINE_SCAN_STARTED>11000&&!ready){
+    meta.textContent+='｜尚未對準不會自動辨識，可繼續移動手機';
+  }
 
   if(ready){
     INLINE_SCAN_BUSY=true;
     INLINE_SCANNING=false;
-    const samples=INLINE_SCAN_SAMPLES.slice().sort(function(a,b){return b.score-a.score;});
+    const samples=INLINE_SCAN_SAMPLES.slice().sort((a,b)=>b.score-a.score);
     const best=samples[0],second=samples[1]||null;
+    const verifiedQr=INLINE_LOCKED_QR;
     await stopInlineScanner(false);
     try{
       const file=await inlineCanvasToFile(best.canvas,'inline-best.jpg');
-      const fake={target:{files:[file],value:''}};
-      await handleLabelPhoto(fake);
+      await handleLabelPhoto({target:{files:[file],value:''}});
       const first=readCurrentLabelResult();
-
       if((!first.qr||!first.order||!first.b) && second){
-        status.textContent='🧠 第一影格有缺欄，正在用第二影格複核…';
+        status.textContent='🧠 第一影格有缺欄，正在以第二影格複核…';
         const secondFile=await inlineCanvasToFile(second.canvas,'inline-second.jpg');
         await handleLabelPhoto({target:{files:[secondFile],value:''}});
         const secondResult=readCurrentLabelResult();
         applyMergedInlineResult(first,secondResult);
       }
 
+      // 圖形QR已被多次一致確認。OCR結果如果與QR衝突，拒絕猜測。
       const finalResult=readCurrentLabelResult();
-      const all=!!finalResult.qr&&!!finalResult.order&&!!finalResult.b;
+      if(finalResult.qr && finalResult.qr!==verifiedQr){
+        document.getElementById('workpieceQr').value='';
+        selected.workpieceQr='';
+        const box=document.getElementById('qrResult');
+        box.className='qr-result qr-warning';
+        box.textContent='⚠️ QR 結果衝突，請重新掃描或手動確認';
+        showQrFallback(true);
+        updateSummary();
+      }else if(!finalResult.qr && verifiedQr){
+        document.getElementById('workpieceQr').value=verifiedQr;
+        selected.workpieceQr=verifiedQr;
+        const box=document.getElementById('qrResult');
+        box.className='qr-result qr-success';
+        box.textContent=t('qrRecognized')+verifiedQr;
+        showQrFallback(false);
+        updateSummary();
+      }
+
+      const check=readCurrentLabelResult();
+      const all=!!check.qr&&!!check.order&&!!check.b;
       status.textContent=all
         ? '✅ 掃描完成：QR、單號、B碼已直接填入'
-        : '⚠️ 掃描完成：有欄位需要人工確認';
-      meta.textContent='已在同一頁完成，不需要跳頁或返回。';
-      setTimeout(function(){box=document.getElementById('inlineCameraBox');if(box)box.classList.remove('show');},700);
+        : '⚠️ 辨識已完成：尚有欄位需要人工確認';
+      meta.textContent='同一頁完成，請核對欄位後送出';
+      setTimeout(function(){
+        const box=document.getElementById('inlineCameraBox');
+        if(box)box.classList.remove('show');
+      },800);
     }catch(err){
       status.textContent='❌ '+(err&&err.message?err.message:'掃描辨識失敗');
     }finally{
@@ -1785,15 +1917,9 @@ async function inlineScanLoop(ts){
     return;
   }
 
-  if(elapsed>=10000){
-    INLINE_SCANNING=false;
-    await stopInlineScanner(false);
-    status.textContent='⚠️ 還沒抓到足夠清楚的標籤，請重新掃描或使用拍照備援';
-    return;
-  }
+  // 保持相機開啟，等待員工真正對準，不用固定秒數倒數結束。
   requestAnimationFrame(inlineScanLoop);
 }
-
 
 async function handleLabelPhoto(event) {
   const input = event.target;
