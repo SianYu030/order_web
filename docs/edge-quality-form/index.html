@@ -782,7 +782,8 @@ let GAS_BRIDGE_TRIES=0;
 let GAS_BRIDGE_RETRY_TIMER=null;
 
 function qualityIsLineBrowser(){
-  return /Line\\/|LIFF/i.test(navigator.userAgent||'');
+  const ua=String(navigator.userAgent||'').toLowerCase();
+  return ua.includes('line/') || ua.includes('liff');
 }
 
 function showGoogleOffline(reason){
