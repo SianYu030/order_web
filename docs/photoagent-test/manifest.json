@@ -1,0 +1,12 @@
+{
+  "version": "photoagent-auto-download-test-v1",
+  "items": [
+    {
+      "id": "PA-TEST-20261012-001",
+      "orderNo": "MR2026101299",
+      "photoType": "報修照片",
+      "fileName": "test-report-photo.svg",
+      "url": "https://sianyu030.github.io/order_web/photoagent-test/test-report-photo.svg"
+    }
+  ]
+}
