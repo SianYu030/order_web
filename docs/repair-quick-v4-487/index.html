@@ -458,30 +458,16 @@ html,body{background:#f5f7f8}
  .hero .progress span.on{background:#43f0fb!important}
 }
 
-
-/* V4.4.47 — apply the user's chosen high-detail factory HUD as ONE scene.
-   Based on V4.4.43. Only outside background changes; no form layout or JS changes. */
+/* V4.4.47: approved photographic high-resolution factory HUD background; V4.4.43 center untouched. */
 @media(min-width:1000px){
- html,body{
-   background-color:#071a31!important;
-   background-image:url("./factory-hud-v447-lossless.webp")!important;
-   background-size:cover!important;
-   background-position:center top!important;
-   background-repeat:no-repeat!important;
-   background-attachment:fixed!important;
- }
- body::before,body::after{display:none!important}
- .app{position:relative;z-index:1;background:#f5f7f8;min-height:100vh}
+html,body{background:#071b31 url("./factory-hud-v447.webp") center center / cover no-repeat fixed!important}
+body::before,body::after{display:none!important}
+.app{position:relative;z-index:1;background:#f5f7f8;min-height:100vh}
 }
 @media(max-width:999px){
- html,body{
-   background:#f5f7f8!important;
-   background-image:none!important;
-   background-attachment:scroll!important
- }
- body::before,body::after{display:none!important}
+html,body{background:#f5f7f8!important;background-image:none!important;background-attachment:scroll!important}
+body::before,body::after{display:none!important}
 }
-
 </style>
 </head>
 <body>
