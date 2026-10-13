@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
+<linearGradient id="bg" x1="0" y1="0" x2=".85" y2="1"><stop offset="0" stop-color="#020d20"/><stop offset=".52" stop-color="#073056"/><stop offset="1" stop-color="#06172d"/></linearGradient>
+<linearGradient id="pane" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0b3966" stop-opacity=".7"/><stop offset="1" stop-color="#03152c" stop-opacity=".88"/></linearGradient>
+<linearGradient id="beam" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#00afff" stop-opacity="0"/><stop offset=".5" stop-color="#20c9ff" stop-opacity=".5"/><stop offset="1" stop-color="#00afff" stop-opacity="0"/></linearGradient>
+<pattern id="micro" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#49a8d6" stroke-opacity=".075" stroke-width="1"/></pattern>
+<pattern id="grid" width="120" height="120" patternUnits="userSpaceOnUse"><path d="M120 0H0V120" fill="none" stroke="#61b5e2" stroke-opacity=".085"/></pattern>
+<filter id="shine" x="-30%" y="-100%" width="160%" height="300%"><feGaussianBlur stdDeviation="4"/></filter>
+</defs>
+<rect width="640" height="1080" fill="url(#bg)"/><rect width="640" height="1080" fill="url(#micro)"/><rect width="640" height="1080" fill="url(#grid)"/>
+<g stroke="#5bbded" stroke-width="1" stroke-opacity=".20"><path d="M0 230L640 42 M0 380L640 192 M0 530L640 342 M0 680L640 492 M0 830L640 642 M0 980L640 792"/><path d="M70 0L390 1080 M245 0L540 1080 M475 0L640 800"/></g>
+<path d="M0 82H640" stroke="#39c6ff" stroke-opacity=".34" stroke-width="4"/><path d="M0 88H640" stroke="#23a7e4" stroke-opacity=".12" stroke-width="16"/>
+<g fill="none" stroke="#4dcdff" stroke-width="1.2" stroke-opacity=".36"><path d="M36 120H258L282 143H535"/><path d="M20 860H230L259 830H500"/><path d="M0 1025H350L378 996H640"/></g>
+<g fill="#2fd5ff"><circle cx="282" cy="143" r="3"/><circle cx="258" cy="830" r="3"/><circle cx="377" cy="996" r="3"/></g>
+<g transform="translate(38 146)">
+  <rect width="545" height="258" rx="14" fill="url(#pane)" stroke="#39a6dc" stroke-opacity=".63" stroke-width="1.5"/>
+  <path d="M16 45H525" stroke="#1fa8d5" stroke-opacity=".34"/>
+  <path d="M14 14H124" stroke="#44d9ff" stroke-width="3"/>
+  <text x="22" y="34" font-family="Segoe UI,Arial,sans-serif" font-size="22" letter-spacing="4" fill="#b3efff">MES</text>
+  <text x="475" y="33" font-family="Segoe UI,Arial,sans-serif" font-size="12" fill="#5bbadd">OPS</text>
+  <g font-family="Segoe UI,Arial,sans-serif" font-size="16" letter-spacing="1.3" fill="#a5d9f1">
+    <text x="22" y="80">PRODUCTION</text><text x="22" y="119">MAINTENANCE</text>
+    <text x="22" y="158">EQUIPMENT</text><text x="22" y="197">ENGINEERING</text>
+  </g>
+  <g stroke="#41c5fc" stroke-opacity=".57" stroke-width="1"><path d="M220 74H508 M220 113H508 M220 152H508 M220 191H508"/></g>
+  <g fill="#30c2ff"><rect x="246" y="67" width="135" height="6" rx="3" opacity=".53"/><rect x="246" y="106" width="205" height="6" rx="3" opacity=".52"/><rect x="246" y="145" width="165" height="6" rx="3" opacity=".54"/><rect x="246" y="184" width="228" height="6" rx="3" opacity=".48"/></g>
+  <g fill="none" stroke="#50d4ff" stroke-opacity=".27"><path d="M16 215H526"/><path d="M20 239H128L140 227H276"/></g>
+</g>
+<g transform="translate(0 410)" stroke="#3cbbef" fill="none">
+  <path d="M0 325L56 325L108 292H284L328 333H500L554 290H640" stroke-opacity=".40" stroke-width="2"/>
+  <path d="M0 455L124 455L140 425L480 425L518 455H640" stroke-opacity=".20" stroke-width="4"/>
+  <path d="M62 340V92H158V340 M158 125H355V340 M355 98H478V340" stroke-opacity=".53" stroke-width="2.2"/>
+  <path d="M78 108H142V300H78z M177 150H328V300H177z M378 126H465V300H378z" stroke-opacity=".43" stroke-width="1.4"/>
+  <path d="M177 150L253 104L328 150 M177 300L253 331L328 300 M378 126L422 105L465 126" stroke-opacity=".33"/>
+  <path d="M196 178H311 M196 211H311 M196 244H311 M397 166H444 M397 198H444" stroke-opacity=".45"/>
+  <path d="M0 342H640 M0 366H640 M0 383H640" stroke-opacity=".35"/>
+  <path d="M35 366V387M85 366V387M135 366V387M185 366V387M235 366V387M285 366V387M335 366V387M385 366V387M435 366V387M485 366V387M535 366V387M585 366V387" stroke-opacity=".41"/>
+  <circle cx="110" cy="320" r="12" stroke-opacity=".64"/><circle cx="422" cy="320" r="12" stroke-opacity=".64"/>
+  <path d="M318 125L375 90L410 133L432 124" stroke-opacity=".62" stroke-width="5"/>
+  <circle cx="318" cy="125" r="16" stroke-width="3" stroke-opacity=".68"/><circle cx="376" cy="91" r="11" stroke-width="3" stroke-opacity=".68"/>
+  <path d="M422 124V210 M413 210H431" stroke-width="5" stroke-opacity=".60"/>
+  <path d="M0 345L640 345" stroke="#2ce6ff" stroke-opacity=".10" stroke-width="8" filter="url(#shine)"/>
+</g>
+<g transform="translate(44 897)" fill="none" stroke="#42b8eb">
+  <rect width="542" height="132" rx="14" fill="url(#pane)" stroke-opacity=".41"/>
+  <text x="22" y="29" font-family="Segoe UI,Arial,sans-serif" font-size="12" letter-spacing="2.3" fill="#a0e7ff" stroke="none">MAINTENANCE WORKFLOW</text>
+  <path d="M29 77H517" stroke-opacity=".43" stroke-width="2"/>
+  <circle cx="52" cy="77" r="16" fill="#052544" stroke-opacity=".65"/><circle cx="190" cy="77" r="16" fill="#052544" stroke-opacity=".65"/><circle cx="330" cy="77" r="16" fill="#052544" stroke-opacity=".65"/><circle cx="474" cy="77" r="16" fill="#052544" stroke-opacity=".65"/>
+  <circle cx="52" cy="77" r="5" fill="#41d7fa" stroke="none"/><circle cx="190" cy="77" r="5" fill="#41d7fa" stroke="none"/>
+  <circle cx="330" cy="77" r="5" fill="#41d7fa" stroke="none"/><circle cx="474" cy="77" r="5" fill="#41d7fa" stroke="none"/>
+</g><path d="M0 1073H640" stroke="#28caff" stroke-opacity=".42" stroke-width="4"/><path d="M0 1073H640" stroke="#0c8dbf" stroke-opacity=".18" stroke-width="13"/></svg>
