@@ -58,9 +58,57 @@
    }finally{b.disabled=false}
  };
  el("repairLoginSubmit").onclick=doRepairLogin;
- const pwInfo=()=>alert("V10 帳號密碼由 GS 管理員設定；舊瀏覽器密碼不再有效。");
- el("repairLoginChangePasswordBtn").onclick=pwInfo;
- el("repairChangePasswordBtn").onclick=pwInfo;
+ // Login-screen recovery requires a verified admin reset. Logged-in users can change own passwords.
+ el("repairLoginChangePasswordBtn").onclick=()=>alert("請先登入機修管理員，再從右上角「修改密碼」變更；忘記密碼請洽系統管理人。");
+ el("repairChangePasswordBtn").onclick=()=>{
+   try{
+     authorized();
+     openChangePassword(currentRepairUser);
+   }catch(e){alert(e.message);}
+ };
+ saveChangedPassword=async function(){
+   const hint=el("changePasswordError"),success=el("changePasswordSuccess");
+   const btn=el("changePasswordSave");
+   hint.classList.add("hidden");success.classList.add("hidden");
+   let actor;
+   try{actor=authorized();}
+   catch(e){hint.textContent=e.message;hint.classList.remove("hidden");return;}
+   const account=el("changePasswordAccount").value.trim().toUpperCase();
+   const oldPassword=el("changePasswordOld").value;
+   const newPassword=el("changePasswordNew").value;
+   const confirmPassword=el("changePasswordConfirm").value;
+   if(account!==actor.account || !oldPassword || newPassword.length<12 ||
+      newPassword.length>128 || newPassword!==confirmPassword ||
+      newPassword===oldPassword){
+     hint.textContent=account!==actor.account?"只能修改自己帳號的密碼":
+       !oldPassword?"請輸入目前密碼":
+       (newPassword.length<12||newPassword.length>128)?"新密碼需要12～128碼":
+       newPassword!==confirmPassword?"兩次新密碼不一致":"新密碼不得和舊密碼相同";
+     hint.classList.remove("hidden");return;
+   }
+   btn.disabled=true;
+   try{
+     const requestId=uuid();
+     try{await post({action:"authChangePassword",sessionToken:actor.sessionToken,
+       requestId,oldPassword,newPassword});}
+     catch(e){/* cannot infer success from no-cors; check result */}
+     const result=await poll("authChangeResult",{requestId},22);
+     if(!result.ok||!result.changed||result.account!==actor.account)
+       throw Error(result.error||"後端沒有確認修改成功");
+     // A password update revokes all sessions because the backend stores a password-hash epoch.
+     auth=null;repairAuth=false;currentRepairUser="";
+     el("repairLoginUser").textContent="—";
+     el("changePasswordOld").value="";
+     el("changePasswordNew").value="";
+     el("changePasswordConfirm").value="";
+     closeChangePassword();switchMode("report");
+     alert("密碼已更新。其他裝置也需要使用新密碼重新登入。");
+   }catch(e){
+     hint.textContent="修改密碼未確認："+e.message;
+     hint.classList.remove("hidden");
+   }finally{btn.disabled=false;}
+ };
+ el("changePasswordSave").onclick=saveChangedPassword;
  el("repairLogoutBtn").onclick=()=>{
    const prev=auth;auth=null;repairAuth=false;currentRepairUser="";
    el("repairLoginUser").textContent="—";switchMode("report");
