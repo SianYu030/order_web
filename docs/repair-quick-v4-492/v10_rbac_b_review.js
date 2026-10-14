@@ -84,12 +84,12 @@
    }
    throw Error("未能回讀證實資料更新，請先查核正式工單");
  };
- // Option B: both admin and repair may delete unfinished orders.
+ // Option B (updated): both admin and repair may delete unfinished AND completed orders.
  deleteLiveOrder_=async function(o,btn){
    let u;
    try{u=authorized();}catch(e){return alert(e.message)}
-   if(!o||!o.no||o.status==="已完成")return alert("已完成工單無法刪除");
-   const typed=prompt("刪除將移除工單及追蹤紀錄，並保留刪除稽核。請輸入工單號："+o.no);
+   if(!o||!o.no)return alert("找不到工單，無法刪除");
+   const typed=prompt("刪除將移除工單及追蹤紀錄（含已完成工時），並保留刪除稽核。請輸入工單號："+o.no);
    if(typed===null)return;
    if(typed.trim()!==o.no)return alert("工單號不符，已取消");
    const reason=prompt("請填寫刪除原因（至少2字）：");
@@ -97,14 +97,14 @@
    const operationId=uuid();
    if(btn){btn.disabled=true;btn.textContent="刪除核對中…"}
    try{
-     try{await post({action:"deleteUnfinishedMobileOrder",sessionToken:u.sessionToken,
+     try{await post({action:"deleteRepairOrder",sessionToken:u.sessionToken,
        orderNo:o.no,confirmOrderNo:o.no,operationId,reason:reason.trim()});}catch(e){}
      const r=await poll("deleteResult",{operationId});
      if(!r.ok||!r.deleted||r.operationId!==operationId||r.orderNo!==o.no)
        throw Error(r.error||"後端未完成刪除");
      LIVE_ORDERS=LIVE_ORDERS.filter(x=>x.no!==o.no);
      delete REPAIR_STORE[o.no];saveLiveOrdersCache_();renderRepairOrders();
-     alert("已刪除："+o.no+"，操作帳號："+r.account+"。稽核紀錄已保留。");
+     alert("已刪除工單："+o.no+"，操作帳號："+r.account+"。稽核紀錄已保留。");
      setTimeout(()=>refreshLiveOrdersInBackground_(true),700);
    }catch(e){alert("尚未確認刪除成功："+e.message)}
    finally{if(btn){btn.disabled=false;btn.textContent="🗑 刪除工單"}}
