@@ -7,7 +7,6 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
   const byId=id=>document.getElementById(id);
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
   let busy=false;
-  const keyName="repairV10TabKey";
   async function read(orderNo){
     const r=await jsonp_("timerState",{orderNo},20000);
     if(!r||!r.ok||r.orderNo!==orderNo||
@@ -40,15 +39,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     renderWork();renderTrackingOverview();
   }
   async function refresh(id){const r=await read(id);present(r);return r;}
-  function getKey(){
-    let key=sessionStorage.getItem(keyName)||"";
-    if(!key){
-      key=prompt("請輸入管理員提供的 V10 計時金鑰（僅保留此分頁）")||"";
-      if(!key)throw Error("未輸入金鑰，工單未變更");
-      sessionStorage.setItem(keyName,key);
-    }
-    return key;
-  }
+  // Individual GS login is required; no shared timer key in browser.
   async function op(event,detail="",nextDate="",extra={}){
     if(busy)throw Error("上一個操作尚未完成");
     const order=repairState.order;
@@ -60,7 +51,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     try{
       const before=await refresh(id);
       if(before.status==="已完成")throw Error("工單已結案");
-      const timerKey=getKey();
+      const sessionToken=v10AuthToken_();
       const pendingKey="repairV10Pending:"+id+":"+event;
       let pending=null;
       try{pending=JSON.parse(sessionStorage.getItem(pendingKey)||"null");}catch(e){}
@@ -75,7 +66,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
           headers:{"Content-Type":"text/plain;charset=utf-8"},
           body:JSON.stringify({action:"timerAction",orderNo:id,timerEvent:event,
             operationId:pending.operationId,expectedLastOperationId:pending.expectedLastOperationId,
-            technician:currentRepairUser,timerKey,detail,nextDate,...extra})});
+            technician:currentRepairUser,sessionToken,detail,nextDate,...extra})});
       }catch(e){/* 可能已送達，必須回讀後才能決定成敗 */}
       for(let i=0;i<15;i++){
         await wait(400+Math.min(i*200,1000));
