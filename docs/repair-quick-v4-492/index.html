@@ -1242,7 +1242,7 @@ Object.keys(DATA).forEach(d=>{
 
 
 const REPAIR_ACCOUNTS=["A1702","A2758","3109"];
-const DEFAULT_REPAIR_PASSWORD="1234";
+const DEFAULT_REPAIR_PASSWORD="V10_SERVER_AUTH_REQUIRED";
 sessionStorage.removeItem("repairAuth");
 sessionStorage.removeItem("repairUser");
 let repairAuth=false;
@@ -1267,19 +1267,8 @@ function showRepairLogin(){
 function hideRepairLogin(){ el("repairLoginModal").classList.add("hidden"); }
 
 function doRepairLogin(){
-  const account=el("repairLoginAccount").value.trim().toUpperCase();
-  const password=el("repairLoginPassword").value;
-  if(isRepairAccount(account) && password===getRepairPassword(account)){
-    repairAuth=true;
-    currentRepairUser=account;
-    el("repairLoginUser").textContent=account;
-    hideRepairLogin();
-    switchMode("repair");
-  }else{
-    el("repairLoginError").textContent="帳號或密碼錯誤，請重新輸入。";
-    el("repairLoginError").classList.remove("hidden");
-    el("repairLoginPassword").select();
-  }
+  el("repairLoginError").textContent="V10 伺服器驗證模組尚未載入，請重新整理後再登入。";
+  el("repairLoginError").classList.remove("hidden");
 }
 
 function openChangePassword(prefillAccount=""){
@@ -1297,37 +1286,8 @@ function closeChangePassword(){
   el("repairPasswordModal").classList.add("hidden");
 }
 function saveChangedPassword(){
-  const account=el("changePasswordAccount").value.trim().toUpperCase();
-  const oldPass=el("changePasswordOld").value;
-  const newPass=el("changePasswordNew").value;
-  const confirmPass=el("changePasswordConfirm").value;
-  const err=el("changePasswordError");
-
-  err.classList.add("hidden");
-  el("changePasswordSuccess").classList.add("hidden");
-
-  let msg="";
-  if(!isRepairAccount(account)) msg="找不到這個機修帳號。";
-  else if(oldPass!==getRepairPassword(account)) msg="目前密碼不正確。";
-  else if(newPass.length<4) msg="新密碼至少需要 4 碼。";
-  else if(newPass!==confirmPass) msg="兩次輸入的新密碼不一致。";
-
-  if(msg){
-    err.textContent=msg;
-    err.classList.remove("hidden");
-    return;
-  }
-
-  localStorage.setItem(repairPasswordKey(account),newPass);
-  el("changePasswordSuccess").classList.remove("hidden");
-  setTimeout(()=>{
-    closeChangePassword();
-    if(!repairAuth){
-      el("repairLoginAccount").value=account;
-      el("repairLoginPassword").value="";
-      showRepairLogin();
-    }
-  },700);
+  el("changePasswordError").textContent="V10 密碼改由 GS 管理員處理；不再儲存在瀏覽器內。";
+  el("changePasswordError").classList.remove("hidden");
 }
 
 el("reportModeBtn").onclick=()=>{hideRepairLogin();closeChangePassword();switchMode("report");};
