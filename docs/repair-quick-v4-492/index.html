@@ -951,14 +951,14 @@ html,body{background:#f5f7f8}
 <div class="login-overlay hidden" id="repairLoginModal">
   <div class="login-card">
     <div class="login-icon">🔐</div>
-    <h2>機修人員登入</h2>
+    <h2>機修管理員登入</h2>
     <div class="login-sub">「維修處理」僅限授權人員使用。<br>登入後才可查看與處理維修工單。</div>
     <label class="login-label" for="repairLoginAccount">帳號</label>
     <input class="login-input" id="repairLoginAccount" autocomplete="username" placeholder="請輸入帳號">
     <label class="login-label" for="repairLoginPassword">密碼</label>
     <input class="login-input" id="repairLoginPassword" type="password" autocomplete="current-password" placeholder="請輸入密碼">
     <div class="login-error hidden" id="repairLoginError">帳號或密碼錯誤，請重新輸入。</div>
-    <div class="login-demo">測試帳號：<b>A1702／A2758／3109</b><br>三組初始密碼皆為：<b>1234</b><br>正式版會改由 Apps Script 後端驗證。</div>
+    <div class="login-demo">機修管理員帳號：<b>A1702／A2758／3109</b>。各自使用個人密碼，登入由 Apps Script 後端驗證。</div>
     <button class="password-btn" id="repairLoginChangePasswordBtn" type="button" style="width:100%;margin-top:12px;padding:11px">🔑 修改密碼</button>
     <div class="login-actions">
       <button class="login-cancel" id="repairLoginCancel" type="button">取消</button>
@@ -987,7 +987,7 @@ html,body{background:#f5f7f8}
 
     <div class="login-error hidden" id="changePasswordError"></div>
     <div class="password-success hidden" id="changePasswordSuccess">✅ 密碼已修改完成</div>
-    <div class="login-demo">測試版：新密碼只會儲存在目前這台裝置的瀏覽器。正式版接後端後會改成所有裝置同步。</div>
+    <div class="login-demo">V10 正式帳號密碼由 Apps Script 後端管理；個人修改密碼功能尚待後端完成及驗證。</div>
 
     <div class="login-actions">
       <button class="login-cancel" id="changePasswordCancel" type="button">取消</button>
@@ -1441,7 +1441,7 @@ function renderRepairOrders(){
       b.innerHTML='<div class="order-top"><div class="order-no">'+esc(o.no)+'</div><span class="tag '+cls+'">'+urgencyLabel_(o.level)+'</span></div>'+
         '<div class="order-meta">'+esc(o.dept)+'｜'+esc(o.machine)+'｜'+esc(o.person)+'<br>'+esc(o.issue)+
         '<div class="order-status-line"><span class="order-status-label">目前狀態：</span><span class="order-status-value">已完成</span></div></div>';
-      // B 權限：維修或管理員可刪除已完成工單；真正權限仍由後端驗證。
+      // 統一機修管理員權限：可刪已完成工單；真正權限仍由後端驗證。
       const wrap=document.createElement("div");
       wrap.className="order-card-wrap"+(o._live&&repairAuth?" has-delete":"");
       wrap.appendChild(b);
