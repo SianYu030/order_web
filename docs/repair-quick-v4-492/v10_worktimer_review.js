@@ -103,9 +103,21 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
       }
     });
   };
+  function v10ScheduledWorkMs_(start,end){
+    const a=new Date(start).getTime(),b=new Date(end).getTime();
+    if(!Number.isFinite(a)||!Number.isFinite(b)||b<=a)return 0;
+    const DAY=86400000,HOUR=3600000,TPE=8*HOUR;
+    let sum=0,midnight=Math.floor((a+TPE)/DAY)*DAY-TPE;
+    for(;midnight<b;midnight+=DAY){
+      for(const [from,to] of [[8,12],[13,17]]){
+        sum+=Math.max(0,Math.min(b,midnight+to*HOUR)-Math.max(a,midnight+from*HOUR));
+      }
+    }
+    return sum;
+  }
   renderWork=function(){
     const s=repairState.store;if(!s)return;
-    const running=s.activeStart?Math.max(0,Date.now()-s.activeStart.getTime()):0;
+    const running=s.activeStart?v10ScheduledWorkMs_(s.activeStart,new Date()):0;
     const minutes=Math.floor((Math.max(0,s.workMs||0)+running)/60000);
     byId("repairWork").textContent=Math.floor(minutes/60)+"時"+String(minutes%60).padStart(2,"0")+"分";
   };
