@@ -1,5 +1,5 @@
 /*
- * RBAC-B staging: server-authenticated repair/admin login and auditable deletion.
+ * RBAC-B staging: server-authenticated unified maintenance-manager login and auditable deletion.
  * Deploy together with matching Webhook V10; do not include passwords or secrets.
  */
 (function(){
@@ -10,7 +10,7 @@
  };
  let auth=null;
  function authorized(){
-   if(!auth||!repairAuth||auth.account!==currentRepairUser||!["admin","repair"].includes(auth.role)||auth.expiresAt<=Date.now())
+   if(!auth||!repairAuth||auth.account!==currentRepairUser||!["admin","repair","repair_manager"].includes(auth.role)||auth.expiresAt<=Date.now())
      throw Error("登入已過期，請重新登入維修工作台");
    return auth;
  }
@@ -45,11 +45,11 @@
      const requestId=uuid();
      try{await post({action:"authLogin",requestId,account,password});}catch(e){}
      const r=await poll("authResult",{requestId});
-     if(!r.ok||r.account!==account||!r.sessionToken||!["admin","repair"].includes(r.role))
+     if(!r.ok||r.account!==account||!r.sessionToken||!["admin","repair","repair_manager"].includes(r.role))
        throw Error(r.error||"登入失敗");
      auth={sessionToken:r.sessionToken,account,role:r.role,expiresAt:Number(r.expiresAt)};
      repairAuth=true;currentRepairUser=account;
-     el("repairLoginUser").textContent=account+(r.role==="admin"?"｜管理員":"｜機修");
+     el("repairLoginUser").textContent=account+"｜機修管理員";
      el("repairLoginPassword").value="";
      hideRepairLogin();switchMode("repair");
    }catch(e){
@@ -84,7 +84,7 @@
    }
    throw Error("未能回讀證實資料更新，請先查核正式工單");
  };
- // Option B (updated): both admin and repair may delete unfinished AND completed orders.
+ // Unified maintenance-manager permission: signed-in accounts can delete open and completed orders.
  deleteLiveOrder_=async function(o,btn){
    let u;
    try{u=authorized();}catch(e){return alert(e.message)}
