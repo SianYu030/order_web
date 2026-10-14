@@ -1414,7 +1414,7 @@ function renderRepairOrders(){
   }
   openOrders.forEach(o=>{
     const wrap=document.createElement("div");
-    wrap.className="order-card-wrap"+(o.deletable?" has-delete":"");
+    wrap.className="order-card-wrap"+(o._live&&repairAuth?" has-delete":"");
 
     const b=button("","order-card",()=>openRepairOrder(o));
     const cls=o.level==="停線"?"red":o.level==="緊急"?"yellow":"green";
@@ -1425,7 +1425,7 @@ function renderRepairOrders(){
 
     wrap.appendChild(b);
 
-    if(o.deletable){
+    if(o._live && repairAuth && currentRepairUser){
       const del=button("🗑 刪除工單","order-delete",()=>deleteLiveOrder_(o,del));
       wrap.appendChild(del);
     }
@@ -1441,7 +1441,15 @@ function renderRepairOrders(){
       b.innerHTML='<div class="order-top"><div class="order-no">'+esc(o.no)+'</div><span class="tag '+cls+'">'+urgencyLabel_(o.level)+'</span></div>'+
         '<div class="order-meta">'+esc(o.dept)+'｜'+esc(o.machine)+'｜'+esc(o.person)+'<br>'+esc(o.issue)+
         '<div class="order-status-line"><span class="order-status-label">目前狀態：</span><span class="order-status-value">已完成</span></div></div>';
-      el("repairHistoryList").appendChild(b);
+      // B 權限：維修或管理員可刪除已完成工單；真正權限仍由後端驗證。
+      const wrap=document.createElement("div");
+      wrap.className="order-card-wrap"+(o._live&&repairAuth?" has-delete":"");
+      wrap.appendChild(b);
+      if(o._live && repairAuth && currentRepairUser){
+        const del=button("🗑 刪除已完成工單","order-delete",()=>deleteLiveOrder_(o,del));
+        wrap.appendChild(del);
+      }
+      el("repairHistoryList").appendChild(wrap);
     });
   }
 }
