@@ -171,4 +171,5 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
   };
   /* 原 V9 刪除端點沒有正式身分驗證，審查分支先關閉刪除 UI。 */
   deleteLiveOrder_=async function(){alert("V10 安全審查期間暫停刪除工單");};
+  window.__v10RepairTimerReady=true;
 })();
