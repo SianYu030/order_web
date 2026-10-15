@@ -47,8 +47,8 @@
       if(ping.timerVersion==="V10-manager-20261014"){
         await appendScript("./v10_worktimer.js");
         await appendScript("./v10_rbac.js");
-        if(typeof v10AuthToken_!=="function")
-          throw new Error("機修管理員驗證功能未正確載入");
+        if(!window.__v10RepairTimerReady || !window.__v10RepairAuthReady || typeof v10AuthToken_!=="function")
+          throw new Error("V10 計時或機修管理員模組未正確載入");
         const title=document.querySelector("#repairLoginModal h2");
         if(title) title.textContent="機修管理員登入";
         const hint=document.querySelector("#repairLoginModal .login-demo");
