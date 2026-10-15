@@ -36,8 +36,10 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     }
     s.workMinutes=Math.floor(s.workMs/60000);
     byId("repairStart").textContent=r.startDisplay||"--:--";
-    byId("repairEnd").textContent=r.completedDisplay||
-      (s.end?formatHM(s.end):"--:--");
+    // A running segment has no stop time yet. Do not show a previous pause
+    // timestamp beside the active timer, which looks like a delayed update.
+    byId("repairEnd").textContent=r.activeStartIso?"--:--":
+      (r.completedDisplay||(s.end?formatHM(s.end):"--:--"));
     saveLiveOrdersCache_();buildRepairStatus();updateRepairControls_();
     if(r.status==="已完成")byId("completeRepairBtn").disabled=true;
     renderWork();renderTrackingOverview();
