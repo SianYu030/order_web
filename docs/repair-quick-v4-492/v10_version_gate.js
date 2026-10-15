@@ -11,7 +11,7 @@
   const repairBtn=document.getElementById("repairModeBtn");
   if(!repairBtn) return;
   const oldTitle=repairBtn.getAttribute("title")||"";
-  const scriptVersion="20261015b";
+  const scriptVersion="20261015c";
   repairBtn.disabled=true;
   repairBtn.setAttribute("title","確認維修系統後端版本中");
 
