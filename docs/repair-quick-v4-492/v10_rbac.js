@@ -40,7 +40,8 @@
    const account=el("repairLoginAccount").value.trim().toUpperCase();
    const password=el("repairLoginPassword").value;
    const b=el("repairLoginSubmit"),hint=el("repairLoginError");
-   b.disabled=true;hint.classList.add("hidden");
+   const originalLabel=b.textContent;
+   b.disabled=true;b.textContent="登入驗證中…";hint.classList.add("hidden");
    try{
      const requestId=uuid();
      try{await post({action:"authLogin",requestId,account,password});}catch(e){}
@@ -55,7 +56,7 @@
    }catch(e){
      auth=null;repairAuth=false;currentRepairUser="";
      hint.textContent="登入失敗："+e.message;hint.classList.remove("hidden");
-   }finally{b.disabled=false}
+   }finally{b.disabled=false;b.textContent=originalLabel;}
  };
  el("repairLoginSubmit").onclick=doRepairLogin;
  // Login-screen recovery requires a verified admin reset. Logged-in users can change own passwords.
