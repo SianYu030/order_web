@@ -77,12 +77,12 @@
    const oldPassword=el("changePasswordOld").value;
    const newPassword=el("changePasswordNew").value;
    const confirmPassword=el("changePasswordConfirm").value;
-   if(account!==actor.account || !oldPassword || newPassword.length<12 ||
-      newPassword.length>128 || newPassword!==confirmPassword ||
+   if(account!==actor.account || !oldPassword || newPassword.length<4 ||
+      newPassword.length>12 || newPassword!==confirmPassword ||
       newPassword===oldPassword){
      hint.textContent=account!==actor.account?"只能修改自己帳號的密碼":
        !oldPassword?"請輸入目前密碼":
-       (newPassword.length<12||newPassword.length>128)?"新密碼需要12～128碼":
+       (newPassword.length<4||newPassword.length>12)?"新密碼需要4～12碼":
        newPassword!==confirmPassword?"兩次新密碼不一致":"新密碼不得和舊密碼相同";
      hint.classList.remove("hidden");return;
    }
