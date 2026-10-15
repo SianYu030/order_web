@@ -7,12 +7,16 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
   const byId=id=>document.getElementById(id);
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
   let busy=false;
+  // Last verified GS state is safe for a brief period. GS still checks the
+  // expected operation ID, so an intervening update cannot be overwritten.
+  let latestState=null, latestStateAt=0;
   async function read(orderNo){
     const r=await jsonp_("timerState",{orderNo},20000);
     if(!r||!r.ok||r.orderNo!==orderNo||
        !String(r.timerVersion||"").startsWith("V10-timer-")){
       throw new Error("GS V10 尚未部署／版本不符，已禁止修改工單");
     }
+    latestState=r;latestStateAt=Date.now();
     return r;
   }
   function present(r){
@@ -45,11 +49,14 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     const order=repairState.order;
     if(!order||!order._live||!currentRepairUser)throw Error("請先登入並選擇正式工單");
     busy=true;
+    let confirmed=false;
     const id=order.no;
     const ctrls=["repairStartBtn","repairEndBtn","completeRepairBtn"];
     ctrls.forEach(x=>byId(x).disabled=true);
+    byId("repairStatusHint").textContent="⏳ 正在確認本次維修操作，請勿重複點擊…";
     try{
-      const before=await refresh(id);
+      const before=latestState && latestState.orderNo===id &&
+        Date.now()-latestStateAt<8000 ? latestState : await refresh(id);
       if(before.status==="已完成")throw Error("工單已結案");
       const sessionToken=v10AuthToken_();
       const pendingKey="repairV10Pending:"+id+":"+event;
@@ -74,6 +81,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
         try{state=await read(id);}catch(e){continue;}
         if(state.lastOperationId===pending.operationId){
           present(state);sessionStorage.removeItem(pendingKey);
+          confirmed=true;
           return state;
         }
         if(state.lastOperationId&&state.lastOperationId!==pending.expectedLastOperationId){
@@ -83,10 +91,14 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
       throw Error("後端尚未回讀確認；請勿重複點擊，先確認工單狀態");
     }finally{
       busy=false;
-      try{if(repairState.order&&repairState.order.no===id)await refresh(id);}
-      catch(e){
-        ctrls.forEach(x=>byId(x).disabled=true);
-        byId("repairStatusHint").textContent="⚠️ V10 連線未確認："+e.message;
+      // Success is already confirmed by operation ID and fully rendered.
+      // Re-reading the same order here caused a needless extra GS round-trip.
+      if(!confirmed){
+        try{if(repairState.order&&repairState.order.no===id)await refresh(id);}
+        catch(e){
+          ctrls.forEach(x=>byId(x).disabled=true);
+          byId("repairStatusHint").textContent="⚠️ V10 連線未確認："+e.message;
+        }
       }
     }
   }
