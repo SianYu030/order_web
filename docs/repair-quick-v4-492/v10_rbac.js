@@ -157,4 +157,5 @@
    }catch(e){alert("尚未確認刪除成功："+e.message)}
    finally{if(btn){btn.disabled=false;btn.textContent="🗑 刪除工單"}}
  };
+  window.__v10RepairAuthReady=true;
 })();
