@@ -9,6 +9,7 @@
    return crypto.randomUUID();
  };
  let auth=null;
+ const deletingOrders=new Set();
  function authorized(){
    if(!auth||!repairAuth||auth.account!==currentRepairUser||!["admin","repair","repair_manager"].includes(auth.role)||auth.expiresAt<=Date.now())
      throw Error("登入已過期，請重新登入維修工作台");
@@ -138,25 +139,36 @@
    let u;
    try{u=authorized();}catch(e){return alert(e.message)}
    if(!o||!o.no)return alert("找不到工單，無法刪除");
-   const typed=prompt("刪除將移除工單及追蹤紀錄（含已完成工時），並保留刪除稽核。請輸入工單號："+o.no);
-   if(typed===null)return;
-   if(typed.trim()!==o.no)return alert("工單號不符，已取消");
-   const reason=prompt("請填寫刪除原因（至少2字）：");
-   if(!reason||reason.trim().length<2)return alert("未填寫刪除原因，沒有刪除");
+   // User chose one-click deletion: server still verifies the authenticated
+   // manager, order number, idempotency and keeps an audit snapshot.
+   if(deletingOrders.has(o.no))return;
    const operationId=uuid();
-   if(btn){btn.disabled=true;btn.textContent="刪除核對中…"}
+   deletingOrders.add(o.no);
+   if(btn){btn.disabled=true;btn.textContent="刪除中…"}
    try{
      try{await post({action:"deleteRepairOrder",sessionToken:u.sessionToken,
-       orderNo:o.no,confirmOrderNo:o.no,operationId,reason:reason.trim()});}catch(e){}
+       orderNo:o.no,confirmOrderNo:o.no,operationId,
+       reason:"管理員於網頁直接刪除（未另填原因）"});}catch(e){}
      const r=await poll("deleteResult",{operationId});
      if(!r.ok||!r.deleted||r.operationId!==operationId||r.orderNo!==o.no)
        throw Error(r.error||"後端未完成刪除");
      LIVE_ORDERS=LIVE_ORDERS.filter(x=>x.no!==o.no);
      delete REPAIR_STORE[o.no];saveLiveOrdersCache_();renderRepairOrders();
-     alert("已刪除工單："+o.no+"，操作帳號："+r.account+"。稽核紀錄已保留。");
+     let notice=document.getElementById("v10DeleteNotice");
+     if(!notice){
+       notice=document.createElement("div");notice.id="v10DeleteNotice";
+       notice.setAttribute("role","status");
+       notice.style.cssText="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 30px);padding:12px 18px;border-radius:12px;background:#173848;color:white;z-index:10000;box-shadow:0 5px 22px #0003;font-weight:700";
+       document.body.appendChild(notice);
+     }
+     notice.textContent="✅ 已刪除工單："+o.no+"（已保留刪除紀錄）";
+     setTimeout(()=>{if(notice.isConnected)notice.remove()},5000);
      setTimeout(()=>refreshLiveOrdersInBackground_(true),700);
    }catch(e){alert("尚未確認刪除成功："+e.message)}
-   finally{if(btn){btn.disabled=false;btn.textContent="🗑 刪除工單"}}
+   finally{
+     deletingOrders.delete(o.no);
+     if(btn){btn.disabled=false;btn.textContent="🗑 刪除工單"}
+   }
  };
   window.__v10RepairAuthReady=true;
 })();
