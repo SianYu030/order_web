@@ -11,9 +11,19 @@
   const repairBtn=document.getElementById("repairModeBtn");
   if(!repairBtn) return;
   const oldTitle=repairBtn.getAttribute("title")||"";
+  const oldButtonLabel=repairBtn.textContent;
   const scriptVersion="20261015c";
   repairBtn.disabled=true;
+  repairBtn.textContent="維修處理（載入中…）";
   repairBtn.setAttribute("title","確認維修系統後端版本中");
+  // Preload code in parallel with ping, but NEVER execute it before backend
+  // compatibility is verified. Actual execution stays ordered (timer, RBAC).
+  ["./v10_worktimer.js","./v10_rbac.js"].forEach(path=>{
+    const preload=document.createElement("link");
+    preload.rel="preload";preload.as="script";
+    preload.href=path+"?v="+scriptVersion;
+    document.head.appendChild(preload);
+  });
 
   function appendScript(path){
     return new Promise((resolve,reject)=>{
@@ -27,6 +37,7 @@
 
   function showUnavailable(error){
     repairBtn.disabled=true;
+    repairBtn.textContent=oldButtonLabel;
     repairBtn.setAttribute("title","維修模式暫時無法啟用，請重新整理");
     let note=document.getElementById("v10LoadNotice");
     if(!note){
@@ -59,6 +70,7 @@
       // No V10 marker = the original V9 deployment is still running.
       // Keep original V4.4.52 handlers fully unchanged.
       repairBtn.disabled=false;
+      repairBtn.textContent=oldButtonLabel;
       if(oldTitle) repairBtn.setAttribute("title",oldTitle);
       else repairBtn.removeAttribute("title");
     }catch(err){
