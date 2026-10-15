@@ -150,7 +150,23 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
         classification:byId("repairClassSelect").value,
         content:byId("repairContent").value.trim(),note:byId("repairNote").value.trim()});
       byId("saveRepairMsg").classList.remove("hidden");
-      byId("saveRepairMsg").textContent="✅ 結案工時已經回讀驗證";
+      byId("saveRepairMsg").textContent="✅ 結案與工時已回讀驗證";
+      // Keep the original V4.4.52 NAS photo pipeline, but only AFTER verified close.
+      // If photo upload fails, the completed order is not silently marked as unclosed.
+      const photos=[...repairPhotoFiles];
+      if(photos.length){
+        byId("saveRepairMsg").textContent="⏳ 結案成功，維修照片上傳 0/"+photos.length+"…";
+        try{
+          await uploadPhotoFiles_(photos,repairState.order.no,"維修照片",(i,total)=>{
+            byId("saveRepairMsg").textContent="⏳ 結案成功，維修照片上傳 "+i+"/"+total+"…";
+          });
+          clearRepairPhotoSelection_();
+          byId("saveRepairMsg").textContent="✅ 結案與工時已驗證｜📷 維修照片已排入 NAS 歸檔";
+        }catch(photoError){
+          byId("saveRepairMsg").textContent="⚠️ 工單已結案，照片未成功上傳："+photoError.message;
+          alert("工單已成功結案，但維修照片需要重新上傳："+photoError.message);
+        }
+      }
     }catch(e){alert("結案未完成："+e.message);}
   };
   /* 原 V9 刪除端點沒有正式身分驗證，審查分支先關閉刪除 UI。 */
