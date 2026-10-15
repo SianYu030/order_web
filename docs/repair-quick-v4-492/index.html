@@ -1653,10 +1653,10 @@ function showFollowPanel(v){
   el("followTitle").textContent=v==="待料"?"📦 待料追蹤（確認後才停止計時）":"🚚 外修追蹤（確認後才停止計時）";
 
   // 進入待料/外修的時間，系統會自動記錄在追蹤紀錄，不需要再手動選一次日期。
-  // 下次追蹤日只代表再次詢問進度，不是承諾到貨／回廠日期；可留空。
+  // 零件到貨日與外修廠商預計到廠日由機修人員手動填寫，可留空；寫入追蹤摘要，不佔用 R 欄的下次追蹤日。
   el("followFields").innerHTML=v==="待料"
-    ? '<div class="follow-grid"><div><div class="select-note" style="margin-bottom:5px">等待零件／材料</div><input id="followA" placeholder="例如：軸承6205ZZ×1"></div><div><div class="select-note" style="margin-bottom:5px">下次追蹤日（選填）</div><input id="followC" type="date"><div class="select-note" style="margin-top:5px">不確定就留空，不代表到貨日期</div></div></div><textarea id="followD" placeholder="補充說明（選填）"></textarea>'
-    : '<div class="follow-grid"><div><div class="select-note" style="margin-bottom:5px">送修廠商</div><input id="followA" placeholder="輸入廠商名稱"></div><div><div class="select-note" style="margin-bottom:5px">下次追蹤日（選填）</div><input id="followC" type="date"><div class="select-note" style="margin-top:5px">不確定就留空，不代表回廠日期</div></div></div><textarea id="followD" placeholder="送修原因／補充說明"></textarea>';
+    ? '<div class="follow-grid"><div><div class="select-note" style="margin-bottom:5px">等待零件／材料</div><input id="followA" placeholder="例如：軸承6205ZZ×1"></div><div><div class="select-note" style="margin-bottom:5px">零件到貨日（自行填寫・選填）</div><input id="followC" type="date"><div class="select-note" style="margin-top:5px">有確認或預估日期再填；不確定可留空</div></div></div><textarea id="followD" placeholder="補充說明（選填）"></textarea>'
+    : '<div class="follow-grid"><div><div class="select-note" style="margin-bottom:5px">送修廠商</div><input id="followA" placeholder="輸入廠商名稱"></div><div><div class="select-note" style="margin-bottom:5px">預計到廠日（自行填寫・選填）</div><input id="followC" type="date"><div class="select-note" style="margin-top:5px">由現場填寫廠商預計到廠的日期，不確定可留空</div></div></div><textarea id="followD" placeholder="送修原因／補充說明"></textarea>';
 
   el("followPanel").scrollIntoView({behavior:"smooth",block:"center"});
 }
@@ -1673,10 +1673,10 @@ el("followConfirm").onclick=()=>{
   }
 
   const summary=v==="待料"
-    ? "待料："+a+(c?"｜下次追蹤 "+c:"")
-    : "外修："+a+(c?"｜下次追蹤 "+c:"");
+    ? "待料："+a+(c?"｜零件到貨日 "+c:"")
+    : "外修："+a+(c?"｜預計到廠日 "+c:"");
 
-  repairState.store.followup={type:v,a,b:"",c,d,summary};
+  repairState.store.followup={type:v,a,b:"",c:"",expectedDate:c,d,summary};
   el("followPanel").classList.add("hidden");
   repairState.pendingStatus="";
   applyRepairStatus(v,summary+(d?"｜"+d:""));
