@@ -22,7 +22,9 @@
  }
  async function poll(action,params,limit=20){
    for(let i=0;i<limit;i++){
-     await wait(350+Math.min(i*160,800));
+     // First check immediately after POST; the POST already awaited the
+     // server request. Only back off when the backend says pending.
+     if(i>0)await wait(220+Math.min((i-1)*150,650));
      const r=await oldJsonp(action,params,20000);
      if(!r.pending)return r;
    }
