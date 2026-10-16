@@ -1,294 +1,295 @@
 {
-  "story_id": "20261013-otter-frog-cookie-rescue",
-  "title": "The Frog Almost Ate His Cookie?!",
-  "description": "An original 42-second visual comedy: a tiny otter drops a cookie into a pond, and a mischievous frog turns a rescue into a surprise. No dialogue.",
+  "story_id": "20261016-raccoon-raft",
+  "title": "He BROKE the Bridge?!",
+  "description": "A tiny raccoon breaks a footbridge plank, then uses it to rescue a stranded duckling. Original 42-second visual animal story.",
   "hashtags": [
     "#shorts",
     "#animalstory",
-    "#aishorts",
-    "#cuteanimals"
+    "#raccoon",
+    "#duckling"
   ],
   "category_id": "15",
   "made_for_kids": false,
   "synthetic_media": true,
-  "content_format": "relatable_comedy",
+  "content_format": "mini_rescue",
   "duration_seconds": 42,
-  "hook": "0.0s: star-shaped cookie flies from an open tin toward a pond; otter lunges; frog suddenly raises a lily pad by 2.4s. Will the cookie survive?",
-  "script": "A tiny otter accidentally drops a star-shaped cookie into a pond. A frog tries to catch it on a lily pad, but the cookie bounces away. The otter chases along a slippery dock, nearly catches it, and is blinded by a wind-flipped raincoat hood. The frog pole-vaults with a reed, snatches the cookie and opens its mouth; the otter fears it will eat the snack. Instead, the frog unfolds a hidden red leaf as a clean tray and uses a clam shell to split the rescued cookie equally. The two share a bite, laugh at a silly bubble hiccup, and a second cookie tumbles from the tin in the exact opening framing.",
+  "hook": "At frame one, raccoon snaps the last plank of a bridge; by 2.5s a duckling is stranded above rising water.",
+  "script": "A raccoon appears to destroy a crossing, alarming a mother duck. It catches the broken plank with a red ribbon, transforms it into a guided raft, saves a duckling on a flooded rock, and reunites the family. A wooden click at the end matches the opening.",
   "character_bible": {
-    "otter": "One very small caramel-brown river otter with cream cheeks, dark round eyes, short whiskers and a bright yellow raincoat with oversized hood; same fur markings, clothing and proportions in every scene.",
-    "frog": "One tiny emerald-green tree frog with pale throat, large amber eyes and a soft blue cap. A folded crimson leaf is tucked behind the cap until scene 6. Same size and cap throughout.",
-    "props": "Two distinct star-shaped golden oat cookies (first rescued and divided, second appears only in final shot), one small sky-blue metal lunch tin, one smooth clam shell, one folded crimson leaf, one flexible reed.",
-    "world": "Single geographically coherent shallow forest pond beside a weathered wooden dock; three broad lily pads, cattails on far bank, soft afternoon light and gentle ripples. All shots share the same positions and sun direction.",
-    "style": "Original high-end tactile 3D animation, expressive faces, fluid contact physics, bright family-friendly comedy, crisp subject silhouettes, shallow cinematic depth of field, no text/logos/watermarks."
+    "raccoon": "Small gray raccoon, striped tail, orange rain vest.",
+    "duckling": "Tiny yellow duckling, three head tufts, one right-cheek freckle.",
+    "mother_duck": "Cream-colored adult duck, blue-green neck ribbon.",
+    "props": "One weathered plank, one red ribbon, one leaning willow.",
+    "world": "Rainy garden brook flowing left-to-right; bridge and willow on near bank, mossy rock on far bank.",
+    "style": "Original cinematic 3D animation, expressive animal movement, consistent character designs."
   },
-  "retention_beats": [
-    "0–4s hook: A cookie suddenly flies off the dock 0.0 cookie airborne; 1.1 otter lunges; 2.4 frog lifts pad.",
-    "4–9s escalation: The frog's rescue goes wrong 4.0 cookie bounces; 5.8 otter skids; 7.4 frog leaps.",
-    "9–14s micro-payoff: The cookie almost returns 9.0 rebound; 10.7 paws reach; 12.2 hood flips; 13.2 red leaf clue.",
-    "14–19s escalation: One slippery step changes everything 14.0 near catch; 15.6 paw slips; 17.2 ripple pushes cookie; 18.4 reed bends.",
-    "19–24s misdirection: The frog seems to steal the prize 19.0 vault; 20.5 catch; 22.1 mouth opens; 23.2 otter gasps.",
-    "24–29s escalation: A tiny surprise inside the hat 24.0 leaf unfolds; 25.7 cookie placed; 27.2 otter reaches; 28.4 pad tilts.",
-    "29–34s reveal: The real plan is revealed 29.0 shell touches cookie; 30.4 halves separate; 32.0 frog offers half.",
-    "34–38s micro-payoff: One bite, one ridiculous hiccup 34.0 simultaneous bite; 35.3 bubble rises; 36.6 nose pop; 37.3 laugh.",
-    "38–42s loop: Here we go again 38.0 tin closes; 39.5 frog points; 40.8 second cookie slips; 41.5 opening-frame match."
-  ],
-  "rewatch_trigger": "The frog's folded crimson leaf is visible behind its blue cap at 12.2s, revealing on replay that the frog always planned to share the cookie safely.",
-  "loop_bridge": "At 41.5–42s the second cookie falls toward the lens at exactly the first shot's scale, direction and crisp tin-clink, with no fade.",
-  "editing_notes": "9:16 1080x1920 preferred, 42s. Meaningful change every 1–3s. Use action-to-action cuts, frog's landing sound leading into next shot, and cookie arc match cuts. No spoken dialogue; no captions needed. Use only original or verifiably licensed sound effects and score.",
-  "production_gate": "Must produce 9 distinct coherent animated scenes with character and prop continuity. Never remix a 2-second source to fake 42 seconds, use Pillow stickers, copyrighted assets, paid credits, auto-upgrades, or upload a low-quality substitute. If genuinely free multi-scene generation unavailable, preserve story.json and skip publishing.",
+  "rewatch_trigger": "At 5.6s the bridge support tilts, hinting why crossing was unsafe.",
+  "loop_bridge": "Final 0.5s paw/plank close-up and click match first 0.5s.",
+  "editing_notes": "42s, 9:16, no narration, little to no subtitles; movement or revelation every 1–3 seconds; action-match cuts and original/licensed audio only.",
+  "production_gate": "Require 9 distinct coherent animated scenes. No one-clip replay, Pillow stickers, paid generation, auto-upgrade or low-quality upload.",
   "scenes": [
     {
       "start_seconds": 0,
       "duration_seconds": 4,
-      "background": "dock edge above shallow lily-pad pond",
+      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
       "caption": "",
       "retention_purpose": "hook",
-      "retention_reason": "A cookie suddenly flies off the dock",
-      "camera": "Macro impact whip-pan from a flying cookie to otter's horrified eyes",
-      "action": "First frame: a round star-shaped cookie tumbles out of the little otter's open tin and drops over the pond. Otter lunges but misses; a frog below snaps a lily pad into position.",
-      "microbeats": "0.0 cookie airborne; 1.1 otter lunges; 2.4 frog lifts pad.",
+      "retention_reason": "A raccoon snaps a bridge plank; a duckling recoils on the far bank.",
+      "camera": "Macro snap to duckling reaction",
+      "action": "A raccoon snaps a bridge plank; a duckling recoils on the far bank.",
+      "microbeats": "0.0 crack; 1.1 reaction; 2.5 rising water",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.67,
-          "y": 0.62,
-          "scale": 0.66,
-          "emotion": "shocked"
+          "type": "raccoon",
+          "x": 0.35,
+          "y": 0.6,
+          "scale": 0.6,
+          "emotion": "expressive"
         },
         {
-          "type": "frog",
-          "x": 0.32,
-          "y": 0.69,
-          "scale": 0.36,
-          "emotion": "helpful"
+          "type": "duckling",
+          "x": 0.7,
+          "y": 0.6,
+          "scale": 0.3,
+          "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium original stylized 3D animated short. Single continuous woodland pond and wooden dock in soft afternoon light. The same tiny caramel otter, cream cheeks, bright yellow raincoat and large hood; the same tiny emerald frog with pale throat and blue cap. Exactly two star-shaped golden cookies, small blue lunch tin; folded crimson leaf concealed behind frog cap until scene 6. First frame: a round star-shaped cookie tumbles out of the little otter's open tin and drops over the pond. Otter lunges but misses; a frog below snaps a lily pad into position. Macro impact whip-pan from a flying cookie to otter's horrified eyes. Maintain precise eyelines, prop continuity and believable contact physics. Strong character animation, no subtitles, no logos, no watermark."
+      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. A raccoon snaps a bridge plank; a duckling recoils on the far bank. Macro snap to duckling reaction. Believable movement and prop continuity. No text or logos."
     },
     {
       "start_seconds": 4,
       "duration_seconds": 5,
-      "background": "same dock and adjacent lily pads",
+      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
       "caption": "",
       "retention_purpose": "escalation",
-      "retention_reason": "The frog's rescue goes wrong",
-      "camera": "Low waterline track following the cookie, quick reaction close-up",
-      "action": "The cookie bounces off the springy lily pad instead of landing safely and sails toward the far end of the pond. Otter slides along the dock; frog leaps after it.",
-      "microbeats": "4.0 cookie bounces; 5.8 otter skids; 7.4 frog leaps.",
+      "retention_reason": "The plank drifts downstream; mother duck rushes over.",
+      "camera": "Waterline tracking shot",
+      "action": "The plank drifts downstream; mother duck rushes over.",
+      "microbeats": "4.0 splash; 5.6 mother arrives; 7.2 raccoon leaps",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.67,
-          "y": 0.62,
-          "scale": 0.66,
-          "emotion": "reactive"
+          "type": "raccoon",
+          "x": 0.35,
+          "y": 0.6,
+          "scale": 0.6,
+          "emotion": "expressive"
         },
         {
-          "type": "frog",
-          "x": 0.32,
-          "y": 0.69,
-          "scale": 0.36,
-          "emotion": "helpful"
+          "type": "duckling",
+          "x": 0.7,
+          "y": 0.6,
+          "scale": 0.3,
+          "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium original stylized 3D animated short. Single continuous woodland pond and wooden dock in soft afternoon light. The same tiny caramel otter, cream cheeks, bright yellow raincoat and large hood; the same tiny emerald frog with pale throat and blue cap. Exactly two star-shaped golden cookies, small blue lunch tin; folded crimson leaf concealed behind frog cap until scene 6. The cookie bounces off the springy lily pad instead of landing safely and sails toward the far end of the pond. Otter slides along the dock; frog leaps after it. Low waterline track following the cookie, quick reaction close-up. Maintain precise eyelines, prop continuity and believable contact physics. Strong character animation, no subtitles, no logos, no watermark."
+      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. The plank drifts downstream; mother duck rushes over. Waterline tracking shot. Believable movement and prop continuity. No text or logos."
     },
     {
       "start_seconds": 9,
       "duration_seconds": 5,
-      "background": "same pond with dock in background",
+      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
       "caption": "",
       "retention_purpose": "micro-payoff",
-      "retention_reason": "The cookie almost returns",
-      "camera": "Match cut from cookie arc to outstretched otter paw",
-      "action": "The cookie skims a broad lily pad, rebounds directly toward the otter's open paws—then a sudden wind gust flips the otter's yellow hood over its eyes. A folded red leaf tucked behind the frog's hat is briefly visible.",
-      "microbeats": "9.0 rebound; 10.7 paws reach; 12.2 hood flips; 13.2 red leaf clue.",
+      "retention_reason": "Raccoon lassos the plank with a red ribbon, but it spins.",
+      "camera": "Top-down ribbon insert",
+      "action": "Raccoon lassos the plank with a red ribbon, but it spins.",
+      "microbeats": "9.0 ribbon; 10.7 catch; 12.4 spin",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.67,
-          "y": 0.62,
-          "scale": 0.66,
-          "emotion": "reactive"
+          "type": "raccoon",
+          "x": 0.35,
+          "y": 0.6,
+          "scale": 0.6,
+          "emotion": "expressive"
         },
         {
-          "type": "frog",
-          "x": 0.32,
-          "y": 0.69,
-          "scale": 0.36,
-          "emotion": "helpful"
+          "type": "duckling",
+          "x": 0.7,
+          "y": 0.6,
+          "scale": 0.3,
+          "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium original stylized 3D animated short. Single continuous woodland pond and wooden dock in soft afternoon light. The same tiny caramel otter, cream cheeks, bright yellow raincoat and large hood; the same tiny emerald frog with pale throat and blue cap. Exactly two star-shaped golden cookies, small blue lunch tin; folded crimson leaf concealed behind frog cap until scene 6. The cookie skims a broad lily pad, rebounds directly toward the otter's open paws—then a sudden wind gust flips the otter's yellow hood over its eyes. A folded red leaf tucked behind the frog's hat is briefly visible. Match cut from cookie arc to outstretched otter paw. Maintain precise eyelines, prop continuity and believable contact physics. Strong character animation, no subtitles, no logos, no watermark."
+      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Raccoon lassos the plank with a red ribbon, but it spins. Top-down ribbon insert. Believable movement and prop continuity. No text or logos."
     },
     {
       "start_seconds": 14,
       "duration_seconds": 5,
-      "background": "same dock plank and nearby lily pad",
+      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
       "caption": "",
       "retention_purpose": "escalation",
-      "retention_reason": "One slippery step changes everything",
-      "camera": "Handheld side-track across dock boards, low angle on splash",
-      "action": "Otter blindly grabs the cookie but catches the edge of a wet dock plank. A tiny splash sends a ripple toward the cookie, now perched on the rim of a lily pad. Frog grabs a flexible reed like a pole.",
-      "microbeats": "14.0 near catch; 15.6 paw slips; 17.2 ripple pushes cookie; 18.4 reed bends.",
+      "retention_reason": "Duckling's mossy rock floods as raccoon tries the plank as a raft.",
+      "camera": "Crane down to rock",
+      "action": "Duckling's mossy rock floods as raccoon tries the plank as a raft.",
+      "microbeats": "14.0 flood; 15.8 knot; 17.4 raft tips",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.67,
-          "y": 0.62,
-          "scale": 0.66,
-          "emotion": "reactive"
+          "type": "raccoon",
+          "x": 0.35,
+          "y": 0.6,
+          "scale": 0.6,
+          "emotion": "expressive"
         },
         {
-          "type": "frog",
-          "x": 0.32,
-          "y": 0.69,
-          "scale": 0.36,
-          "emotion": "helpful"
+          "type": "duckling",
+          "x": 0.7,
+          "y": 0.6,
+          "scale": 0.3,
+          "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium original stylized 3D animated short. Single continuous woodland pond and wooden dock in soft afternoon light. The same tiny caramel otter, cream cheeks, bright yellow raincoat and large hood; the same tiny emerald frog with pale throat and blue cap. Exactly two star-shaped golden cookies, small blue lunch tin; folded crimson leaf concealed behind frog cap until scene 6. Otter blindly grabs the cookie but catches the edge of a wet dock plank. A tiny splash sends a ripple toward the cookie, now perched on the rim of a lily pad. Frog grabs a flexible reed like a pole. Handheld side-track across dock boards, low angle on splash. Maintain precise eyelines, prop continuity and believable contact physics. Strong character animation, no subtitles, no logos, no watermark."
+      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Duckling's mossy rock floods as raccoon tries the plank as a raft. Crane down to rock. Believable movement and prop continuity. No text or logos."
     },
     {
       "start_seconds": 19,
       "duration_seconds": 5,
-      "background": "center lily pad directly beside dock",
+      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
       "caption": "",
       "retention_purpose": "misdirection",
-      "retention_reason": "The frog seems to steal the prize",
-      "camera": "Over-otter shoulder, snap zoom to frog's wide grin",
-      "action": "Frog pole-vaults, catches the cookie midair, and lands on a lily pad. It opens its mouth toward the cookie; otter freezes, convinced its snack is gone.",
-      "microbeats": "19.0 vault; 20.5 catch; 22.1 mouth opens; 23.2 otter gasps.",
+      "retention_reason": "The ribbon slips; mother duck fears the plank will hit her chick.",
+      "camera": "Over-mother shoulder",
+      "action": "The ribbon slips; mother duck fears the plank will hit her chick.",
+      "microbeats": "19.0 slip; 20.5 flap; 22.2 raccoon catches rope",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.67,
-          "y": 0.62,
-          "scale": 0.66,
-          "emotion": "reactive"
+          "type": "raccoon",
+          "x": 0.35,
+          "y": 0.6,
+          "scale": 0.6,
+          "emotion": "expressive"
         },
         {
-          "type": "frog",
-          "x": 0.32,
-          "y": 0.69,
-          "scale": 0.36,
-          "emotion": "mischievous"
+          "type": "duckling",
+          "x": 0.7,
+          "y": 0.6,
+          "scale": 0.3,
+          "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium original stylized 3D animated short. Single continuous woodland pond and wooden dock in soft afternoon light. The same tiny caramel otter, cream cheeks, bright yellow raincoat and large hood; the same tiny emerald frog with pale throat and blue cap. Exactly two star-shaped golden cookies, small blue lunch tin; folded crimson leaf concealed behind frog cap until scene 6. Frog pole-vaults, catches the cookie midair, and lands on a lily pad. It opens its mouth toward the cookie; otter freezes, convinced its snack is gone. Over-otter shoulder, snap zoom to frog's wide grin. Maintain precise eyelines, prop continuity and believable contact physics. Strong character animation, no subtitles, no logos, no watermark."
+      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. The ribbon slips; mother duck fears the plank will hit her chick. Over-mother shoulder. Believable movement and prop continuity. No text or logos."
     },
     {
       "start_seconds": 24,
       "duration_seconds": 5,
-      "background": "same center lily pad, close to dock",
+      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
       "caption": "",
       "retention_purpose": "escalation",
-      "retention_reason": "A tiny surprise inside the hat",
-      "camera": "Close-up of frog's hands, quick match cut to red leaf",
-      "action": "Instead of eating, frog pulls the folded red leaf from behind its hat and unfolds it into a little dry tray. Frog sets the cookie on it; otter reaches across the water and the lily pad tips.",
-      "microbeats": "24.0 leaf unfolds; 25.7 cookie placed; 27.2 otter reaches; 28.4 pad tilts.",
+      "retention_reason": "Raccoon tightens the ribbon and guides raft to duckling.",
+      "camera": "Side track with raft",
+      "action": "Raccoon tightens the ribbon and guides raft to duckling.",
+      "microbeats": "24.0 taut; 25.7 arrival; 27.3 duckling boards",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.67,
-          "y": 0.62,
-          "scale": 0.66,
-          "emotion": "reactive"
+          "type": "raccoon",
+          "x": 0.35,
+          "y": 0.6,
+          "scale": 0.6,
+          "emotion": "expressive"
         },
         {
-          "type": "frog",
-          "x": 0.32,
-          "y": 0.69,
-          "scale": 0.36,
-          "emotion": "helpful"
+          "type": "duckling",
+          "x": 0.7,
+          "y": 0.6,
+          "scale": 0.3,
+          "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium original stylized 3D animated short. Single continuous woodland pond and wooden dock in soft afternoon light. The same tiny caramel otter, cream cheeks, bright yellow raincoat and large hood; the same tiny emerald frog with pale throat and blue cap. Exactly two star-shaped golden cookies, small blue lunch tin; folded crimson leaf concealed behind frog cap until scene 6. Instead of eating, frog pulls the folded red leaf from behind its hat and unfolds it into a little dry tray. Frog sets the cookie on it; otter reaches across the water and the lily pad tips. Close-up of frog's hands, quick match cut to red leaf. Maintain precise eyelines, prop continuity and believable contact physics. Strong character animation, no subtitles, no logos, no watermark."
+      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Raccoon tightens the ribbon and guides raft to duckling. Side track with raft. Believable movement and prop continuity. No text or logos."
     },
     {
       "start_seconds": 29,
       "duration_seconds": 5,
-      "background": "same lily pad with dock edge in shot",
+      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
       "caption": "",
       "retention_purpose": "reveal",
-      "retention_reason": "The real plan is revealed",
-      "camera": "Top-down symmetry, shell cutting match-cut to two halves",
-      "action": "Frog uses a smooth clam shell to split the rescued cookie cleanly into two equal pieces on the red-leaf tray, then offers one half to the otter. Otter's shocked expression melts into a smile.",
-      "microbeats": "29.0 shell touches cookie; 30.4 halves separate; 32.0 frog offers half.",
+      "retention_reason": "Raft returns safely; broken bridge supports were unsafe to cross.",
+      "camera": "High-angle geography reveal",
+      "action": "Raft returns safely; broken bridge supports were unsafe to cross.",
+      "microbeats": "29.0 return; 30.6 unsafe supports; 32.1 landing",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.67,
-          "y": 0.62,
-          "scale": 0.66,
-          "emotion": "reactive"
+          "type": "raccoon",
+          "x": 0.35,
+          "y": 0.6,
+          "scale": 0.6,
+          "emotion": "expressive"
         },
         {
-          "type": "frog",
-          "x": 0.32,
-          "y": 0.69,
-          "scale": 0.36,
-          "emotion": "helpful"
+          "type": "duckling",
+          "x": 0.7,
+          "y": 0.6,
+          "scale": 0.3,
+          "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium original stylized 3D animated short. Single continuous woodland pond and wooden dock in soft afternoon light. The same tiny caramel otter, cream cheeks, bright yellow raincoat and large hood; the same tiny emerald frog with pale throat and blue cap. Exactly two star-shaped golden cookies, small blue lunch tin; folded crimson leaf concealed behind frog cap until scene 6. Frog uses a smooth clam shell to split the rescued cookie cleanly into two equal pieces on the red-leaf tray, then offers one half to the otter. Otter's shocked expression melts into a smile. Top-down symmetry, shell cutting match-cut to two halves. Maintain precise eyelines, prop continuity and believable contact physics. Strong character animation, no subtitles, no logos, no watermark."
+      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Raft returns safely; broken bridge supports were unsafe to cross. High-angle geography reveal. Believable movement and prop continuity. No text or logos."
     },
     {
       "start_seconds": 34,
       "duration_seconds": 4,
-      "background": "same dock and lily pad, soft sunlight",
+      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
       "caption": "",
       "retention_purpose": "micro-payoff",
-      "retention_reason": "One bite, one ridiculous hiccup",
-      "camera": "Warm two-shot then punch-in on comic reaction",
-      "action": "Otter and frog take a synchronized bite. Frog hiccups one harmless water bubble; it pops on otter's nose, and both burst into laughter. The cookie halves remain visibly distinct.",
-      "microbeats": "34.0 simultaneous bite; 35.3 bubble rises; 36.6 nose pop; 37.3 laugh.",
+      "retention_reason": "Mother and duckling reunite; raccoon gets a wing hug.",
+      "camera": "Warm close-up",
+      "action": "Mother and duckling reunite; raccoon gets a wing hug.",
+      "microbeats": "34.0 reunion; 35.3 hug; 36.8 smile",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.67,
-          "y": 0.62,
-          "scale": 0.66,
-          "emotion": "delighted"
+          "type": "raccoon",
+          "x": 0.35,
+          "y": 0.6,
+          "scale": 0.6,
+          "emotion": "expressive"
         },
         {
-          "type": "frog",
-          "x": 0.32,
-          "y": 0.69,
-          "scale": 0.36,
-          "emotion": "helpful"
+          "type": "duckling",
+          "x": 0.7,
+          "y": 0.6,
+          "scale": 0.3,
+          "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium original stylized 3D animated short. Single continuous woodland pond and wooden dock in soft afternoon light. The same tiny caramel otter, cream cheeks, bright yellow raincoat and large hood; the same tiny emerald frog with pale throat and blue cap. Exactly two star-shaped golden cookies, small blue lunch tin; folded crimson leaf concealed behind frog cap until scene 6. Otter and frog take a synchronized bite. Frog hiccups one harmless water bubble; it pops on otter's nose, and both burst into laughter. The cookie halves remain visibly distinct. Warm two-shot then punch-in on comic reaction. Maintain precise eyelines, prop continuity and believable contact physics. Strong character animation, no subtitles, no logos, no watermark."
+      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Mother and duckling reunite; raccoon gets a wing hug. Warm close-up. Believable movement and prop continuity. No text or logos."
     },
     {
       "start_seconds": 38,
       "duration_seconds": 4,
-      "background": "original dock edge and same lunch tin",
+      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
       "caption": "",
       "retention_purpose": "loop",
-      "retention_reason": "Here we go again",
-      "camera": "Macro on tin and falling cookie, matching first shot",
-      "action": "Otter closes the lunch tin, but a second star-shaped cookie is balanced on its rim. Frog spots it first and points. Otter turns just as the cookie falls toward the lens, precisely matching the opening frame and wooden clink.",
-      "microbeats": "38.0 tin closes; 39.5 frog points; 40.8 second cookie slips; 41.5 opening-frame match.",
+      "retention_reason": "Raccoon sets plank down; wooden click matches opening shot.",
+      "camera": "Match-cut to first frame",
+      "action": "Raccoon sets plank down; wooden click matches opening shot.",
+      "microbeats": "38.0 plank down; 39.4 wind; 41.5 click",
       "actors": [
         {
-          "type": "otter",
-          "x": 0.67,
-          "y": 0.62,
-          "scale": 0.66,
-          "emotion": "reactive"
+          "type": "raccoon",
+          "x": 0.35,
+          "y": 0.6,
+          "scale": 0.6,
+          "emotion": "expressive"
         },
         {
-          "type": "frog",
-          "x": 0.32,
-          "y": 0.69,
-          "scale": 0.36,
-          "emotion": "helpful"
+          "type": "duckling",
+          "x": 0.7,
+          "y": 0.6,
+          "scale": 0.3,
+          "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium original stylized 3D animated short. Single continuous woodland pond and wooden dock in soft afternoon light. The same tiny caramel otter, cream cheeks, bright yellow raincoat and large hood; the same tiny emerald frog with pale throat and blue cap. Exactly two star-shaped golden cookies, small blue lunch tin; folded crimson leaf concealed behind frog cap until scene 6. Otter closes the lunch tin, but a second star-shaped cookie is balanced on its rim. Frog spots it first and points. Otter turns just as the cookie falls toward the lens, precisely matching the opening frame and wooden clink. Macro on tin and falling cookie, matching first shot. Maintain precise eyelines, prop continuity and believable contact physics. Strong character animation, no subtitles, no logos, no watermark."
+      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Raccoon sets plank down; wooden click matches opening shot. Match-cut to first frame. Believable movement and prop continuity. No text or logos."
     }
+  ],
+  "retention_beats": [
+    "0s hook: 0.0 crack; 1.1 reaction; 2.5 rising water",
+    "4s escalation: 4.0 splash; 5.6 mother arrives; 7.2 raccoon leaps",
+    "9s micro-payoff: 9.0 ribbon; 10.7 catch; 12.4 spin",
+    "14s escalation: 14.0 flood; 15.8 knot; 17.4 raft tips",
+    "19s misdirection: 19.0 slip; 20.5 flap; 22.2 raccoon catches rope",
+    "24s escalation: 24.0 taut; 25.7 arrival; 27.3 duckling boards",
+    "29s reveal: 29.0 return; 30.6 unsafe supports; 32.1 landing",
+    "34s micro-payoff: 34.0 reunion; 35.3 hug; 36.8 smile",
+    "38s loop: 38.0 plank down; 39.4 wind; 41.5 click"
   ]
 }
