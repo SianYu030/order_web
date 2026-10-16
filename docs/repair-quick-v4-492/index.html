@@ -1869,7 +1869,7 @@ el("completeRepairBtn").onclick=async()=>{
       el("saveRepairMsg").textContent="⏳ 結案完成，正在上傳維修照片 0/"+repairPhotos.length+"…";
       await uploadPhotoFiles_(repairPhotos,repairState.order.no,"維修照片",(i,total)=>{
         el("saveRepairMsg").textContent="⏳ 上傳維修照片 "+i+"/"+total+"…";
-      });
+      },repairState.order.photoEpoch||"");
       clearRepairPhotoSelection_();
       el("saveRepairMsg").textContent="✅ 工單已結案｜📷 維修照片已排入 NAS 自動歸檔";
     }else{
@@ -1918,7 +1918,7 @@ el("saveRepairBtn").onclick=async()=>{
       el("saveRepairMsg").textContent="⏳ 上傳維修照片 0/"+repairPhotos.length+"…";
       await uploadPhotoFiles_(repairPhotos,repairState.order.no,"維修照片",(i,total)=>{
         el("saveRepairMsg").textContent="⏳ 上傳維修照片 "+i+"/"+total+"…";
-      });
+      },repairState.order.photoEpoch||"");
       clearRepairPhotoSelection_();
       el("saveRepairMsg").textContent="✅ 維修資料已儲存｜📷 維修照片已排入 NAS 自動歸檔";
     }else{
@@ -2137,7 +2137,7 @@ async function preparePhotoForUpload_(file){
     return {blob:file,fileName:file.name||"photo.jpg",contentType:file.type||"image/jpeg"};
   }
 }
-async function uploadPhotoFile_(file,orderNo,photoType){
+async function uploadPhotoFile_(file,orderNo,photoType,photoEpoch=""){
   const prepared=await preparePhotoForUpload_(file);
   const dataBase64=await blobToBase64_(prepared.blob);
   const r=await fetch(PHOTO_API_BASE+"/upload",{
@@ -2146,7 +2146,7 @@ async function uploadPhotoFile_(file,orderNo,photoType){
     body:JSON.stringify({
       orderNo,
       photoType,
-      fileName:prepared.fileName,
+      fileName:photoEpoch?("gen_"+photoEpoch+"__"+prepared.fileName):prepared.fileName,
       contentType:prepared.contentType,
       dataBase64
     })
@@ -2156,11 +2156,11 @@ async function uploadPhotoFile_(file,orderNo,photoType){
   if(!r.ok || !data.ok)throw new Error(data.error||("照片暫存失敗 HTTP "+r.status));
   return data;
 }
-async function uploadPhotoFiles_(files,orderNo,photoType,onProgress){
+async function uploadPhotoFiles_(files,orderNo,photoType,onProgress,photoEpoch=""){
   const arr=[...(files||[])],uploaded=[];
   for(let i=0;i<arr.length;i++){
     if(onProgress)onProgress(i+1,arr.length);
-    uploaded.push(await uploadPhotoFile_(arr[i],orderNo,photoType));
+    uploaded.push(await uploadPhotoFile_(arr[i],orderNo,photoType,photoEpoch));
   }
   return uploaded;
 }
@@ -2238,7 +2238,7 @@ el("submitBtn").onclick=async()=>{
       try{
         uploadedReportPhotos=await uploadPhotoFiles_(reportPhotos,data.orderNo,"報修照片",(i,total)=>{
           btn.textContent="上傳報修照片 "+i+"/"+total+"…";
-        });
+        },data.photoEpoch||"");
         photoMsg="｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔";
       }catch(photoErr){
         photoMsg="｜⚠️ 工單已建立，但報修照片暫存失敗："+photoErr.message;
