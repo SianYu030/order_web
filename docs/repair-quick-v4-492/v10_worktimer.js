@@ -55,10 +55,22 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     const id=order.no;
     const ctrls=["repairStartBtn","repairEndBtn","completeRepairBtn"];
     ctrls.forEach(x=>byId(x).disabled=true);
-    byId("repairStatusHint").textContent="⏳ 正在確認本次維修操作，請勿重複點擊…";
+    // The button itself reacts immediately, without pretending the GS write
+    // succeeded. A verified reply remains required before status changes.
+    const actionButtonId=event==="start"?"repairStartBtn":
+      event==="pause"?"repairEndBtn":null;
+    if(actionButtonId){
+      byId(actionButtonId).textContent=event==="start"?
+        "⏳ 正在開始維修…":"⏳ 正在停止計時…";
+    }
+    byId("repairStatusHint").textContent="⏳ 已收到點擊，正在同步維修時間…";
     try{
-      const before=latestState && latestState.orderNo===id &&
-        Date.now()-latestStateAt<8000 ? latestState : await refresh(id);
+      // Reuse the last confirmed state even after eight seconds. The GS
+      // expectedLastOperationId guard rejects concurrent edits, so this
+      // avoids a redundant network read on most clicks without bypassing
+      // server concurrency validation.
+      const before=latestState && latestState.orderNo===id ?
+        latestState : await refresh(id);
       if(before.status==="已完成")throw Error("工單已結案");
       const sessionToken=v10AuthToken_();
       const pendingKey="repairV10Pending:"+id+":"+event;
@@ -78,7 +90,8 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
             technician:currentRepairUser,sessionToken,detail,nextDate,...extra})});
       }catch(e){/* 可能已送達，必須回讀後才能決定成敗 */}
       for(let i=0;i<15;i++){
-        await wait(400+Math.min(i*200,1000));
+        // POST has already returned; check the result immediately first.
+        if(i>0)await wait(240+Math.min((i-1)*150,650));
         let state;
         try{state=await read(id);}catch(e){continue;}
         if(state.lastOperationId===pending.operationId){
