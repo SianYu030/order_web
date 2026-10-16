@@ -25,6 +25,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     s.v10Ready=true;s.status=r.status;
     repairState.status=r.status;o.status=r.status;
     o.start=r.startDisplay||"";o.end=r.completedDisplay||"";o.work=r.workDisplay||"";
+    o.photoEpoch=r.photoEpoch||o.photoEpoch||"";
     s.activeStart=r.activeStartIso?new Date(r.activeStartIso):null;
     s.firstStart=r.firstStartIso?new Date(r.firstStartIso):
       (r.startDisplay?parseOrderTime_(o.time,r.startDisplay):null);
@@ -186,7 +187,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
         try{
           await uploadPhotoFiles_(photos,repairState.order.no,"維修照片",(i,total)=>{
             byId("saveRepairMsg").textContent="⏳ 結案成功，維修照片上傳 "+i+"/"+total+"…";
-          });
+          },repairState.order.photoEpoch||"");
           clearRepairPhotoSelection_();
           byId("saveRepairMsg").textContent="✅ 結案與工時已驗證｜📷 維修照片已排入 NAS 歸檔";
         }catch(photoError){
