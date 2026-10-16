@@ -183,6 +183,15 @@
        else throw pollError;
      }
      if(!confirmed)throw Error("尚未取得正式刪除確認");
+     // Wake Photo Agent immediately. This event carries no work-order data;
+     // V7.9 still validates the authoritative deletion audit before touching NAS.
+     try{
+       await fetch(PHOTO_API_BASE+"/agent-event",{
+         method:"POST",
+         headers:{"Content-Type":"application/json"},
+         body:JSON.stringify({type:"delete_changed"})
+       });
+     }catch(_){}
      LIVE_ORDERS=LIVE_ORDERS.filter(x=>x.no!==o.no);
      delete REPAIR_STORE[o.no];saveLiveOrdersCache_();renderRepairOrders();
      deleteMessage("✅ 工單已從正式資料刪除："+o.no,false);
