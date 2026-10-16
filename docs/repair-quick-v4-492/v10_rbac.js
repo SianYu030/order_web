@@ -137,37 +137,62 @@
    throw Error("未能回讀證實資料更新，請先查核正式工單");
  };
  // Unified maintenance-manager permission: signed-in accounts can delete open and completed orders.
+ function deleteMessage(message,warning){
+   let notice=document.getElementById("v10DeleteNotice");
+   if(!notice){
+     notice=document.createElement("div");notice.id="v10DeleteNotice";
+     notice.setAttribute("role","status");
+     notice.style.cssText="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 30px);padding:12px 18px;border-radius:12px;color:white;z-index:10000;box-shadow:0 5px 22px #0003;font-weight:700";
+     document.body.appendChild(notice);
+   }
+   notice.style.background=warning?"#805224":"#173848";
+   notice.textContent=message;
+   setTimeout(()=>{if(notice.isConnected&&notice.textContent===message)notice.remove()},warning?9000:5000);
+ }
+ // This is a fallback only: it does not mean the delete POST succeeded.
+ // An authoritative V10 backend list can confirm that the old MR is absent
+ // when the operation-result poll itself times out or loses its cached result.
+ async function deletedFromServerList(orderNo){
+   try{
+     const r=await oldJsonp("listTestOrders",{},12000);
+     return !!(r && r.ok===true && r.spreadsheetId===EXPECTED_SPREADSHEET_ID &&
+       Array.isArray(r.orders) && !r.orders.some(x=>x.no===orderNo));
+   }catch(_){return false;}
+ }
  deleteLiveOrder_=async function(o,btn){
    let u;
    try{u=authorized();}catch(e){return alert(e.message)}
    if(!o||!o.no)return alert("找不到工單，無法刪除");
-   // User chose one-click deletion: server still verifies the authenticated
-   // manager, order number, idempotency and keeps an audit snapshot.
    if(deletingOrders.has(o.no))return;
    const operationId=uuid();
    deletingOrders.add(o.no);
-   if(btn){btn.disabled=true;btn.textContent="刪除中…"}
+   if(btn){btn.disabled=true;btn.textContent="⏳ 刪除同步中…"}
+   let confirmed=false;
    try{
      try{await post({action:"deleteRepairOrder",sessionToken:u.sessionToken,
        orderNo:o.no,confirmOrderNo:o.no,operationId,
        reason:"管理員於網頁直接刪除（未另填原因）"});}catch(e){}
-     const r=await poll("deleteResult",{operationId});
-     if(!r.ok||!r.deleted||r.operationId!==operationId||r.orderNo!==o.no)
-       throw Error(r.error||"後端未完成刪除");
+     try{
+       const r=await poll("deleteResult",{operationId});
+       if(!r.ok||!r.deleted||r.operationId!==operationId||r.orderNo!==o.no)
+         throw Error(r.error||"後端尚未確認刪除");
+       confirmed=true;
+     }catch(pollError){
+       // Do not report 'delete failed' merely because the result cache timed out.
+       if(await deletedFromServerList(o.no)) confirmed=true;
+       else throw pollError;
+     }
+     if(!confirmed)throw Error("尚未取得正式刪除確認");
      LIVE_ORDERS=LIVE_ORDERS.filter(x=>x.no!==o.no);
      delete REPAIR_STORE[o.no];saveLiveOrdersCache_();renderRepairOrders();
-     let notice=document.getElementById("v10DeleteNotice");
-     if(!notice){
-       notice=document.createElement("div");notice.id="v10DeleteNotice";
-       notice.setAttribute("role","status");
-       notice.style.cssText="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);max-width:calc(100vw - 30px);padding:12px 18px;border-radius:12px;background:#173848;color:white;z-index:10000;box-shadow:0 5px 22px #0003;font-weight:700";
-       document.body.appendChild(notice);
-     }
-     notice.textContent="✅ 已刪除工單："+o.no+"（已保留刪除紀錄）";
-     setTimeout(()=>{if(notice.isConnected)notice.remove()},5000);
-     setTimeout(()=>refreshLiveOrdersInBackground_(true),700);
-   }catch(e){alert("尚未確認刪除成功："+e.message)}
-   finally{
+     deleteMessage("✅ 工單已從正式資料刪除："+o.no,false);
+     setTimeout(()=>refreshLiveOrdersInBackground_(true),1000);
+   }catch(e){
+     // Under a slow Apps Script connection the write may already have finished.
+     // Leave the record intact until we can confirm success; never resubmit on
+     // behalf of the user and never claim that a timeout means no deletion.
+     deleteMessage("⏳ 刪除結果尚未確認；請按上方「更新」查看。勿重複點刪除。",true);
+   }finally{
      deletingOrders.delete(o.no);
      if(btn){btn.disabled=false;btn.textContent="🗑 刪除工單"}
    }
