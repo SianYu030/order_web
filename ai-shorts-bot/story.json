@@ -1,295 +1,267 @@
 {
-  "story_id": "20261016-raccoon-raft",
-  "title": "He BROKE the Bridge?!",
-  "description": "A tiny raccoon breaks a footbridge plank, then uses it to rescue a stranded duckling. Original 42-second visual animal story.",
+  "story_id": "20261019-coconut-giant-mystery",
+  "title": "WHO CRUSHED His Tiny Castle?!",
+  "description": "A giant footprint destroys a meerkat's tiny sandcastle. The 'monster' is hiding a sweet secret. Original 42-second visual animal mystery.",
   "hashtags": [
     "#shorts",
     "#animalstory",
-    "#raccoon",
-    "#duckling"
+    "#meerkat",
+    "#mystery"
   ],
   "category_id": "15",
   "made_for_kids": false,
   "synthetic_media": true,
-  "content_format": "mini_rescue",
+  "content_format": "suspense_reveal",
   "duration_seconds": 42,
-  "hook": "At frame one, raccoon snaps the last plank of a bridge; by 2.5s a duckling is stranded above rising water.",
-  "script": "A raccoon appears to destroy a crossing, alarming a mother duck. It catches the broken plank with a red ribbon, transforms it into a guided raft, saves a duckling on a flooded rock, and reunites the family. A wooden click at the end matches the opening.",
+  "hook": "Frame 0: huge coconut-shell shoe crushes a tiny sandcastle; by 2.4s an impossible giant shadow raises the question of who did it.",
+  "script": "A giant round foot smashes a meerkat's sandcastle. He follows notched footprints and hollow thuds toward a leaning date palm. A huge two-legged shadow appears monstrous, but red twine and bamboo hint at a disguise. When the figure slips while reaching for a date, the meerkat catches its stilt and discovers a tiny mouse walking in coconut-shell shoes. The mouse was trying to fetch a date for his elderly grandmother. The meerkat helps deliver it, forgives the accident and shares a hug. In the final half-second the coconut shoe lands in empty sand with the opening's identical thump, making a seamless loop.",
   "character_bible": {
-    "raccoon": "Small gray raccoon, striped tail, orange rain vest.",
-    "duckling": "Tiny yellow duckling, three head tufts, one right-cheek freckle.",
-    "mother_duck": "Cream-colored adult duck, blue-green neck ribbon.",
-    "props": "One weathered plank, one red ribbon, one leaning willow.",
-    "world": "Rainy garden brook flowing left-to-right; bridge and willow on near bank, mossy rock on far bank.",
-    "style": "Original cinematic 3D animation, expressive animal movement, consistent character designs."
+    "meerkat": "Small sandy-gold meerkat with dark eye patches, bright amber eyes and a cobalt-blue neckerchief. Same size and proportions in every shot.",
+    "mouse": "Tiny warm-brown desert mouse, oversized round ears, lilac mini-backpack, one white eyebrow spot. Always smaller than meerkat.",
+    "elder_mouse": "Elderly silver-gray desert mouse with a sage-green knitted shawl, rounded glasses, slow gentle movements.",
+    "machine": "Exactly two hollow dark-brown coconut-shell shoes with a distinct crescent-shaped notch on the right sole, tied to two slim bamboo stilts with red twine; a low reed-and-clay disguise hood. Never a real giant creature.",
+    "world": "One sunlit amber desert oasis: meerkat's miniature sandcastle by a low mouse burrow, one leaning date palm, a single dune. Consistent geography, warm late-afternoon light, sand blowing right-to-left.",
+    "style": "Original premium stylized 3D animal animation, expressive eyes, tangible fur, readable silhouettes, smooth physical animation, no text, watermark, existing franchises, or copied characters."
   },
-  "rewatch_trigger": "At 5.6s the bridge support tilts, hinting why crossing was unsafe.",
-  "loop_bridge": "Final 0.5s paw/plank close-up and click match first 0.5s.",
-  "editing_notes": "42s, 9:16, no narration, little to no subtitles; movement or revelation every 1–3 seconds; action-match cuts and original/licensed audio only.",
-  "production_gate": "Require 9 distinct coherent animated scenes. No one-clip replay, Pillow stickers, paid generation, auto-upgrade or low-quality upload.",
+  "rewatch_trigger": "The crescent notch in the first giant footprint at 5.6s is the exact notch on the right coconut-shell shoe revealed at 30.4s; the elderly mouse is subtly visible in the burrow at 7s.",
+  "loop_bridge": "At 41.5–42.0s an identical low macro shot of the notched coconut sole hitting sand, with the same hollow thump and sand burst as frame 0; this time the castle is safely out of frame.",
+  "editing_notes": "42s 9:16; no narration and no required subtitles. Every 1–3 seconds add meaningful action, visual or information change. Action-on-action cuts, J-cut hollow thump before shadow, match cut coconut sole in final 0.5s. Original or verifiably royalty-free foley and music only.",
+  "production_gate": "Require at least 8 distinct coherent animated scenes, consistent characters and props, full 30–50s vertical MP4. No repeated 2-second clips, Pillow stickers, unlicensed assets, paid generation, automatic upgrade or low-quality uploads. If insufficient free generation capacity, preserve story only and skip render/upload.",
+  "retention_beats": [
+    "0–4s hook: 0.0 impact; 1.1 sand plume; 2.4 gigantic shadow; Why did a giant footprint appear?",
+    "4–9s escalation: 4.0 investigation; 5.6 notched print; 7.4 unseen thud; The notched footprint is the rewatch clue.",
+    "9–14s escalation: 9.0 silhouette; 10.6 sprint; 12.6 shadow sweeps; Scale and threat appear to grow.",
+    "14–19s micro-payoff: 14.0 twig; 15.7 red twine clue; 17.5 hollow boom; First physical clue suggests something constructed.",
+    "19–24s misdirection: 19.0 ominous outline; 20.8 false monster jaw; 22.4 double thump; A harmless disguise is mistaken for a beast.",
+    "24–29s escalation: 24.0 reach; 25.7 stilt slips; 27.3 meerkat leaps; The motive and immediate danger become visible.",
+    "29–34s reveal: 29.0 pole caught; 30.4 tiny mouse revealed; 32.2 date caught; Giant is revealed to be a tiny mouse; mystery solved.",
+    "34–38s micro-payoff: 34.0 date gift; 35.3 grandma smiles; 36.6 group hug; Clear emotional payoff in final 20%.",
+    "38–42s loop: 38.0 shoe lifts; 39.5 castle moved; 41.5 identical impact match; Final 0.5s visual and sonic bridge to opening."
+  ],
   "scenes": [
     {
       "start_seconds": 0,
       "duration_seconds": 4,
-      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
+      "background": "Same amber desert oasis, small sandcastle, low mouse burrow, leaning date palm and one dune",
       "caption": "",
       "retention_purpose": "hook",
-      "retention_reason": "A raccoon snaps a bridge plank; a duckling recoils on the far bank.",
-      "camera": "Macro snap to duckling reaction",
-      "action": "A raccoon snaps a bridge plank; a duckling recoils on the far bank.",
-      "microbeats": "0.0 crack; 1.1 reaction; 2.5 rising water",
+      "retention_reason": "Why did a giant footprint appear?",
+      "camera": "Extreme low macro on sandcastle; smash into fast meerkat reaction",
+      "action": "A huge round coconut-shell foot SLAMS into a miniature sandcastle at frame zero. Meerkat recoils; a towering shadow slides across the sand.",
+      "microbeats": "0.0 impact; 1.1 sand plume; 2.4 gigantic shadow",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.35,
-          "y": 0.6,
-          "scale": 0.6,
-          "emotion": "expressive"
-        },
-        {
-          "type": "duckling",
-          "x": 0.7,
-          "y": 0.6,
-          "scale": 0.3,
+          "type": "meerkat",
+          "x": 0.31,
+          "y": 0.68,
+          "scale": 0.56,
           "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. A raccoon snaps a bridge plank; a duckling recoils on the far bank. Macro snap to duckling reaction. Believable movement and prop continuity. No text or logos."
+      "scene_prompt": "Vertical 9:16 original premium 3D animation, same sandy-gold meerkat with cobalt neckerchief, tiny brown mouse with lilac backpack and white eyebrow spot, elderly silver-gray mouse with sage shawl when visible. Same sunlit amber desert oasis, one leaning date palm and mouse burrow. Prop continuity: two hollow coconut-shell shoes on bamboo stilts, red twine, crescent notch on right sole. A huge round coconut-shell foot SLAMS into a miniature sandcastle at frame zero. Meerkat recoils; a towering shadow slides across the sand. Camera: Extreme low macro on sandcastle; smash into fast meerkat reaction. Meaningful action changes every 1–3 seconds. Physical motion, strong facial expressions, continuity of light and positions. No text, logos or watermark."
     },
     {
       "start_seconds": 4,
       "duration_seconds": 5,
-      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
+      "background": "Same amber desert oasis, small sandcastle, low mouse burrow, leaning date palm and one dune",
       "caption": "",
       "retention_purpose": "escalation",
-      "retention_reason": "The plank drifts downstream; mother duck rushes over.",
-      "camera": "Waterline tracking shot",
-      "action": "The plank drifts downstream; mother duck rushes over.",
-      "microbeats": "4.0 splash; 5.6 mother arrives; 7.2 raccoon leaps",
+      "retention_reason": "The notched footprint is the rewatch clue.",
+      "camera": "Ground-level tracking over prints, rack focus to crescent notch",
+      "action": "Meerkat traces giant circular footprints leading away from the wrecked castle. One print has a tiny crescent notch; another thud lands beyond the dune.",
+      "microbeats": "4.0 investigation; 5.6 notched print; 7.4 unseen thud",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.35,
-          "y": 0.6,
-          "scale": 0.6,
-          "emotion": "expressive"
-        },
-        {
-          "type": "duckling",
-          "x": 0.7,
-          "y": 0.6,
-          "scale": 0.3,
+          "type": "meerkat",
+          "x": 0.31,
+          "y": 0.68,
+          "scale": 0.56,
           "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. The plank drifts downstream; mother duck rushes over. Waterline tracking shot. Believable movement and prop continuity. No text or logos."
+      "scene_prompt": "Vertical 9:16 original premium 3D animation, same sandy-gold meerkat with cobalt neckerchief, tiny brown mouse with lilac backpack and white eyebrow spot, elderly silver-gray mouse with sage shawl when visible. Same sunlit amber desert oasis, one leaning date palm and mouse burrow. Prop continuity: two hollow coconut-shell shoes on bamboo stilts, red twine, crescent notch on right sole. Meerkat traces giant circular footprints leading away from the wrecked castle. One print has a tiny crescent notch; another thud lands beyond the dune. Camera: Ground-level tracking over prints, rack focus to crescent notch. Meaningful action changes every 1–3 seconds. Physical motion, strong facial expressions, continuity of light and positions. No text, logos or watermark."
     },
     {
       "start_seconds": 9,
       "duration_seconds": 5,
-      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
+      "background": "Same amber desert oasis, small sandcastle, low mouse burrow, leaning date palm and one dune",
       "caption": "",
-      "retention_purpose": "micro-payoff",
-      "retention_reason": "Raccoon lassos the plank with a red ribbon, but it spins.",
-      "camera": "Top-down ribbon insert",
-      "action": "Raccoon lassos the plank with a red ribbon, but it spins.",
-      "microbeats": "9.0 ribbon; 10.7 catch; 12.4 spin",
+      "retention_purpose": "escalation",
+      "retention_reason": "Scale and threat appear to grow.",
+      "camera": "Whip pan to dune, handheld chase with parallax",
+      "action": "A tall, two-legged silhouette lurches behind the dune. Meerkat dashes after it, then ducks as its long shadow crosses the path.",
+      "microbeats": "9.0 silhouette; 10.6 sprint; 12.6 shadow sweeps",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.35,
-          "y": 0.6,
-          "scale": 0.6,
-          "emotion": "expressive"
-        },
-        {
-          "type": "duckling",
-          "x": 0.7,
-          "y": 0.6,
-          "scale": 0.3,
+          "type": "meerkat",
+          "x": 0.31,
+          "y": 0.68,
+          "scale": 0.56,
           "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Raccoon lassos the plank with a red ribbon, but it spins. Top-down ribbon insert. Believable movement and prop continuity. No text or logos."
+      "scene_prompt": "Vertical 9:16 original premium 3D animation, same sandy-gold meerkat with cobalt neckerchief, tiny brown mouse with lilac backpack and white eyebrow spot, elderly silver-gray mouse with sage shawl when visible. Same sunlit amber desert oasis, one leaning date palm and mouse burrow. Prop continuity: two hollow coconut-shell shoes on bamboo stilts, red twine, crescent notch on right sole. A tall, two-legged silhouette lurches behind the dune. Meerkat dashes after it, then ducks as its long shadow crosses the path. Camera: Whip pan to dune, handheld chase with parallax. Meaningful action changes every 1–3 seconds. Physical motion, strong facial expressions, continuity of light and positions. No text, logos or watermark."
     },
     {
       "start_seconds": 14,
       "duration_seconds": 5,
-      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
+      "background": "Same amber desert oasis, small sandcastle, low mouse burrow, leaning date palm and one dune",
       "caption": "",
-      "retention_purpose": "escalation",
-      "retention_reason": "Duckling's mossy rock floods as raccoon tries the plank as a raft.",
-      "camera": "Crane down to rock",
-      "action": "Duckling's mossy rock floods as raccoon tries the plank as a raft.",
-      "microbeats": "14.0 flood; 15.8 knot; 17.4 raft tips",
+      "retention_purpose": "micro-payoff",
+      "retention_reason": "First physical clue suggests something constructed.",
+      "camera": "Close insert of bamboo fiber; pull focus to swaying palms",
+      "action": "Meerkat probes a print with a twig and finds a red-twine bamboo splinter. The next hollow BOOM makes it drop the clue.",
+      "microbeats": "14.0 twig; 15.7 red twine clue; 17.5 hollow boom",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.35,
-          "y": 0.6,
-          "scale": 0.6,
-          "emotion": "expressive"
-        },
-        {
-          "type": "duckling",
-          "x": 0.7,
-          "y": 0.6,
-          "scale": 0.3,
+          "type": "meerkat",
+          "x": 0.31,
+          "y": 0.68,
+          "scale": 0.56,
           "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Duckling's mossy rock floods as raccoon tries the plank as a raft. Crane down to rock. Believable movement and prop continuity. No text or logos."
+      "scene_prompt": "Vertical 9:16 original premium 3D animation, same sandy-gold meerkat with cobalt neckerchief, tiny brown mouse with lilac backpack and white eyebrow spot, elderly silver-gray mouse with sage shawl when visible. Same sunlit amber desert oasis, one leaning date palm and mouse burrow. Prop continuity: two hollow coconut-shell shoes on bamboo stilts, red twine, crescent notch on right sole. Meerkat probes a print with a twig and finds a red-twine bamboo splinter. The next hollow BOOM makes it drop the clue. Camera: Close insert of bamboo fiber; pull focus to swaying palms. Meaningful action changes every 1–3 seconds. Physical motion, strong facial expressions, continuity of light and positions. No text, logos or watermark."
     },
     {
       "start_seconds": 19,
       "duration_seconds": 5,
-      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
+      "background": "Same amber desert oasis, small sandcastle, low mouse burrow, leaning date palm and one dune",
       "caption": "",
       "retention_purpose": "misdirection",
-      "retention_reason": "The ribbon slips; mother duck fears the plank will hit her chick.",
-      "camera": "Over-mother shoulder",
-      "action": "The ribbon slips; mother duck fears the plank will hit her chick.",
-      "microbeats": "19.0 slip; 20.5 flap; 22.2 raccoon catches rope",
+      "retention_reason": "A harmless disguise is mistaken for a beast.",
+      "camera": "Over-shoulder through palm fronds; dramatic upward tilt",
+      "action": "The looming figure rises behind the date palm. Its reed hood looks like a monster's jaw in silhouette; two coconut feet thump in unison.",
+      "microbeats": "19.0 ominous outline; 20.8 false monster jaw; 22.4 double thump",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.35,
-          "y": 0.6,
-          "scale": 0.6,
-          "emotion": "expressive"
-        },
-        {
-          "type": "duckling",
-          "x": 0.7,
-          "y": 0.6,
-          "scale": 0.3,
+          "type": "meerkat",
+          "x": 0.31,
+          "y": 0.68,
+          "scale": 0.56,
           "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. The ribbon slips; mother duck fears the plank will hit her chick. Over-mother shoulder. Believable movement and prop continuity. No text or logos."
+      "scene_prompt": "Vertical 9:16 original premium 3D animation, same sandy-gold meerkat with cobalt neckerchief, tiny brown mouse with lilac backpack and white eyebrow spot, elderly silver-gray mouse with sage shawl when visible. Same sunlit amber desert oasis, one leaning date palm and mouse burrow. Prop continuity: two hollow coconut-shell shoes on bamboo stilts, red twine, crescent notch on right sole. The looming figure rises behind the date palm. Its reed hood looks like a monster's jaw in silhouette; two coconut feet thump in unison. Camera: Over-shoulder through palm fronds; dramatic upward tilt. Meaningful action changes every 1–3 seconds. Physical motion, strong facial expressions, continuity of light and positions. No text, logos or watermark."
     },
     {
       "start_seconds": 24,
       "duration_seconds": 5,
-      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
+      "background": "Same amber desert oasis, small sandcastle, low mouse burrow, leaning date palm and one dune",
       "caption": "",
       "retention_purpose": "escalation",
-      "retention_reason": "Raccoon tightens the ribbon and guides raft to duckling.",
-      "camera": "Side track with raft",
-      "action": "Raccoon tightens the ribbon and guides raft to duckling.",
-      "microbeats": "24.0 taut; 25.7 arrival; 27.3 duckling boards",
+      "retention_reason": "The motive and immediate danger become visible.",
+      "camera": "Fast upward tracking shot following bamboo stilt and reaching paw",
+      "action": "The 'monster' stretches for a single ripe date high in the palm. A stilt slips; the entire contraption tips toward the burrow, and meerkat races beneath it.",
+      "microbeats": "24.0 reach; 25.7 stilt slips; 27.3 meerkat leaps",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.35,
-          "y": 0.6,
-          "scale": 0.6,
+          "type": "meerkat",
+          "x": 0.31,
+          "y": 0.68,
+          "scale": 0.56,
           "emotion": "expressive"
         },
         {
-          "type": "duckling",
-          "x": 0.7,
-          "y": 0.6,
-          "scale": 0.3,
+          "type": "mouse",
+          "x": 0.66,
+          "y": 0.67,
+          "scale": 0.28,
           "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Raccoon tightens the ribbon and guides raft to duckling. Side track with raft. Believable movement and prop continuity. No text or logos."
+      "scene_prompt": "Vertical 9:16 original premium 3D animation, same sandy-gold meerkat with cobalt neckerchief, tiny brown mouse with lilac backpack and white eyebrow spot, elderly silver-gray mouse with sage shawl when visible. Same sunlit amber desert oasis, one leaning date palm and mouse burrow. Prop continuity: two hollow coconut-shell shoes on bamboo stilts, red twine, crescent notch on right sole. The 'monster' stretches for a single ripe date high in the palm. A stilt slips; the entire contraption tips toward the burrow, and meerkat races beneath it. Camera: Fast upward tracking shot following bamboo stilt and reaching paw. Meaningful action changes every 1–3 seconds. Physical motion, strong facial expressions, continuity of light and positions. No text, logos or watermark."
     },
     {
       "start_seconds": 29,
       "duration_seconds": 5,
-      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
+      "background": "Same amber desert oasis, small sandcastle, low mouse burrow, leaning date palm and one dune",
       "caption": "",
       "retention_purpose": "reveal",
-      "retention_reason": "Raft returns safely; broken bridge supports were unsafe to cross.",
-      "camera": "High-angle geography reveal",
-      "action": "Raft returns safely; broken bridge supports were unsafe to cross.",
-      "microbeats": "29.0 return; 30.6 unsafe supports; 32.1 landing",
+      "retention_reason": "Giant is revealed to be a tiny mouse; mystery solved.",
+      "camera": "Action match cut: falling hood reveals tiny pilot in close-up",
+      "action": "Meerkat catches the slipping bamboo pole. The reed hood falls away: a tiny brown mouse has been walking in coconut-shell shoes on bamboo stilts. A date drops into meerkat's paws.",
+      "microbeats": "29.0 pole caught; 30.4 tiny mouse revealed; 32.2 date caught",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.35,
-          "y": 0.6,
-          "scale": 0.6,
+          "type": "meerkat",
+          "x": 0.31,
+          "y": 0.68,
+          "scale": 0.56,
           "emotion": "expressive"
         },
         {
-          "type": "duckling",
-          "x": 0.7,
-          "y": 0.6,
-          "scale": 0.3,
+          "type": "mouse",
+          "x": 0.66,
+          "y": 0.67,
+          "scale": 0.28,
           "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Raft returns safely; broken bridge supports were unsafe to cross. High-angle geography reveal. Believable movement and prop continuity. No text or logos."
+      "scene_prompt": "Vertical 9:16 original premium 3D animation, same sandy-gold meerkat with cobalt neckerchief, tiny brown mouse with lilac backpack and white eyebrow spot, elderly silver-gray mouse with sage shawl when visible. Same sunlit amber desert oasis, one leaning date palm and mouse burrow. Prop continuity: two hollow coconut-shell shoes on bamboo stilts, red twine, crescent notch on right sole. Meerkat catches the slipping bamboo pole. The reed hood falls away: a tiny brown mouse has been walking in coconut-shell shoes on bamboo stilts. A date drops into meerkat's paws. Camera: Action match cut: falling hood reveals tiny pilot in close-up. Meaningful action changes every 1–3 seconds. Physical motion, strong facial expressions, continuity of light and positions. No text, logos or watermark."
     },
     {
       "start_seconds": 34,
       "duration_seconds": 4,
-      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
+      "background": "Same amber desert oasis, small sandcastle, low mouse burrow, leaning date palm and one dune",
       "caption": "",
       "retention_purpose": "micro-payoff",
-      "retention_reason": "Mother and duckling reunite; raccoon gets a wing hug.",
-      "camera": "Warm close-up",
-      "action": "Mother and duckling reunite; raccoon gets a wing hug.",
-      "microbeats": "34.0 reunion; 35.3 hug; 36.8 smile",
+      "retention_reason": "Clear emotional payoff in final 20%.",
+      "camera": "Warm eye-level push-in, cut to mouse grandmother's relieved face",
+      "action": "The little mouse hands the date to an elderly silver-gray mouse waiting at the burrow. She shares it with the mouse and meerkat; they hug. Meerkat forgives the accidental sandcastle smash.",
+      "microbeats": "34.0 date gift; 35.3 grandma smiles; 36.6 group hug",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.35,
-          "y": 0.6,
-          "scale": 0.6,
+          "type": "meerkat",
+          "x": 0.31,
+          "y": 0.68,
+          "scale": 0.56,
           "emotion": "expressive"
         },
         {
-          "type": "duckling",
-          "x": 0.7,
-          "y": 0.6,
-          "scale": 0.3,
+          "type": "mouse",
+          "x": 0.66,
+          "y": 0.67,
+          "scale": 0.28,
+          "emotion": "expressive"
+        },
+        {
+          "type": "elder_mouse",
+          "x": 0.79,
+          "y": 0.7,
+          "scale": 0.35,
           "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Mother and duckling reunite; raccoon gets a wing hug. Warm close-up. Believable movement and prop continuity. No text or logos."
+      "scene_prompt": "Vertical 9:16 original premium 3D animation, same sandy-gold meerkat with cobalt neckerchief, tiny brown mouse with lilac backpack and white eyebrow spot, elderly silver-gray mouse with sage shawl when visible. Same sunlit amber desert oasis, one leaning date palm and mouse burrow. Prop continuity: two hollow coconut-shell shoes on bamboo stilts, red twine, crescent notch on right sole. The little mouse hands the date to an elderly silver-gray mouse waiting at the burrow. She shares it with the mouse and meerkat; they hug. Meerkat forgives the accidental sandcastle smash. Camera: Warm eye-level push-in, cut to mouse grandmother's relieved face. Meaningful action changes every 1–3 seconds. Physical motion, strong facial expressions, continuity of light and positions. No text, logos or watermark."
     },
     {
       "start_seconds": 38,
       "duration_seconds": 4,
-      "background": "Same rainy garden brook, broken footbridge, willow and mossy rock",
+      "background": "Same amber desert oasis, small sandcastle, low mouse burrow, leaning date palm and one dune",
       "caption": "",
       "retention_purpose": "loop",
-      "retention_reason": "Raccoon sets plank down; wooden click matches opening shot.",
-      "camera": "Match-cut to first frame",
-      "action": "Raccoon sets plank down; wooden click matches opening shot.",
-      "microbeats": "38.0 plank down; 39.4 wind; 41.5 click",
+      "retention_reason": "Final 0.5s visual and sonic bridge to opening.",
+      "camera": "Match original macro composition; quick glance to safe empty patch",
+      "action": "Mouse awkwardly tries one coconut shoe again. Meerkat slides a fresh sandcastle aside just in time. The shell lands harmlessly in empty sand; at 41.5s the same close-up thump and sand burst match frame zero.",
+      "microbeats": "38.0 shoe lifts; 39.5 castle moved; 41.5 identical impact match",
       "actors": [
         {
-          "type": "raccoon",
-          "x": 0.35,
-          "y": 0.6,
-          "scale": 0.6,
+          "type": "meerkat",
+          "x": 0.31,
+          "y": 0.68,
+          "scale": 0.56,
           "emotion": "expressive"
         },
         {
-          "type": "duckling",
-          "x": 0.7,
-          "y": 0.6,
-          "scale": 0.3,
+          "type": "mouse",
+          "x": 0.66,
+          "y": 0.67,
+          "scale": 0.28,
           "emotion": "expressive"
         }
       ],
-      "scene_prompt": "Vertical 9:16 premium 3D animal animation. Consistent gray raccoon in orange rain vest, yellow duckling with right-cheek freckle, cream mother duck with blue-green ribbon. Same rainy brook and plank, left-to-right flow. Raccoon sets plank down; wooden click matches opening shot. Match-cut to first frame. Believable movement and prop continuity. No text or logos."
+      "scene_prompt": "Vertical 9:16 original premium 3D animation, same sandy-gold meerkat with cobalt neckerchief, tiny brown mouse with lilac backpack and white eyebrow spot, elderly silver-gray mouse with sage shawl when visible. Same sunlit amber desert oasis, one leaning date palm and mouse burrow. Prop continuity: two hollow coconut-shell shoes on bamboo stilts, red twine, crescent notch on right sole. Mouse awkwardly tries one coconut shoe again. Meerkat slides a fresh sandcastle aside just in time. The shell lands harmlessly in empty sand; at 41.5s the same close-up thump and sand burst match frame zero. Camera: Match original macro composition; quick glance to safe empty patch. Meaningful action changes every 1–3 seconds. Physical motion, strong facial expressions, continuity of light and positions. No text, logos or watermark."
     }
-  ],
-  "retention_beats": [
-    "0s hook: 0.0 crack; 1.1 reaction; 2.5 rising water",
-    "4s escalation: 4.0 splash; 5.6 mother arrives; 7.2 raccoon leaps",
-    "9s micro-payoff: 9.0 ribbon; 10.7 catch; 12.4 spin",
-    "14s escalation: 14.0 flood; 15.8 knot; 17.4 raft tips",
-    "19s misdirection: 19.0 slip; 20.5 flap; 22.2 raccoon catches rope",
-    "24s escalation: 24.0 taut; 25.7 arrival; 27.3 duckling boards",
-    "29s reveal: 29.0 return; 30.6 unsafe supports; 32.1 landing",
-    "34s micro-payoff: 34.0 reunion; 35.3 hug; 36.8 smile",
-    "38s loop: 38.0 plank down; 39.4 wind; 41.5 click"
   ]
 }
