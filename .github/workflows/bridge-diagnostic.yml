@@ -1,0 +1,65 @@
+name: Apps Script Bridge Diagnostic
+
+on:
+  push:
+    branches:
+      - design/reference-showroom-hd
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe Apps Script bridge directly
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://script.google.com/macros/s/AKfycbwCiISmnwpTcsZjgR2Yu2FapMRbxvDt7-pPAFtkqkl9rpfDyK8KgbvV3Y0gf6p4O-d5mQ/exec?api=systems'
+          curl -sS -L --max-time 30 -o /tmp/bridge-response.txt \
+            -w 'HTTP_STATUS=%{http_code}\nCONTENT_TYPE=%{content_type}\nEFFECTIVE_URL=%{url_effective}\n' \
+            "$URL"
+          node <<'NODE'
+          const fs = require('fs');
+          const text = fs.readFileSync('/tmp/bridge-response.txt', 'utf8');
+          console.log(`BODY_BYTES=${Buffer.byteLength(text)}`);
+          try {
+            const body = JSON.parse(text);
+            console.log(`JSON_OK=true`);
+            console.log(`SUCCESS_FIELD=${body.success === true}`);
+            console.log(`DATA_IS_ARRAY=${Array.isArray(body.data)}`);
+            console.log(`DATA_COUNT=${Array.isArray(body.data) ? body.data.length : -1}`);
+            if (body.success !== true || !Array.isArray(body.data)) process.exit(2);
+          } catch (error) {
+            console.log('JSON_OK=false');
+            console.log(`LOOKS_LIKE_HTML=${/^\s*</.test(text)}`);
+            process.exit(3);
+          }
+          NODE
+
+      - name: Probe deployed Netlify API
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://deploy-preview-3--order-web-sianyu.netlify.app/api/systems'
+          echo 'Waiting for the preview alias to settle...'
+          sleep 45
+          curl -sS -L --max-time 30 -o /tmp/netlify-api-response.txt \
+            -w 'NETLIFY_HTTP_STATUS=%{http_code}\nNETLIFY_CONTENT_TYPE=%{content_type}\nNETLIFY_EFFECTIVE_URL=%{url_effective}\n' \
+            "$URL"
+          node <<'NODE'
+          const fs = require('fs');
+          const text = fs.readFileSync('/tmp/netlify-api-response.txt', 'utf8');
+          console.log(`NETLIFY_BODY_BYTES=${Buffer.byteLength(text)}`);
+          try {
+            const body = JSON.parse(text);
+            console.log('NETLIFY_JSON_OK=true');
+            console.log(`NETLIFY_SUCCESS_FIELD=${body.success === true}`);
+            console.log(`NETLIFY_DATA_IS_ARRAY=${Array.isArray(body.data)}`);
+            console.log(`NETLIFY_DATA_COUNT=${Array.isArray(body.data) ? body.data.length : -1}`);
+            console.log(`NETLIFY_MESSAGE_PRESENT=${typeof body.message === 'string'}`);
+            if (body.success !== true || !Array.isArray(body.data)) process.exit(4);
+          } catch (error) {
+            console.log('NETLIFY_JSON_OK=false');
+            console.log(`NETLIFY_LOOKS_LIKE_HTML=${/^\s*</.test(text)}`);
+            process.exit(5);
+          }
+          NODE

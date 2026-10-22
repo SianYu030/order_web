@@ -1,0 +1,144 @@
+.hdShowroomRoot {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  background: #c8aa8a;
+}
+
+.hdShowroomCanvas {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(100vw, calc(100vh * 1.25));
+  aspect-ratio: 5 / 4;
+  background: #c8aa8a;
+  overflow: hidden;
+  box-shadow: 0 0 32px rgba(57, 31, 14, 0.16);
+}
+
+.hdShowroomImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.hdHotspot {
+  position: absolute;
+  z-index: 5;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hdHotspot[aria-disabled="true"] {
+  pointer-events: none;
+  cursor: default;
+}
+
+.hdHotspot:hover {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28), 0 3px 12px rgba(78, 42, 16, 0.18);
+}
+
+.hdHotspot:focus-visible {
+  box-shadow: 0 0 0 4px rgba(255, 246, 222, 0.95), 0 0 0 7px rgba(122, 70, 33, 0.88);
+}
+
+.hdTabHotspot {
+  border-radius: 12px;
+}
+
+.hdCardHotspot {
+  border-radius: 24px;
+}
+
+.hdShowroomRoot .hdTabHotspot.isActive {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.hdShowroomRoot.record .hdTabHotspot,
+.hdShowroomRoot .hdTabHotspot[data-mode="record"] {
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.hdStatusOverlay {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  top: 51%;
+  transform: translate(-50%, -50%);
+  min-width: min(360px, 62%);
+  max-width: 70%;
+  padding: 18px 24px;
+  border: 1px solid rgba(112, 66, 31, 0.22);
+  border-radius: 18px;
+  background: rgba(255, 252, 247, 0.92);
+  box-shadow: 0 12px 36px rgba(65, 39, 20, 0.2);
+  color: #49301f;
+  font-weight: 700;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+
+.hdStatusError {
+  color: #a32020;
+  border-color: rgba(189, 49, 49, 0.3);
+  background: rgba(255, 245, 243, 0.95);
+}
+
+.hdRecordCover {
+  position: absolute;
+  z-index: 4;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #a66936 0%, #875022 100%);
+  color: #fffaf3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 5px 14px rgba(88, 45, 18, 0.22);
+  pointer-events: none;
+}
+
+.hdRecordTabCover {
+  border-radius: 12px;
+  font-size: clamp(11px, 1vw, 17px);
+}
+
+.hdFillTabMutedCover {
+  position: absolute;
+  z-index: 3;
+  border-radius: 12px;
+  background: rgba(244, 241, 236, 0.93);
+  pointer-events: none;
+}
+
+.hdRecordButtonCover {
+  font-size: clamp(8px, 0.76vw, 13px);
+}
+
+@media (max-width: 700px) {
+  .hdShowroomRoot {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hdHotspot,
+  .hdRecordCover {
+    transition: none !important;
+  }
+}
