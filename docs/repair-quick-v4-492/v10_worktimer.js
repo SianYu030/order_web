@@ -10,8 +10,8 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
   // Last verified GS state is safe for a brief period. GS still checks the
   // expected operation ID, so an intervening update cannot be overwritten.
   let latestState=null, latestStateAt=0;
-  async function read(orderNo){
-    const r=await jsonp_("timerState",{orderNo},20000);
+  async function read(orderNo,timeoutMs=20000){
+    const r=await jsonp_("timerState",{orderNo},timeoutMs);
     if(!r||!r.ok||r.orderNo!==orderNo||
        !String(r.timerVersion||"").startsWith("V10-timer-")){
       throw new Error("GS V10 尚未部署／版本不符，已禁止修改工單");
@@ -42,6 +42,9 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     byId("repairEnd").textContent=r.activeStartIso?"--:--":
       (r.completedDisplay||(s.end?formatHM(s.end):"--:--"));
     saveLiveOrdersCache_();buildRepairStatus();updateRepairControls_();
+    // updateRepairControls_ only updates the pause button disabled state,
+    // not its text. An earlier "stopping..." label must never get stuck.
+    if(!busy)byId("repairEndBtn").textContent="⏸ 結束本次計時";
     if(r.status==="已完成")byId("completeRepairBtn").disabled=true;
     renderWork();renderTrackingOverview();
   }
@@ -52,7 +55,8 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     const order=repairState.order;
     if(!order||!order._live||!currentRepairUser)throw Error("請先登入並選擇正式工單");
     busy=true;
-    let confirmed=false;
+    const clickedAt=Date.now();
+    let confirmed=false,refreshFailed=false;
     const id=order.no;
     const ctrls=["repairStartBtn","repairEndBtn","completeRepairBtn"];
     ctrls.forEach(x=>byId(x).disabled=true);
@@ -83,21 +87,27 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
           expectedLastOperationId:before.lastOperationId||""};
         sessionStorage.setItem(pendingKey,JSON.stringify(pending));
       }
-      try{
-        await fetch(SYNC_API_URL,{method:"POST",mode:"no-cors",
-          headers:{"Content-Type":"text/plain;charset=utf-8"},
-          body:JSON.stringify({action:"timerAction",orderNo:id,timerEvent:event,
-            operationId:pending.operationId,expectedLastOperationId:pending.expectedLastOperationId,
-            technician:currentRepairUser,sessionToken,detail,nextDate,...extra})});
-      }catch(e){/* 可能已送達，必須回讀後才能決定成敗 */}
-      for(let i=0;i<15;i++){
-        // POST has already returned; check the result immediately first.
-        if(i>0)await wait(240+Math.min((i-1)*150,650));
+      // Dispatch the write first, then start checking in parallel instead of
+      // blocking UI confirmation behind the opaque no-cors POST response.
+      // The write is NEVER deemed successful until the GS operation ID matches.
+      const writeRequest=fetch(SYNC_API_URL,{method:"POST",mode:"no-cors",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body:JSON.stringify({action:"timerAction",orderNo:id,timerEvent:event,
+          operationId:pending.operationId,expectedLastOperationId:pending.expectedLastOperationId,
+          technician:currentRepairUser,sessionToken,detail,nextDate,...extra})}).catch(()=>null);
+      await Promise.race([writeRequest,wait(900)]);
+      // Bound a failed synchronization to ~30s, not 15 * 20s per read.
+      // Late/uncertain responses keep their pending operation ID for safe retry.
+      const deadline=Date.now()+30000;
+      for(let i=0;i<12&&Date.now()<deadline;i++){
+        if(i>0)await wait(Math.min(600+i*180,1300));
         let state;
-        try{state=await read(id);}catch(e){continue;}
+        try{state=await read(id,Math.max(1500,Math.min(9000,deadline-Date.now())));}
+        catch(e){continue;}
         if(state.lastOperationId===pending.operationId){
           present(state);sessionStorage.removeItem(pendingKey);
           confirmed=true;
+          console.info("[V10 timer]",event,"回讀已確認",Date.now()-clickedAt,"ms");
           return state;
         }
         if(state.lastOperationId&&state.lastOperationId!==pending.expectedLastOperationId){
@@ -110,11 +120,22 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
       // Success is already confirmed by operation ID and fully rendered.
       // Re-reading the same order here caused a needless extra GS round-trip.
       if(!confirmed){
-        try{if(repairState.order&&repairState.order.no===id)await refresh(id);}
-        catch(e){
+        try{
+          if(repairState.order&&repairState.order.no===id){
+            const state=await read(id,8000);
+            present(state);
+          }
+        }catch(e){
+          refreshFailed=true;
           ctrls.forEach(x=>byId(x).disabled=true);
           byId("repairStatusHint").textContent="⚠️ V10 連線未確認："+e.message;
         }
+      }
+      // Restore button labels after both verified success and recoverable
+      // failure. Keep controls disabled when backend status cannot be read.
+      if(!refreshFailed&&repairState.order&&repairState.order.no===id){
+        updateRepairControls_();
+        byId("repairEndBtn").textContent="⏸ 結束本次計時";
       }
     }
   }
