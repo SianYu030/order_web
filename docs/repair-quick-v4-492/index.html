@@ -884,18 +884,21 @@ html,body{background:#f5f7f8}
         <div class="section-title">維修時間</div>
         <div class="time-grid">
           <div class="time-box">
-            <small>開始維修時間</small>
+            <small>首次開始維修時間</small>
             <div class="time-value" id="repairStart">--:--</div>
             <button class="time-action" id="repairStartBtn">▶ 開始維修</button>
           </div>
           <div class="time-box">
-            <small>本次停止時間</small>
+            <small>最近一次停止時間</small>
             <div class="time-value" id="repairEnd">--:--</div>
             <button class="time-action done" id="repairEndBtn">⏸ 結束本次計時</button>
           </div>
         </div>
 
-        <div class="work-box">自動維修工時：<b id="repairWork">0時00分</b><br><span style="font-size:12px">08:00–12:00、13:00–17:00，午休不計。</span></div>
+        <div class="work-box">累計實際維修工時：<b id="repairWork">0時00分</b>
+          <br><span style="font-size:12px">08:00–12:00、13:00–17:00；午休與停止計時期間不計。</span>
+          <div id="v10TimerNotice" class="hidden" role="status" style="font-size:12px;line-height:1.55;margin-top:5px"></div>
+        </div>
 
         <div class="section-title" id="repairContentTitle">維修內容</div>
         <textarea id="repairContent" placeholder="例如：更換皮帶、調整張力、清潔感測器…"></textarea>
@@ -2290,6 +2293,6 @@ function reset(){
 }
 update();
 </script>
-<script src="./v10_version_gate.js?v=20261027a" defer></script>
+<script src="./v10_version_gate.js?v=20261027b" defer></script>
 </body>
 </html>

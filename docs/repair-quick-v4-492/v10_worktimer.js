@@ -167,8 +167,22 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
   renderWork=function(){
     const s=repairState.store;if(!s)return;
     const running=s.activeStart?v10ScheduledWorkMs_(s.activeStart,new Date()):0;
-    const minutes=Math.floor((Math.max(0,s.workMs||0)+running)/60000);
-    byId("repairWork").textContent=Math.floor(minutes/60)+"時"+String(minutes%60).padStart(2,"0")+"分";
+    // Show accurate elapsed seconds while preserving the backend's
+    // accumulated milliseconds and its whole-minute report column.
+    const seconds=Math.floor((Math.max(0,s.workMs||0)+running)/1000);
+    const hours=Math.floor(seconds/3600);
+    const minutes=Math.floor(seconds%3600/60);
+    const secs=String(seconds%60).padStart(2,"0");
+    byId("repairWork").textContent=hours+"時"+String(minutes).padStart(2,"0")+"分"+secs+"秒";
+    const note=byId("v10TimerNotice");
+    if(note){
+      note.textContent=s.activeStart
+        ?"⏱ 計時中：本段從 "+formatHM(s.activeStart)+" 開始，暫停期間不計入工時。"
+        :s.firstStart
+          ?"⏸ 已暫停：上一次停止到下次恢復之間的時間不計入工時。"
+          :"尚未開始計時，按「開始維修」後才會累積工時。";
+      note.classList.remove("hidden");
+    }
   };
   applyRepairStatus=async function(status,detail){
     const event={"待料":"waitParts","外修":"outsource","待觀察":"observe"}[status];
