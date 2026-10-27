@@ -12,7 +12,7 @@
   if(!repairBtn) return;
   const oldTitle=repairBtn.getAttribute("title")||"";
   const oldButtonLabel=repairBtn.textContent;
-  const scriptVersion="20261027b";
+  const scriptVersion="20261027c";
   repairBtn.disabled=true;
   repairBtn.textContent="維修處理（載入中…）";
   repairBtn.setAttribute("title","確認維修系統後端版本中");
