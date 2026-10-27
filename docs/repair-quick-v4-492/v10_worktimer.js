@@ -19,6 +19,13 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     latestState=r;latestStateAt=Date.now();
     return r;
   }
+  function syncStopButton_(){
+    const btn=byId("repairEndBtn"),s=repairState.store;
+    if(!btn||!s)return;
+    btn.textContent=s.status==="已完成"?"✓ 已結案":
+      s.activeStart?"⏸ 結束本次計時":
+      s.firstStart?"⏸ 已暫停":"⏸ 尚未開始";
+  }
   function present(r){
     const o=repairState.order,s=repairState.store;
     if(!o||!s||o.no!==r.orderNo)return;
@@ -44,7 +51,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     saveLiveOrdersCache_();buildRepairStatus();updateRepairControls_();
     // updateRepairControls_ only updates the pause button disabled state,
     // not its text. An earlier "stopping..." label must never get stuck.
-    if(!busy)byId("repairEndBtn").textContent="⏸ 結束本次計時";
+    if(!busy)syncStopButton_();
     if(r.status==="已完成")byId("completeRepairBtn").disabled=true;
     renderWork();renderTrackingOverview();
   }
@@ -135,7 +142,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
       // failure. Keep controls disabled when backend status cannot be read.
       if(!refreshFailed&&repairState.order&&repairState.order.no===id){
         updateRepairControls_();
-        byId("repairEndBtn").textContent="⏸ 結束本次計時";
+        syncStopButton_();
       }
     }
   }
