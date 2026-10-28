@@ -26,6 +26,46 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
       s.activeStart?"⏸ 結束本次計時":
       s.firstStart?"⏸ 已暫停":"⏸ 尚未開始";
   }
+  function syncCompleteButton_(){
+    const s=repairState.store,btn=byId("completeRepairBtn");
+    if(!btn||!s)return;
+    // A close operation is available only after a verified V10 read,
+    // never while another timer write is in flight.
+    btn.disabled=busy||!s.v10Ready||s.status==="已完成";
+  }
+  function validateRepairFields_(){
+    const type=byId("repairTypeSelect").value;
+    const classification=byId("repairClassSelect").value;
+    if(!type){
+      alert("請先選擇維修類型，再儲存或結案。");
+      byId("repairTypeSelect").focus();
+      return false;
+    }
+    if(type==="故障維修"&&!classification){
+      alert("維修類型是「故障維修」，請先選擇故障分類。");
+      byId("repairClassSelect").focus();
+      return false;
+    }
+    return true;
+  }
+  function appendLocalOperation_(event,r){
+    const s=repairState.store;
+    if(!s||!Array.isArray(s.timeline))return;
+    const label={
+      start:"開始／恢復維修",pause:"結束本次計時",
+      waitParts:"待料",outsource:"外修",observe:"待觀察",close:"維修完成・結案"
+    }[event];
+    if(!label||s.timeline.some(x=>x.operationId===r.lastOperationId))return;
+    const raw=(event==="start"?r.activeStartIso:r.lastStopIso)||"";
+    const at=raw?new Date(raw):new Date();
+    s.timeline.push({
+      operationId:r.lastOperationId,
+      at:Number.isNaN(at.getTime())?formatStamp(new Date()):formatStamp(at),
+      title:"已確認："+label,
+      detail:"本次網頁操作已由後端操作 ID 驗證"
+    });
+    renderTimeline();
+  }
   function present(r){
     const o=repairState.order,s=repairState.store;
     if(!o||!s||o.no!==r.orderNo)return;
@@ -51,8 +91,10 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     saveLiveOrdersCache_();buildRepairStatus();updateRepairControls_();
     // updateRepairControls_ only updates the pause button disabled state,
     // not its text. An earlier "stopping..." label must never get stuck.
-    if(!busy)syncStopButton_();
-    if(r.status==="已完成")byId("completeRepairBtn").disabled=true;
+    if(!busy){
+      syncStopButton_();
+      syncCompleteButton_();
+    }
     renderWork();renderTrackingOverview();
   }
   async function refresh(id){const r=await read(id);present(r);return r;}
@@ -113,6 +155,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
         catch(e){continue;}
         if(state.lastOperationId===pending.operationId){
           present(state);sessionStorage.removeItem(pendingKey);
+          appendLocalOperation_(event,state);
           confirmed=true;
           console.info("[V10 timer]",event,"回讀已確認",Date.now()-clickedAt,"ms");
           return state;
@@ -143,6 +186,9 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
       if(!refreshFailed&&repairState.order&&repairState.order.no===id){
         updateRepairControls_();
         syncStopButton_();
+        // Unconfirmed timer operations must not enable final closure.
+        syncCompleteButton_();
+        if(!confirmed)byId("completeRepairBtn").disabled=true;
       }
     }
   }
@@ -213,8 +259,9 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
   byId("repairStartBtn").onclick=async()=>{try{await op("start");}catch(e){alert(e.message);}};
   byId("repairEndBtn").onclick=async()=>{try{await op("pause");}catch(e){alert(e.message);}};
   byId("completeRepairBtn").onclick=async()=>{
-    const s=repairState.store;if(!s||s.status==="已完成")return;
-    if(!confirm("確定設備已修復並結案？只計算實際維修時間。"))return;
+    const s=repairState.store;if(!s||s.status==="已完成"||busy||!s.v10Ready)return;
+    if(!validateRepairFields_())return;
+    if(!confirm("確定設備已修復並結案？將提交目前的維修類型、分類、內容與備註，並停止計時。"))return;
     try{
       await op("close","","",{repairType:byId("repairTypeSelect").value,
         classification:byId("repairClassSelect").value,
@@ -238,6 +285,26 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
         }
       }
     }catch(e){alert("結案未完成："+e.message);}
+  };
+  // Guard the existing V4 save handler without replacing its verified
+  // V10 RBAC synchronization or NAS photo-upload pipeline.
+  const originalSaveRepair_=byId("saveRepairBtn").onclick;
+  let savingRepair_=false;
+  byId("saveRepairBtn").onclick=async function(){
+    if(savingRepair_||busy)return;
+    if(!repairState.store||!repairState.store.v10Ready){
+      alert("請先確認工單同步完成後再儲存。");
+      return;
+    }
+    if(!validateRepairFields_())return;
+    const btn=byId("saveRepairBtn"),previous=btn.textContent;
+    savingRepair_=true;btn.disabled=true;btn.textContent="⏳ 正在儲存維修資料…";
+    try{await originalSaveRepair_.call(btn);}
+    finally{
+      savingRepair_=false;
+      btn.disabled=false;
+      btn.textContent=previous;
+    }
   };
   /* 原 V9 刪除端點沒有正式身分驗證，審查分支先關閉刪除 UI。 */
   deleteLiveOrder_=async function(){alert("V10 安全審查期間暫停刪除工單");};
