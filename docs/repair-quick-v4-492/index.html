@@ -933,16 +933,18 @@ html,body{background:#f5f7f8}
         </div>
 
 
-        <div class="section-title">追蹤紀錄</div>
+        <div class="section-title">本頁操作紀錄</div>
+        <div class="select-note" style="margin:5px 0 9px">僅顯示目前網頁已確認的操作；完整歷史仍以正式試算表「維修追蹤紀錄」為準，非完整歷史清單。</div>
         <div class="timeline" id="repairTimeline"></div>
 
         <div class="section-title">備註</div>
         <textarea id="repairNote" placeholder="例如：高速皮帶106J*1，已請購2條…"></textarea>
-        <button class="save-repair" id="saveRepairBtn">儲存此單維修</button>
+        <button class="save-repair" id="saveRepairBtn">儲存目前進度（不結案）</button>
+        <div class="select-note" style="margin:6px 0 0">可先儲存未填完的維修資料；結案前須選維修類型，選「故障維修」則須選故障分類。停止計時不會自動儲存這些欄位。</div>
         <div class="save-msg hidden" id="saveRepairMsg">✅ 測試儲存成功（未寫入正式資料）</div>
 
         <button class="complete-repair-btn" id="completeRepairBtn" style="margin-top:14px">✅ 維修完成・結案</button>
-        <div class="complete-note">最後確認維修內容與備註都正確後再結案；系統會自動停止計時並把狀態改成「已完成」。</div>
+        <div class="complete-note">結案前請確認維修類型與內容；按下結案後，系統會停止計時並提交本頁資料，待後端確認才會標示「已完成」。</div>
       </section>
     </div>
   </main>
@@ -1196,7 +1198,7 @@ function storeFor(o){
       end:parseOrderTime_(o.time,o.end),
       activeStart:null,
       workMinutes:parseWorkMinutes_(o.work),
-      timeline:[{at:o.time,title:"建立報修工單",detail:"初始狀態："+(o.status||"待處理")}]
+      timeline:[{at:o.time,title:"建立報修工單",detail:"建立時狀態：待處理（目前狀態以工單欄位為準）"}]
     };
   }else if(o._live){
     const s=REPAIR_STORE[o.no];
@@ -1596,7 +1598,7 @@ function buildRepairStatus(){
   // 狀態選項只在真正「處理中」時出現。
   // 待料／外修／待觀察已經是暫停結果，不應再顯示三顆按鈕讓人重複選。
   if(current==="處理中"){
-    title.textContent="維修途中若需要暫停，請選原因：";
+    title.textContent="變更工單處理狀態（待料／外修／待觀察）：";
     title.classList.remove("hidden");
     grid.classList.remove("hidden");
 
@@ -2294,6 +2296,6 @@ function reset(){
 }
 update();
 </script>
-<script src="./v10_version_gate.js?v=20261027c" defer></script>
+<script src="./v10_version_gate.js?v=20261028a" defer></script>
 </body>
 </html>
