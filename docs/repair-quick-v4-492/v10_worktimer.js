@@ -46,6 +46,11 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
       byId("repairClassSelect").focus();
       return false;
     }
+    if(!byId("repairContent").value.trim()){
+      alert("結案前請填寫維修內容，說明本次實際完成的工作。");
+      byId("repairContent").focus();
+      return false;
+    }
     return true;
   }
   function appendLocalOperation_(event,r){
@@ -156,6 +161,24 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
         if(state.lastOperationId===pending.operationId){
           present(state);sessionStorage.removeItem(pendingKey);
           appendLocalOperation_(event,state);
+          if(event==="close"){
+            // The V10 timerState response does not contain I/J/P/U columns.
+            // Preserve the verified close form in the current order cache
+            // so reopening this order immediately shows the saved values.
+            const current=repairState.store;
+            if(current&&repairState.order&&repairState.order.no===id){
+              current.type=byId("repairTypeSelect").value;
+              current.classification=byId("repairClassSelect").value;
+              current.content=byId("repairContent").value.trim();
+              current.note=byId("repairNote").value.trim();
+              current.technician=currentRepairUser;
+              Object.assign(repairState.order,{
+                type:current.type,classification:current.classification,
+                content:current.content,note:current.note,technician:current.technician
+              });
+              saveLiveOrdersCache_();
+            }
+          }
           confirmed=true;
           console.info("[V10 timer]",event,"回讀已確認",Date.now()-clickedAt,"ms");
           return state;
