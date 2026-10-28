@@ -31,7 +31,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     if(!btn||!s)return;
     // A close operation is available only after a verified V10 read,
     // never while another timer write is in flight.
-    btn.disabled=busy||!s.v10Ready||s.status==="已完成";
+    btn.disabled=busy||savingRepair_||!s.v10Ready||s.status==="已完成";
   }
   function validateRepairFields_(){
     const type=byId("repairTypeSelect").value;
@@ -259,7 +259,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
   byId("repairStartBtn").onclick=async()=>{try{await op("start");}catch(e){alert(e.message);}};
   byId("repairEndBtn").onclick=async()=>{try{await op("pause");}catch(e){alert(e.message);}};
   byId("completeRepairBtn").onclick=async()=>{
-    const s=repairState.store;if(!s||s.status==="已完成"||busy||!s.v10Ready)return;
+    const s=repairState.store;if(!s||s.status==="已完成"||busy||savingRepair_||!s.v10Ready)return;
     if(!validateRepairFields_())return;
     if(!confirm("確定設備已修復並結案？將提交目前的維修類型、分類、內容與備註，並停止計時。"))return;
     try{
@@ -299,9 +299,11 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     if(!validateRepairFields_())return;
     const btn=byId("saveRepairBtn"),previous=btn.textContent;
     savingRepair_=true;btn.disabled=true;btn.textContent="⏳ 正在儲存維修資料…";
+    syncCompleteButton_();
     try{await originalSaveRepair_.call(btn);}
     finally{
       savingRepair_=false;
+      syncCompleteButton_();
       btn.disabled=false;
       btn.textContent=previous;
     }
