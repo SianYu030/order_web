@@ -958,12 +958,13 @@ html,body{background:#f5f7f8}
 </div>
 
 <div class="success hidden" id="success">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="successTitle" aria-describedby="successText">
     <div class="check">✓</div>
-    <h2 style="margin:0">報修工單已建立</h2>
+    <h2 style="margin:0" id="successTitle">報修工單已建立</h2>
     <div class="order" id="orderNo"></div>
     <p id="successText">工單已寫入正式「機修維修單」；LINE 與照片會顯示實際執行結果。</p>
-    <button id="againBtn" class="success-dismiss" type="button" aria-label="關閉成功訊息">×</button>
+    <button id="successHomeBtn" type="button" style="margin-top:13px;min-height:48px">確定，返回首頁</button>
+    <button id="againBtn" class="success-dismiss" type="button" aria-label="關閉成功訊息並返回首頁">×</button>
   </div>
 </div>
 
@@ -2283,7 +2284,15 @@ el("submitBtn").onclick=async()=>{
     btn.disabled=false;
   }
 };
-el("againBtn").onclick=()=>{el("success").classList.add("hidden");reset();};
+function returnHomeAfterReport_(){
+  // This function only handles an already verified, fully processed report
+  // success screen. It must never post a new report or resend LINE/photos.
+  el("success").classList.add("hidden");
+  reset();
+  switchMode("report");
+}
+el("successHomeBtn").onclick=returnHomeAfterReport_;
+el("againBtn").onclick=returnHomeAfterReport_;
 el("resetBtn").onclick=reset;
 function reset(){
   Object.keys(state).forEach(k=>state[k]="");
@@ -2296,6 +2305,6 @@ function reset(){
 }
 update();
 </script>
-<script src="./v10_version_gate.js?v=20261028b" defer></script>
+<script src="./v10_version_gate.js?v=20261028c" defer></script>
 </body>
 </html>
