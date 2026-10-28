@@ -296,7 +296,8 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
       alert("請先確認工單同步完成後再儲存。");
       return;
     }
-    if(!validateRepairFields_())return;
+    // Saving progress is allowed with incomplete classifications;
+    // full validation is enforced only when the order is closed.
     const btn=byId("saveRepairBtn"),previous=btn.textContent;
     savingRepair_=true;btn.disabled=true;btn.textContent="⏳ 正在儲存維修資料…";
     syncCompleteButton_();
