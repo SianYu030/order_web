@@ -53,3 +53,28 @@
 - 使用者必須在已建立的「PhotoAgent 照片接收」Apps Script 專案用最新 Raw 程式整份覆蓋，然後「部署 > 管理部署作業 > 編輯現有部署 > 版本：新版本 > 部署」，保留原本 `/exec` URL 與「僅限自己」存取權限。
 - 同網域上傳頁確認載入後，授權的測試帳號可以設定指令碼屬性 `PHOTO_BRIDGE_UPLOADS_ENABLED=YES` 進行一張測試照片（須使用真實存在的 MR 工單）上傳。切勿改成匿名公開使用。
 - 此流程尚未證實 Google Drive 實機照片成功寫入、NAS 複製、LINE 圖片與 72 小時清理；驗收前原 V4.492 不動。
+
+
+## V4.493 原介面整合版（2026-11-03）
+使用者明確要求保留設備維修中心內的「拍照／從相簿選照片」操作，不應改成跳轉獨立上傳站。目前已新增獨立的 **`RepairV4493.html`**，以原本 **V4.492** 介面為基礎，保留：
+- 報修拍照、相簿多選預覽、維修拍照、LINE 通知預設勾選、原維修工單與計時 UI。
+- V10 後端的 POST 建立報修與 GET 收據核對，避免舊版 GET 被拒絕。失敗保留 requestId，避免重複建單。
+- 照片改由同一個 Google HTML Service 頁面透過 `google.script.run.pdbUploadFromPage` 呼叫公司 Google Drive 接收函式，**不再使用已被封鎖的 Photo Relay /upload**。
+- 圖片寫入成功訊息只代表 Google Drive 完成，不等於 NAS 已儲存。LINE 仍使用既有發送路徑，**Google Drive 照片不會自動附到 LINE**。
+- 部分報修照片失敗時新增「重試上傳報修照片（不重建工單）」按鈕，利用 SHA-256 防重。
+
+### 公司帳號的現有 Apps Script 專案安裝（需要使用者在 Apps Script UI 執行）
+1. 在已存在的 **PhotoAgent 照片接收** Apps Script 專案中，左側「檔案」新增一個 **HTML** 類型檔案，名稱確實為 `RepairV4493`。將本資料夾的 `RepairV4493.html` **完整內容**貼入並儲存，勿改成 .gs。
+2. 將原本 `程式碼.gs` 整份替換為此資料夾的 **最新** `PhotoDriveBridge.gs`，它的 `doGet()` 預設會回傳 `RepairV4493`，備援照片頁仍可使用 `?view=photos`。
+3. 維持四筆 Script Properties 原設定，其中 `PHOTO_BRIDGE_UPLOADS_ENABLED=NO` 先不要改。執行 `pdbShowCheck()` 應通過。
+4. 使用「部署 > 管理部署作業 > 鉛筆編輯現有部署 > 版本：新版本 > 部署」，不要新增部署；保留原本的 `/exec` 網址及 **僅限自己** 權限。
+5. 用已登入公司廠務室 Google 帳號的 Safari 開啟原本的 `/exec`，應出現**原本設備維修中心完整介面**及照片準備狀態。
+6. 頁面可確認後，經授權把 `PHOTO_BRIDGE_UPLOADS_ENABLED` 暫改 `YES` 進行單張測試；先用已存在的測試 MR，上傳一張報修照片、再同 MR 的一張維修照片。兩種都應獲得 Drive 存檔回執且能在公司 Drive 依 MR 分類找到。
+7. 未經 NAS 比對不得清理 Drive，亦不得宣布照片會自動出現在 LINE。
+
+### 已知限制
+- **目前尚未實際部署這個「原介面」版本。** 這兩個檔案已完成 JS 語法與模擬路由檢查，未經公司手機真實測試。
+- 權限「僅限自己」只適合公司帳號測試，**不是現場所有員工都能免登入報修的正式方案**。
+- 即使視覺與操作保留 V4.492，新的完整頁面 URL 是既有 Google Apps Script `/exec`；不能在原本 GitHub 網域直接呼叫 `google.script.run`。
+- 現有 LINE 發送仍使用 Photo Relay 的 `line-notify-report`，受網路封鎖的情況未排除。附件照片需另外整合才能恢復。
+- 真正的 NAS 同步、Excel 全自動、72 小時暫存刪除尚未完成，不應對外宣稱已正常。
