@@ -2193,7 +2193,7 @@ function clearRepairPhotoSelection_(){
   el("repairPhotoCount").textContent="目前尚未選擇維修照片。";
 }
 async function createMobileReportPostVerified_(report){
-  if(!/^MOB-\d{13}-\d{1,8}$/.test(String(report.requestId||""))){
+  if(!/^MOB-\d{13}-(?:[a-f0-9]{32}|\d{1,8})$/.test(String(report.requestId||""))){
     throw new Error("送單識別碼不正確，已停止避免重複建單");
   }
   let postFailure="";
