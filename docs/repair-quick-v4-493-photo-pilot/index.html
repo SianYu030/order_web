@@ -7,7 +7,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#193341">
-<title>PhotoAgent 照片接收測試｜設備維修中心 V4.493</title>
+<title>設備維修中心｜V4.493 原介面修復測試</title>
 <style>
 :root{--navy:#0b3f70;--navy2:#154f82;--bg:#f3f6fa;--card:#fff;--text:#17212b;--muted:#697586;--line:#dbe3ec;--blue:#eaf3ff;--blueText:#0a5db5;--green:#0e8a4a;--yellow:#d88a00;--red:#cf2f2f;--shadow:0 10px 28px rgba(17,45,78,.09)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -580,9 +580,6 @@ html,body{background:#f5f7f8}
   .line-notify-sub,.line-notify-test{font-size:14px}
 }
 
-
-/* Pilot-only: prevent photo selection falsely implying that browser uploads to Drive. */
-#reportMode .photo-actions,#repairMode .photo-actions{display:none!important}
 </style>
 </head>
 <body>
@@ -600,8 +597,7 @@ html,body{background:#f5f7f8}
   </header>
 
   <main class="container">
-    <div class="notice" style="background:#fff0d9;color:#5e4300;border:2px solid #d59a1d">🧪 PhotoAgent V4.493 測試：本頁建立工單仍會寫入正式資料，LINE 保留原本預設勾選。<strong>取得 MR 編號後，請透過公司 Google 上傳頁面拍照。</strong> 不再使用 GitHub 跨網站直接傳送照片。原本 V4.492 不受影響。</div>
-    <div class="notice" style="background:#edf6ff;color:#173a59;border:1px solid #97b7d8"><strong>📷 改用公司 Google 專用頁面接收照片</strong><p style="font-size:13px">原本跨網站檢查已停用。使用授權的公司 Google 帳號直接上傳，避免手機的跨站登入限制。</p><button id="photoProbeBtn" type="button" style="width:100%;min-height:50px;border:1px solid #2f6a95;border-radius:9px;background:#145c86;color:white;font-size:16px;font-weight:700">📷 前往 Google 照片接收頁</button><div style="font-size:13px;margin-top:9px">需先將更新後的 PhotoDriveBridge.gs 完整版覆蓋至接收專案，並更新原部署版本。Google 部署權限仍維持「僅限自己」。</div></div>
+    <div class="notice" style="background:#fff6e7;color:#674316;border:1px solid #e5c391">🧪 V4.493 測試版：已恢復原本拍照與從相簿選照片。工單建立改為 POST 並回讀驗證，LINE 設定照舊。照片仍使用原 Photo Relay，Google Drive 與 NAS 自動同步尚未驗證，請勿將上傳成功當成 NAS 備份成功。</div>
 
     <div class="mode-switch">
       <button class="mode-btn active" id="reportModeBtn">報修申請</button>
@@ -674,7 +670,7 @@ html,body{background:#f5f7f8}
           <input id="photoLibrary" type="file" accept="image/*" multiple>
         </label>
       </div>
-      <div class="photo-grid" id="photoPreview"></div><div class="photo-note" id="photoCount"></div><div class="photo-note">試用版：取得 MR 工單號後，使用 Google 公司照片接收頁上傳。</div>
+      <div class="photo-grid" id="photoPreview"></div><div class="photo-note" id="photoCount"></div><div class="photo-note">照片選填。拍照或從相簿選取都會累加、不覆蓋；送出後依 MR 工單號歸檔。</div>
     </section>
 
     <section class="card hidden" id="summaryCard">
@@ -917,8 +913,8 @@ html,body{background:#f5f7f8}
             <input id="repairPhotoLibrary" type="file" accept="image/*" multiple>
           </label>
         </div>
-        <div class="photo-grid" id="repairPhotoPreview"></div><button id="googleRepairPhotoBtn" type="button" style="background:#125b86;color:#fff;margin-top:10px;width:100%;padding:12px;border-radius:10px">📷 用 Google 上傳本張工單的維修照片</button>
-        <div class="photo-note" id="repairPhotoCount">目前尚未選擇維修照片。</div><div class="photo-note">試用版：使用下方 Google 公司照片接收頁上傳。</div>
+        <div class="photo-grid" id="repairPhotoPreview"></div>
+        <div class="photo-note" id="repairPhotoCount">目前尚未選擇維修照片。</div><div class="photo-note">照片選填。拍照或從相簿選取都會累加、不覆蓋；儲存後依 MR 工單號歸檔。</div>
 
         <div class="section-title">維修狀態</div>
         <div class="current-status-box">
@@ -966,7 +962,7 @@ html,body{background:#f5f7f8}
     <div class="check">✓</div>
     <h2 style="margin:0" id="successTitle">報修工單已建立</h2>
     <div class="order" id="orderNo"></div>
-    <p id="successText">工單已寫入正式「機修維修單」；LINE 與照片會顯示實際執行結果。</p><button id="photoAfterReportBtn" type="button" style="margin-top:10px;background:#125b86;color:white">📷 用 Google 上傳報修照片</button>
+    <p id="successText">工單已寫入正式「機修維修單」；LINE 與照片會顯示實際執行結果。</p>
     <button id="successHomeBtn" type="button" style="margin-top:13px;min-height:48px">確定，返回首頁</button>
     <button id="againBtn" class="success-dismiss" type="button" aria-label="關閉成功訊息並返回首頁">×</button>
   </div>
@@ -1044,9 +1040,6 @@ const state={dept:"",person:"",area:"",machine:"",stop:"",level:"",requestId:""}
 const repairState={order:null,type:"",classification:"",start:"",end:"",status:"",store:null,pendingStatus:""};
 const SYNC_API_URL="https://script.google.com/macros/s/AKfycbwwQ5sOosDNpmejBsubHincyGTflmsNlwDGTLVIu3HhEyLQa85CeCBtXm62R-HlIOhW/exec";
 const PHOTO_API_BASE="https://api-v2.appdeploy.ai/app/repair-photo-relay-op0w93/api";
-// V4.493 staged adapter: Set ONLY after the Google Apps Script photo bridge is deployed and verified.
-// An empty value preserves the current Photo Relay workflow and prevents any production switch.
-const PHOTO_DRIVE_API_URL="https://script.google.com/macros/s/AKfycbxr-arCLkz7CdbjIWcp0IpQllUCDUlRZZVHjkfKyaB1S5nvBfbHN-Z13zQs4Vd1dihrmA/exec";
 const EXPECTED_SPREADSHEET_ID="13qpQWg3tKOXd1BC0XPsK7DsIxG1sBaVI6-yRpERIRMQ";
 const EXPECTED_BACKEND_VERSION="V9-deletefix-20261005";
 let LIVE_ORDERS=[];
@@ -1519,7 +1512,6 @@ function openRepairOrder(o){
   el("repairNo").textContent=o.no;el("repairMeta").textContent=o.dept+"｜"+o.machine;
   el("repairKV").innerHTML='<div class="k">報修時間</div><div>'+o.time+'</div><div class="k">報修人</div><div>'+o.person+'</div><div class="k">是否停機</div><div>'+o.stop+'</div><div class="k">緊急程度</div><div>'+o.level+'</div><div class="k">異常描述</div><div>'+o.issue+'</div>';
   el("repairContent").value=s.content;el("repairNote").value=s.note;
-  el("googleRepairPhotoBtn").onclick=()=>visitGooglePhoto_(o.no,"維修照片");
   repairPhotoFiles=[];
   el("repairPhoto").value="";
   el("repairPhotoLibrary").value="";
@@ -1886,7 +1878,7 @@ el("completeRepairBtn").onclick=async()=>{
         el("saveRepairMsg").textContent="⏳ 上傳維修照片 "+i+"/"+total+"…";
       },repairState.order.photoEpoch||"");
       clearRepairPhotoSelection_();
-      el("saveRepairMsg").textContent=photoDriveEnabled_()?"✅ 工單已結案｜📷 維修照片已存 Google Drive，等待 PhotoAgent 備份 NAS":"✅ 工單已結案｜📷 維修照片已排入 NAS 自動歸檔";
+      el("saveRepairMsg").textContent="✅ 工單已結案｜📷 維修照片已送交舊 Photo Relay（NAS 待驗證）";
     }else{
       el("saveRepairMsg").textContent=SYNC_API_URL?"✅ 已同步至電腦「機修維修單」":"✅ 工單已模擬結案";
     }
@@ -1935,7 +1927,7 @@ el("saveRepairBtn").onclick=async()=>{
         el("saveRepairMsg").textContent="⏳ 上傳維修照片 "+i+"/"+total+"…";
       },repairState.order.photoEpoch||"");
       clearRepairPhotoSelection_();
-      el("saveRepairMsg").textContent=photoDriveEnabled_()?"✅ 維修資料已儲存｜📷 維修照片已存 Google Drive，等待 PhotoAgent 備份 NAS":"✅ 維修資料已儲存｜📷 維修照片已排入 NAS 自動歸檔";
+      el("saveRepairMsg").textContent="✅ 維修資料已儲存｜📷 維修照片已送交舊 Photo Relay（NAS 待驗證）";
     }else{
       el("saveRepairMsg").textContent=SYNC_API_URL?"✅ 已同步至電腦「機修維修單」":"✅ 測試儲存成功（未寫入正式資料）";
     }
@@ -2076,17 +2068,6 @@ function addPhotoSelection_(inputId,target,previewId,countId,label){
 el("photo").addEventListener("change",()=>{
   reportPhotoFiles=addPhotoSelection_("photo",reportPhotoFiles,"photoPreview","photoCount","報修照片");
 });
-
-// Directly visit the authorized Google Apps Script page; no cross-site JSONP.
-function googlePhotoUrl_(mr,kind){
-  const q=new URLSearchParams();
-  if(/^MR20\d{8}$/.test(String(mr||"")))q.set("orderNo",String(mr));
-  if(kind==="報修照片"||kind==="維修照片")q.set("photoType",kind);
-  return PHOTO_DRIVE_API_URL+(q.toString()?"?"+q.toString():"");
-}
-function visitGooglePhoto_(mr,kind){window.location.assign(googlePhotoUrl_(mr,kind));}
-el("photoProbeBtn").onclick=()=>visitGooglePhoto_("","");
-
 el("photoLibrary").addEventListener("change",()=>{
   reportPhotoFiles=addPhotoSelection_("photoLibrary",reportPhotoFiles,"photoPreview","photoCount","報修照片");
 });
@@ -2163,75 +2144,19 @@ async function preparePhotoForUpload_(file){
     return {blob:file,fileName:file.name||"photo.jpg",contentType:file.type||"image/jpeg"};
   }
 }
-function photoDriveEnabled_(){
-  return /^https:\/\/script\.google\.com\/macros\/s\/[^/?#]+\/exec$/.test(PHOTO_DRIVE_API_URL);
-}
-function photoDriveReceipt_(requestId,timeoutMs=12000){
-  return new Promise((resolve,reject)=>{
-    const cb="photoDriveCb_"+Date.now()+"_"+Math.floor(Math.random()*100000);
-    const script=document.createElement("script");
-    let completed=false;
-    const cleanup=()=>{
-      if(completed)return;
-      completed=true;
-      clearTimeout(timer);
-      try{delete window[cb];}catch(e){}
-      script.remove();
-    };
-    const timer=setTimeout(()=>{cleanup();reject(new Error("Google Drive 回執查詢逾時"));},timeoutMs);
-    window[cb]=(data)=>{cleanup();resolve(data||{});};
-    script.onerror=()=>{cleanup();reject(new Error("無法取得 Google Drive 回執"));};
-    const q=new URLSearchParams({action:"photoReceipt",requestId,callback:cb});
-    script.src=PHOTO_DRIVE_API_URL+"?"+q.toString();
-    document.head.appendChild(script);
-  });
-}
-async function uploadPhotoToDrive_(payload){
-  // The Apps Script doPost response is opaque under no-cors.
-  // Treat ONLY a separate verified JSONP receipt as success.
-  const requestId="PD"+Date.now()+"_"+Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,"0")).join("");
-  try{
-    await fetch(PHOTO_DRIVE_API_URL,{
-      method:"POST",mode:"no-cors",credentials:"include",
-      headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({action:"photoSave",requestId,...payload})
-    });
-  }catch(err){
-    throw new Error("Google Drive 照片傳送失敗："+(err&&err.message||"網路錯誤"));
-  }
-  let lastError="";
-  for(let i=0;i<10;i++){
-    await new Promise(r=>setTimeout(r,1800));
-    try{
-      const receipt=await photoDriveReceipt_(requestId);
-      if(receipt.status==="saved" && receipt.ok && receipt.orderNo===payload.orderNo && receipt.photoType===payload.photoType && receipt.fileId){
-        return {ok:true,fileId:receipt.fileId,source:"google-drive",sha256:receipt.sha256||""};
-      }
-      if(receipt.status==="error")throw new Error(receipt.error||"Google Drive 拒絕儲存照片");
-      lastError="照片尚無確認回執";
-    }catch(err){
-      if(/拒絕|格式|大小|工單|設定|未開放|授權|寫入/.test(String(err.message||"")))throw err;
-      lastError=err.message||"回執讀取失敗";
-    }
-  }
-  throw new Error("未取得 Google Drive 寫入成功回執（"+lastError+"）；不能視為已備份。請保留原照片並檢查。");
-}
 async function uploadPhotoFile_(file,orderNo,photoType,photoEpoch=""){
   const prepared=await preparePhotoForUpload_(file);
   const dataBase64=await blobToBase64_(prepared.blob);
-  const payload={
-    orderNo,photoType,
-    fileName:photoEpoch?("gen_"+photoEpoch+"__"+prepared.fileName):prepared.fileName,
-    contentType:prepared.contentType,dataBase64
-  };
-  if(photoDriveEnabled_()){
-    return await uploadPhotoToDrive_(payload);
-  }
-  // Legacy path deliberately kept unchanged until the Drive route passes full acceptance.
   const r=await fetch(PHOTO_API_BASE+"/upload",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(payload)
+    body:JSON.stringify({
+      orderNo,
+      photoType,
+      fileName:photoEpoch?("gen_"+photoEpoch+"__"+prepared.fileName):prepared.fileName,
+      contentType:prepared.contentType,
+      dataBase64
+    })
   });
   let data={};
   try{data=await r.json();}catch(e){}
@@ -2267,9 +2192,6 @@ function clearRepairPhotoSelection_(){
   el("repairPhotoPreview").classList.remove("show");
   el("repairPhotoCount").textContent="目前尚未選擇維修照片。";
 }
-
-// V10 requires POST to create a report, followed by GET polling (no GET writes).
-// Keep requestId across failures: retrying with a new ID can create duplicate work orders.
 async function createMobileReportPostVerified_(report){
   if(!/^MOB-\d{13}-\d{1,8}$/.test(String(report.requestId||""))){
     throw new Error("送單識別碼不正確，已停止避免重複建單");
@@ -2321,7 +2243,7 @@ el("submitBtn").onclick=async()=>{
 
   try{
     if(!state.requestId){
-      state.requestId="MOB-"+Date.now()+"-"+Math.floor(Math.random()*1000000);
+      state.requestId="MOB-"+Date.now()+"-"+Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,"0")).join("");
     }
 
     const data=await createMobileReportPostVerified_({
@@ -2344,7 +2266,6 @@ el("submitBtn").onclick=async()=>{
     }
 
     el("orderNo").textContent=data.orderNo;
-    el("photoAfterReportBtn").onclick=()=>visitGooglePhoto_(data.orderNo,"報修照片");
     const localOrder={
       no:data.orderNo,time:new Date().toLocaleString("zh-TW",{hour12:true}),
       person:state.person,dept:state.dept,machine:state.machine,stop:state.stop,
@@ -2364,7 +2285,7 @@ el("submitBtn").onclick=async()=>{
         uploadedReportPhotos=await uploadPhotoFiles_(reportPhotos,data.orderNo,"報修照片",(i,total)=>{
           btn.textContent="上傳報修照片 "+i+"/"+total+"…";
         },data.photoEpoch||"");
-        photoMsg=photoDriveEnabled_()?"｜📷 "+reportPhotos.length+" 張報修照片已存 Google Drive，等待 PhotoAgent 備份 NAS":"｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔";
+        photoMsg="｜📷 "+reportPhotos.length+" 張報修照片已送交舊 Photo Relay（尚未驗證 NAS）";
       }catch(photoErr){
         photoMsg="｜⚠️ 工單已建立，但報修照片暫存失敗："+photoErr.message;
       }
