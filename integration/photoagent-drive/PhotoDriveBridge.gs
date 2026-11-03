@@ -59,10 +59,17 @@ function doPost(e){
 }
 function doGet(e){
   const p=e&&e.parameter||{};
-  // First-party page: users visit the signed-in Google web app directly.
+  // First-party full repair UI: one screen for reporting, taking photos,
+  // maintenance, and Drive storage. Existing standalone uploader retained
+  // via ?view=photos for authenticated recovery.
   if(p.action!=="photoReceipt"&&!p.callback){
-    return HtmlService.createHtmlOutput(pdbUploaderHtml_(p))
-      .setTitle("PhotoAgent｜設備維修照片上傳")
+    if(p.view==="photos"){
+      return HtmlService.createHtmlOutput(pdbUploaderHtml_(p))
+        .setTitle("PhotoAgent｜設備維修照片上傳")
+        .addMetaTag("viewport","width=device-width,initial-scale=1,viewport-fit=cover");
+    }
+    return HtmlService.createHtmlOutputFromFile("RepairV4493")
+      .setTitle("設備維修中心｜PhotoAgent")
       .addMetaTag("viewport","width=device-width,initial-scale=1,viewport-fit=cover");
   }
   const cb=String(p.callback||"");
