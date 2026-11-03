@@ -59,6 +59,12 @@ function doPost(e){
 }
 function doGet(e){
   const p=e&&e.parameter||{};
+  // First-party page: users visit the signed-in Google web app directly.
+  if(p.action!=="photoReceipt"&&!p.callback){
+    return HtmlService.createHtmlOutput(pdbUploaderHtml_(p))
+      .setTitle("PhotoAgent｜設備維修照片上傳")
+      .addMetaTag("viewport","width=device-width,initial-scale=1,viewport-fit=cover");
+  }
   const cb=String(p.callback||"");
   if(!/^[A-Za-z_$][A-Za-z0-9_$]{0,75}$/.test(cb)){
     return ContentService.createTextOutput("Invalid callback").setMimeType(ContentService.MimeType.TEXT);
@@ -171,4 +177,35 @@ function pdbShowCheck(){
   if(!result.folderAccessible)throw new Error("無法開啟公司 Google Drive 照片暫存資料夾");
   console.log("PhotoAgent 環境檢查通過，照片上傳目前"+(result.enabled?"已啟用":"仍停用（安全測試模式）"));
   return result;
+}
+
+/**
+ * First-party upload page: load this Web App in the browser directly.
+ * Unlike Github cross-site script requests, google.script.run uses Apps Script
+ * authentication in its own HTML service page.
+ * This is a PILOT for the authorized company account, NOT a public upload API.
+ */
+function pdbUploaderStatus(){
+  const cfg=pdbSettings_();
+  const email=String(Session.getActiveUser().getEmail()||"").trim().toLowerCase();
+  return {
+    authenticated:!!email && cfg.emails.includes(email),
+    enabled:cfg.enabled,
+    ready:!!cfg.sheetId&&!!cfg.folderId
+  };
+}
+function pdbUploadFromPage(payload){
+  const result=pdbSave_(payload);
+  console.log("PhotoAgent cloud upload "+JSON.stringify({
+    orderNo:result.orderNo,photoType:result.photoType,
+    id:result.fileId,duplicate:result.duplicate
+  }));
+  return result;
+}
+function pdbUploaderHtml_(query){
+  const q=query||{};
+  const mr=/^MR20\d{8}$/.test(String(q.orderNo||""))?String(q.orderNo):"";
+  const kind=["報修照片","維修照片"].includes(String(q.photoType||""))?String(q.photoType):"";
+  const html="<!doctype html>\n<html lang=\"zh-Hant\"><head><meta charset=\"utf-8\"><base target=\"_top\">\n<style>\n*{box-sizing:border-box}body{margin:0;background:#eef3f7;padding:16px;font-family:system-ui,-apple-system,\"Microsoft JhengHei\",sans-serif;color:#193245}\nmain{max-width:540px;margin:auto;background:#fff;border-radius:16px;padding:22px 17px;box-shadow:0 4px 16px #3452}\nh1{font-size:22px;margin:0}p{line-height:1.6;font-size:14px;color:#597083}\nlabel{display:block;margin-top:16px;font-weight:700}\ninput,select,button{width:100%;font:inherit;border-radius:10px;min-height:48px;padding:10px}\ninput,select{border:1px solid #b1c5d4;margin-top:7px;font-size:17px;background:#fff}\nbutton{background:#125c88;border:0;color:#fff;font-weight:700;margin-top:18px}\nbutton:disabled{background:#95a7b1}\n#access{padding:11px;background:#e4f1fc;border-radius:9px;line-height:1.55;margin-top:12px}\n#result{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;margin-top:14px}\n#warn{background:#fff1d5;border-radius:10px;padding:10px;color:#734b10}\nimg{width:100%;max-height:180px;object-fit:contain}\na{color:#14628d}\n</style></head>\n<body><main><h1>📷 PhotoAgent 設備照片上傳</h1>\n<p>公司 Google 帳號專用，照片先存至 Google Drive 暫存區。</p>\n<div id=\"access\">正在檢查登入身分與上傳狀態…</div>\n<label for=\"mr\">MR 工單編號</label><input id=\"mr\" placeholder=\"MR2026110301\" maxlength=\"12\" autocomplete=\"off\">\n<label for=\"kind\">照片類別</label>\n<select id=\"kind\"><option value=\"報修照片\">報修照片</option><option value=\"維修照片\">維修照片</option></select>\n<label for=\"files\">拍照或選取照片（最多 5 張）</label><input id=\"files\" type=\"file\" accept=\"image/*\" multiple>\n<div id=\"preview\"></div><button id=\"upload\" disabled>儲存至 Google Drive</button>\n<div id=\"result\" role=\"status\"></div>\n<p id=\"warn\">注意：雲端上傳成功不代表 NAS 已備份。PhotoAgent NAS 驗證與 72 小時清理目前尚未啟用。</p>\n<p><a href=\"https://sianyu030.github.io/order_web/repair-quick-v4-493-photo-pilot/\">返回設備報修測試版</a></p>\n</main><script>\n(function(){\n\"use strict\";\nvar $=function(id){return document.getElementById(id);};\nvar order=\"__INITIAL_ORDER__\",kind=\"__INITIAL_KIND__\";\nif(order)$(\"mr\").value=order;\nif(kind)$(\"kind\").value=kind;\nvar allowed=false;\nvar show=function(s){$(\"result\").textContent=s;};\ngoogle.script.run.withSuccessHandler(function(r){\n allowed=!!r.authenticated&&!!r.enabled&&!!r.ready;\n $(\"access\").textContent=!r.authenticated?\"⛔ 此帳號未列入授權名單\":\n !r.enabled?\"⚠️ 接收功能尚未啟用（PHOTO_BRIDGE_UPLOADS_ENABLED=NO）\":\n !r.ready?\"⛔ 接收端缺少資料夾或試算表設定\":\"✅ 已授權，可寫入公司 Google Drive\";\n $(\"upload\").disabled=!allowed;\n}).withFailureHandler(function(e){\n $(\"access\").textContent=\"⛔ 檢查失敗：\"+(e&&e.message||e);\n}).pdbUploaderStatus();\n$(\"files\").onchange=function(){\n var f=$(\"files\").files[0],div=$(\"preview\");div.textContent=\"\";\n if(f){var img=document.createElement(\"img\");img.alt=\"選擇的第一張照片\";img.src=URL.createObjectURL(f);div.appendChild(img);}\n};\nfunction toJpeg(file){return new Promise(function(resolve,reject){\n var url=URL.createObjectURL(file),im=new Image();\n im.onerror=function(){URL.revokeObjectURL(url);reject(Error(\"無法讀取圖片：\"+file.name));};\n im.onload=function(){\n  URL.revokeObjectURL(url);\n  var w=im.naturalWidth,h=im.naturalHeight,m=Math.min(1,1600/Math.max(w,h));\n  var c=document.createElement(\"canvas\");\n  c.width=Math.max(1,Math.round(w*m));c.height=Math.max(1,Math.round(h*m));\n  var ctx=c.getContext(\"2d\");if(!ctx){reject(Error(\"無法壓縮照片\"));return;}\n  ctx.drawImage(im,0,0,c.width,c.height);\n  c.toBlob(function(blob){blob?resolve(blob):reject(Error(\"照片壓縮失敗\"));},\"image/jpeg\",0.8);\n };im.src=url;\n});}\nfunction b64(blob){return new Promise(function(resolve,reject){\n var reader=new FileReader();\n reader.onload=function(){resolve(String(reader.result||\"\").split(\",\")[1]||\"\");};\n reader.onerror=function(){reject(Error(\"讀取照片失敗\"));};\n reader.readAsDataURL(blob);\n});}\nfunction save(p){return new Promise(function(resolve,reject){\n google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).pdbUploadFromPage(p);\n});}\n$(\"upload\").onclick=async function(){\n if(!allowed){show(\"上傳未開放，請檢查帳號與設定。\");return;}\n var mr=$(\"mr\").value.trim().toUpperCase();\n if(!/^MR20\\d{8}$/.test(mr)){show(\"MR 工單編號格式錯誤\");return;}\n var fs=Array.from($(\"files\").files||[]),kind=$(\"kind\").value;\n if(!fs.length||fs.length>5){show(\"請選擇 1 到 5 張照片。\");return;}\n $(\"upload\").disabled=true;\n var good=0,fail=[];\n for(var i=0;i<fs.length;i++){\n  show(\"正在上傳第 \"+(i+1)+\" / \"+fs.length+\" 張\");\n  try{\n   var photo=await toJpeg(fs[i]);\n   if(photo.size>5*1024*1024)throw Error(\"壓縮後仍超過 5 MB\");\n   var p={orderNo:mr,photoType:kind,contentType:\"image/jpeg\",\n     fileName:(fs[i].name||\"photo\").replace(/\\.[^.]+$/,\"\")+\".jpg\",dataBase64:await b64(photo)};\n   var res=await save(p);\n   if(!res||!res.ok||res.orderNo!==mr||res.photoType!==kind||!res.fileId)throw Error(\"未收到 Google Drive 寫入確認\");\n   good++;\n  }catch(err){fail.push(fs[i].name+\"：\"+String(err&&err.message||err));}\n }\n show(\"已確認 Google Drive 寫入：\"+good+\" 張（NAS 尚未驗證）\"+\n  (fail.length?\"\\n失敗：\"+fail.length+\" 張\\n\"+fail.join(\"\\n\"):\"\"));\n $(\"upload\").disabled=false;\n};\n})();\n</script></body></html>";
+  return html.replace("__INITIAL_ORDER__",mr).replace("__INITIAL_KIND__",kind);
 }
