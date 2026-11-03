@@ -580,6 +580,9 @@ html,body{background:#f5f7f8}
   .line-notify-sub,.line-notify-test{font-size:14px}
 }
 
+
+/* Pilot-only: prevent photo selection falsely implying that browser uploads to Drive. */
+#reportMode .photo-actions,#repairMode .photo-actions{display:none!important}
 </style>
 </head>
 <body>
@@ -597,8 +600,8 @@ html,body{background:#f5f7f8}
   </header>
 
   <main class="container">
-    <div class="notice" style="background:#fff0d9;color:#5e4300;border:2px solid #d59a1d">🧪 PhotoAgent 照片測試 V4.493：照片改傳 Google Drive（接收端是否啟用，以實際檢查結果為準）。<strong>送出報修仍會寫入正式機修維修單。</strong> LINE 通知保留原本預設勾選。照片接收端未驗證前，請勿送出測試工單。原本 V4.492 正式頁面不受影響。</div>
-    <div class="notice" style="background:#edf6ff;color:#173a59;border:1px solid #97b7d8"><button id="photoProbeBtn" type="button" style="font-size:14px;padding:10px 12px;border:1px solid #2f6a95;border-radius:8px;background:white;color:#173a59;font-weight:700">🔍 檢查照片接收端（唯讀）</button><div id="photoProbeStatus" role="status" style="margin-top:6px;font-size:13px">先檢查，通過後才進行測試工單上傳。</div><div style="margin-top:10px"><a href="https://script.google.com/macros/s/AKfycbxr-arCLkz7CdbjIWcp0IpQllUCDUlRZZVHjkfKyaB1S5nvBfbHN-Z13zQs4Vd1dihrmA/exec" target="_blank" rel="noopener noreferrer" style="color:#185b91;text-decoration:underline;font-size:13px">↗ 直接開啟 Google 接收端，確認登入權限（只讀）</a><div style="font-size:12px;color:#586d7b;margin-top:4px">直接開啟若顯示 Invalid callback，表示 Google 已執行接收程式的基本入口；若跳出登入或拒絕存取，請先確認公司 Google 帳號。這不能代替照片上傳驗證。</div></div></div>
+    <div class="notice" style="background:#fff0d9;color:#5e4300;border:2px solid #d59a1d">🧪 PhotoAgent V4.493 測試：本頁建立工單仍會寫入正式資料，LINE 保留原本預設勾選。<strong>取得 MR 編號後，請透過公司 Google 上傳頁面拍照。</strong> 不再使用 GitHub 跨網站直接傳送照片。原本 V4.492 不受影響。</div>
+    <div class="notice" style="background:#edf6ff;color:#173a59;border:1px solid #97b7d8"><strong>📷 改用公司 Google 專用頁面接收照片</strong><p style="font-size:13px">原本跨網站檢查已停用。使用授權的公司 Google 帳號直接上傳，避免手機的跨站登入限制。</p><button id="photoProbeBtn" type="button" style="width:100%;min-height:50px;border:1px solid #2f6a95;border-radius:9px;background:#145c86;color:white;font-size:16px;font-weight:700">📷 前往 Google 照片接收頁</button><div style="font-size:13px;margin-top:9px">需先將更新後的 PhotoDriveBridge.gs 完整版覆蓋至接收專案，並更新原部署版本。Google 部署權限仍維持「僅限自己」。</div></div>
 
     <div class="mode-switch">
       <button class="mode-btn active" id="reportModeBtn">報修申請</button>
@@ -671,7 +674,7 @@ html,body{background:#f5f7f8}
           <input id="photoLibrary" type="file" accept="image/*" multiple>
         </label>
       </div>
-      <div class="photo-grid" id="photoPreview"></div><div class="photo-note" id="photoCount"></div><div class="photo-note">照片選填。拍照或從相簿選取都會累加、不覆蓋；送出後依 MR 工單號歸檔。</div>
+      <div class="photo-grid" id="photoPreview"></div><div class="photo-note" id="photoCount"></div><div class="photo-note">試用版：取得 MR 工單號後，使用 Google 公司照片接收頁上傳。</div>
     </section>
 
     <section class="card hidden" id="summaryCard">
@@ -914,8 +917,8 @@ html,body{background:#f5f7f8}
             <input id="repairPhotoLibrary" type="file" accept="image/*" multiple>
           </label>
         </div>
-        <div class="photo-grid" id="repairPhotoPreview"></div>
-        <div class="photo-note" id="repairPhotoCount">目前尚未選擇維修照片。</div><div class="photo-note">照片選填。拍照或從相簿選取都會累加、不覆蓋；儲存後依 MR 工單號歸檔。</div>
+        <div class="photo-grid" id="repairPhotoPreview"></div><button id="googleRepairPhotoBtn" type="button" style="background:#125b86;color:#fff;margin-top:10px;width:100%;padding:12px;border-radius:10px">📷 用 Google 上傳本張工單的維修照片</button>
+        <div class="photo-note" id="repairPhotoCount">目前尚未選擇維修照片。</div><div class="photo-note">試用版：使用下方 Google 公司照片接收頁上傳。</div>
 
         <div class="section-title">維修狀態</div>
         <div class="current-status-box">
@@ -963,7 +966,7 @@ html,body{background:#f5f7f8}
     <div class="check">✓</div>
     <h2 style="margin:0" id="successTitle">報修工單已建立</h2>
     <div class="order" id="orderNo"></div>
-    <p id="successText">工單已寫入正式「機修維修單」；LINE 與照片會顯示實際執行結果。</p>
+    <p id="successText">工單已寫入正式「機修維修單」；LINE 與照片會顯示實際執行結果。</p><button id="photoAfterReportBtn" type="button" style="margin-top:10px;background:#125b86;color:white">📷 用 Google 上傳報修照片</button>
     <button id="successHomeBtn" type="button" style="margin-top:13px;min-height:48px">確定，返回首頁</button>
     <button id="againBtn" class="success-dismiss" type="button" aria-label="關閉成功訊息並返回首頁">×</button>
   </div>
@@ -1516,6 +1519,7 @@ function openRepairOrder(o){
   el("repairNo").textContent=o.no;el("repairMeta").textContent=o.dept+"｜"+o.machine;
   el("repairKV").innerHTML='<div class="k">報修時間</div><div>'+o.time+'</div><div class="k">報修人</div><div>'+o.person+'</div><div class="k">是否停機</div><div>'+o.stop+'</div><div class="k">緊急程度</div><div>'+o.level+'</div><div class="k">異常描述</div><div>'+o.issue+'</div>';
   el("repairContent").value=s.content;el("repairNote").value=s.note;
+  el("googleRepairPhotoBtn").onclick=()=>visitGooglePhoto_(o.no,"維修照片");
   repairPhotoFiles=[];
   el("repairPhoto").value="";
   el("repairPhotoLibrary").value="";
@@ -2073,26 +2077,15 @@ el("photo").addEventListener("change",()=>{
   reportPhotoFiles=addPhotoSelection_("photo",reportPhotoFiles,"photoPreview","photoCount","報修照片");
 });
 
-// Pilot-only read-only connectivity check; does NOT upload a photo or change any order.
-let photoProbeSucceeded_=false;
-el("photoProbeBtn").onclick=async()=>{
-  photoProbeSucceeded_=false;
-  const btn=el("photoProbeBtn"),status=el("photoProbeStatus");
-  btn.disabled=true;status.textContent="正在確認 GitHub 與 Google Apps Script 是否能跨網站取得回執…";
-  try{
-    if(!photoDriveEnabled_())throw new Error("Google Drive API /exec 網址未設定");
-    const id="PD"+Date.now()+"_"+Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,"0")).join("");
-    const r=await photoDriveReceipt_(id,15000);
-    if(r&&r.status==="pending"){
-      photoProbeSucceeded_=true;
-      status.textContent="✅ Google Apps Script 回執端可連線（唯讀）。目前還沒有上傳照片；需先在 Apps Script 核准啟用照片寫入。";
-    }else{
-      status.textContent="⚠️ 連線有回應，但結果異常："+JSON.stringify(r).slice(0,190);
-    }
-  }catch(err){
-    status.textContent="❌ 無法從此網頁取得回執："+String(err&&err.message||err)+"。先檢查公司 Google 登入／部署限制，勿先建立正式測試工單。";
-  }finally{btn.disabled=false;}
-};
+// Directly visit the authorized Google Apps Script page; no cross-site JSONP.
+function googlePhotoUrl_(mr,kind){
+  const q=new URLSearchParams();
+  if(/^MR20\d{8}$/.test(String(mr||"")))q.set("orderNo",String(mr));
+  if(kind==="報修照片"||kind==="維修照片")q.set("photoType",kind);
+  return PHOTO_DRIVE_API_URL+(q.toString()?"?"+q.toString():"");
+}
+function visitGooglePhoto_(mr,kind){window.location.assign(googlePhotoUrl_(mr,kind));}
+el("photoProbeBtn").onclick=()=>visitGooglePhoto_("","");
 
 el("photoLibrary").addEventListener("change",()=>{
   reportPhotoFiles=addPhotoSelection_("photoLibrary",reportPhotoFiles,"photoPreview","photoCount","報修照片");
@@ -2318,7 +2311,6 @@ async function createMobileReportPostVerified_(report){
 
 el("submitBtn").onclick=async()=>{
   const issue=el("issue").value.trim();
-  if(!photoProbeSucceeded_){alert("照片接收端尚未驗證連線，測試版禁止建立正式工單。請先執行「檢查照片接收端（唯讀）」。");return;}
   if(!(state.dept&&state.person&&state.machine&&state.stop&&state.level&&issue))return;
 
   const reportPhotos=[...reportPhotoFiles];
@@ -2352,6 +2344,7 @@ el("submitBtn").onclick=async()=>{
     }
 
     el("orderNo").textContent=data.orderNo;
+    el("photoAfterReportBtn").onclick=()=>visitGooglePhoto_(data.orderNo,"報修照片");
     const localOrder={
       no:data.orderNo,time:new Date().toLocaleString("zh-TW",{hour12:true}),
       person:state.person,dept:state.dept,machine:state.machine,stop:state.stop,
