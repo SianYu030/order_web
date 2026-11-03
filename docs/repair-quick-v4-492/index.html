@@ -1040,6 +1040,9 @@ const state={dept:"",person:"",area:"",machine:"",stop:"",level:"",requestId:""}
 const repairState={order:null,type:"",classification:"",start:"",end:"",status:"",store:null,pendingStatus:""};
 const SYNC_API_URL="https://script.google.com/macros/s/AKfycbwwQ5sOosDNpmejBsubHincyGTflmsNlwDGTLVIu3HhEyLQa85CeCBtXm62R-HlIOhW/exec";
 const PHOTO_API_BASE="https://api-v2.appdeploy.ai/app/repair-photo-relay-op0w93/api";
+// V4.493 staged adapter: Set ONLY after the Google Apps Script photo bridge is deployed and verified.
+// An empty value preserves the current Photo Relay workflow and prevents any production switch.
+const PHOTO_DRIVE_API_URL="https://script.google.com/macros/s/AKfycbxr-arCLkz7CdbjIWcp0IpQllUCDUlRZZVHjkfKyaB1S5nvBfbHN-Z13zQs4Vd1dihrmA/exec";
 const EXPECTED_SPREADSHEET_ID="13qpQWg3tKOXd1BC0XPsK7DsIxG1sBaVI6-yRpERIRMQ";
 const EXPECTED_BACKEND_VERSION="V9-deletefix-20261005";
 let LIVE_ORDERS=[];
@@ -1878,7 +1881,7 @@ el("completeRepairBtn").onclick=async()=>{
         el("saveRepairMsg").textContent="⏳ 上傳維修照片 "+i+"/"+total+"…";
       },repairState.order.photoEpoch||"");
       clearRepairPhotoSelection_();
-      el("saveRepairMsg").textContent="✅ 工單已結案｜📷 維修照片已排入 NAS 自動歸檔";
+      el("saveRepairMsg").textContent=photoDriveEnabled_()?"✅ 工單已結案｜📷 維修照片已存 Google Drive，等待 PhotoAgent 備份 NAS":"✅ 工單已結案｜📷 維修照片已排入 NAS 自動歸檔";
     }else{
       el("saveRepairMsg").textContent=SYNC_API_URL?"✅ 已同步至電腦「機修維修單」":"✅ 工單已模擬結案";
     }
@@ -1927,7 +1930,7 @@ el("saveRepairBtn").onclick=async()=>{
         el("saveRepairMsg").textContent="⏳ 上傳維修照片 "+i+"/"+total+"…";
       },repairState.order.photoEpoch||"");
       clearRepairPhotoSelection_();
-      el("saveRepairMsg").textContent="✅ 維修資料已儲存｜📷 維修照片已排入 NAS 自動歸檔";
+      el("saveRepairMsg").textContent=photoDriveEnabled_()?"✅ 維修資料已儲存｜📷 維修照片已存 Google Drive，等待 PhotoAgent 備份 NAS":"✅ 維修資料已儲存｜📷 維修照片已排入 NAS 自動歸檔";
     }else{
       el("saveRepairMsg").textContent=SYNC_API_URL?"✅ 已同步至電腦「機修維修單」":"✅ 測試儲存成功（未寫入正式資料）";
     }
@@ -2144,19 +2147,75 @@ async function preparePhotoForUpload_(file){
     return {blob:file,fileName:file.name||"photo.jpg",contentType:file.type||"image/jpeg"};
   }
 }
+function photoDriveEnabled_(){
+  return /^https:\/\/script\.google\.com\/macros\/s\/[^/?#]+\/exec$/.test(PHOTO_DRIVE_API_URL);
+}
+function photoDriveReceipt_(requestId,timeoutMs=12000){
+  return new Promise((resolve,reject)=>{
+    const cb="photoDriveCb_"+Date.now()+"_"+Math.floor(Math.random()*100000);
+    const script=document.createElement("script");
+    let completed=false;
+    const cleanup=()=>{
+      if(completed)return;
+      completed=true;
+      clearTimeout(timer);
+      try{delete window[cb];}catch(e){}
+      script.remove();
+    };
+    const timer=setTimeout(()=>{cleanup();reject(new Error("Google Drive 回執查詢逾時"));},timeoutMs);
+    window[cb]=(data)=>{cleanup();resolve(data||{});};
+    script.onerror=()=>{cleanup();reject(new Error("無法取得 Google Drive 回執"));};
+    const q=new URLSearchParams({action:"photoReceipt",requestId,callback:cb});
+    script.src=PHOTO_DRIVE_API_URL+"?"+q.toString();
+    document.head.appendChild(script);
+  });
+}
+async function uploadPhotoToDrive_(payload){
+  // The Apps Script doPost response is opaque under no-cors.
+  // Treat ONLY a separate verified JSONP receipt as success.
+  const requestId="PD"+Date.now()+"_"+Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,"0")).join("");
+  try{
+    await fetch(PHOTO_DRIVE_API_URL,{
+      method:"POST",mode:"no-cors",credentials:"include",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"photoSave",requestId,...payload})
+    });
+  }catch(err){
+    throw new Error("Google Drive 照片傳送失敗："+(err&&err.message||"網路錯誤"));
+  }
+  let lastError="";
+  for(let i=0;i<10;i++){
+    await new Promise(r=>setTimeout(r,1800));
+    try{
+      const receipt=await photoDriveReceipt_(requestId);
+      if(receipt.status==="saved" && receipt.ok && receipt.orderNo===payload.orderNo && receipt.photoType===payload.photoType && receipt.fileId){
+        return {ok:true,fileId:receipt.fileId,source:"google-drive",sha256:receipt.sha256||""};
+      }
+      if(receipt.status==="error")throw new Error(receipt.error||"Google Drive 拒絕儲存照片");
+      lastError="照片尚無確認回執";
+    }catch(err){
+      if(/拒絕|格式|大小|工單|設定|未開放|授權|寫入/.test(String(err.message||"")))throw err;
+      lastError=err.message||"回執讀取失敗";
+    }
+  }
+  throw new Error("未取得 Google Drive 寫入成功回執（"+lastError+"）；不能視為已備份。請保留原照片並檢查。");
+}
 async function uploadPhotoFile_(file,orderNo,photoType,photoEpoch=""){
   const prepared=await preparePhotoForUpload_(file);
   const dataBase64=await blobToBase64_(prepared.blob);
+  const payload={
+    orderNo,photoType,
+    fileName:photoEpoch?("gen_"+photoEpoch+"__"+prepared.fileName):prepared.fileName,
+    contentType:prepared.contentType,dataBase64
+  };
+  if(photoDriveEnabled_()){
+    return await uploadPhotoToDrive_(payload);
+  }
+  // Legacy path deliberately kept unchanged until the Drive route passes full acceptance.
   const r=await fetch(PHOTO_API_BASE+"/upload",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      orderNo,
-      photoType,
-      fileName:photoEpoch?("gen_"+photoEpoch+"__"+prepared.fileName):prepared.fileName,
-      contentType:prepared.contentType,
-      dataBase64
-    })
+    body:JSON.stringify(payload)
   });
   let data={};
   try{data=await r.json();}catch(e){}
@@ -2246,7 +2305,7 @@ el("submitBtn").onclick=async()=>{
         uploadedReportPhotos=await uploadPhotoFiles_(reportPhotos,data.orderNo,"報修照片",(i,total)=>{
           btn.textContent="上傳報修照片 "+i+"/"+total+"…";
         },data.photoEpoch||"");
-        photoMsg="｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔";
+        photoMsg=photoDriveEnabled_()?"｜📷 "+reportPhotos.length+" 張報修照片已存 Google Drive，等待 PhotoAgent 備份 NAS":"｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔";
       }catch(photoErr){
         photoMsg="｜⚠️ 工單已建立，但報修照片暫存失敗："+photoErr.message;
       }
