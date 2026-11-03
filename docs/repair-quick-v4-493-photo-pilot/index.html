@@ -681,7 +681,7 @@ html,body{background:#f5f7f8}
 
       <div class="line-notify-box">
         <label class="line-notify-row" for="lineNotify">
-          <input id="lineNotify" type="checkbox">
+          <input id="lineNotify" type="checkbox" checked>
           <div class="line-notify-content">
             <div class="line-notify-main">📣 LINE 通知報修</div>
             <div class="line-notify-sub">送出工單後，同步通知機修 LINE 群組。</div>
@@ -2375,7 +2375,7 @@ el("againBtn").onclick=returnHomeAfterReport_;
 el("resetBtn").onclick=reset;
 function reset(){
   Object.keys(state).forEach(k=>state[k]="");
-  el("lineNotify").checked=false;
+  el("lineNotify").checked=true;
   reportPhotoFiles=[];
   el("issue").value="";el("machineSearch").value="";el("photo").value="";el("photoLibrary").value="";el("photoPreview").innerHTML="";el("photoPreview").classList.remove("show");el("photoCount").textContent="";updateIssueMode();
   document.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));
