@@ -142,10 +142,33 @@ function pdbSave_(p){
     return {ok:true,status:"saved",duplicate:false,orderNo,photoType:kind,fileId:file.getId(),sha256:hash};
   }finally{lock.releaseLock();}
 }
+/**
+ * 直接在 Apps Script 執行 pdbEnvironmentCheck：
+ * 執行記錄會顯示完整結果。僅讀取，不寫入照片或工單。
+ */
 function pdbEnvironmentCheck(){
   const cfg=pdbSettings_();
-  return {configured:!!cfg.sheetId&&!!cfg.folderId,enabled:cfg.enabled,
+  const result={
+    configured:!!cfg.sheetId&&!!cfg.folderId,
+    enabled:cfg.enabled,
     owner:Session.getActiveUser().getEmail(),
     sourceAccessible:cfg.sheetId?!!SpreadsheetApp.openById(cfg.sheetId).getSheetByName("機修維修單"):false,
-    folderAccessible:cfg.folderId?!!DriveApp.getFolderById(cfg.folderId):false};
+    folderAccessible:cfg.folderId?!!DriveApp.getFolderById(cfg.folderId):false
+  };
+  console.log("PhotoAgent 環境檢查： "+JSON.stringify(result));
+  return result;
+}
+
+/**
+ * 可選的嚴格檢查：有任一重要項目失敗就顯示錯誤。
+ * 為安全起見 enabled=false 屬正常結果。
+ */
+function pdbShowCheck(){
+  const result=pdbEnvironmentCheck();
+  if(!result.configured)throw new Error("尚未設定 Google 試算表或照片暫存資料夾的指令碼屬性");
+  if(!result.owner)throw new Error("目前無法確認登入的 Google 帳號");
+  if(!result.sourceAccessible)throw new Error("無法取得正式「機修維修單」工作表");
+  if(!result.folderAccessible)throw new Error("無法開啟公司 Google Drive 照片暫存資料夾");
+  console.log("PhotoAgent 環境檢查通過，照片上傳目前"+(result.enabled?"已啟用":"仍停用（安全測試模式）"));
+  return result;
 }
