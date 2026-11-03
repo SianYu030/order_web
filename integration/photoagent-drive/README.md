@@ -44,3 +44,12 @@
 - 前端 mock：Google Drive 回執成功、POST 使用 `text/plain` + `no-cors`、持續無回執時正確拒絕，共 3/3 通過。
 - 後端 mock：預設關閉禁止寫入、授權帳號成功寫入、相同照片防重、非白名單拒絕、錯誤 MIME 拒絕、工單不存在拒絕、未完成回執回傳 pending，共 7/7 通過。
 - 這些是**模擬測試**，不代表真實 Google Drive、手機、公司 Windows 或 NAS 端對端驗收成功。尚未進行部署。
+
+
+## iPhone Safari 跨網站登入修正（2026-11-03）
+- 已在 `PhotoDriveBridge.gs` 新增 Google HTML Service **同網域照片上傳頁**，透過 `google.script.run.pdbUploadFromPage()` 儲存報修／維修照片，避免 GitHub Pages 直接跨站 JSONP 呼叫「僅限自己」Apps Script 失敗。
+- 試用版 GitHub 首頁路徑：`docs/repair-quick-v4-493-photo-pilot/`。已改成「前往 Google 照片接收頁」按鈕，可透過 MR 工單編號帶入報修或維修類別；舊照片選取 UI 在試用版暫時隱藏，避免誤以為跨站自動上傳成功。
+- **注意：照片會在 Google 頁重新拍攝或選取。** 這是受限制帳號下的暫行測試流程，尚不是完全無跳頁的正式整合。
+- 使用者必須在已建立的「PhotoAgent 照片接收」Apps Script 專案用最新 Raw 程式整份覆蓋，然後「部署 > 管理部署作業 > 編輯現有部署 > 版本：新版本 > 部署」，保留原本 `/exec` URL 與「僅限自己」存取權限。
+- 同網域上傳頁確認載入後，授權的測試帳號可以設定指令碼屬性 `PHOTO_BRIDGE_UPLOADS_ENABLED=YES` 進行一張測試照片（須使用真實存在的 MR 工單）上傳。切勿改成匿名公開使用。
+- 此流程尚未證實 Google Drive 實機照片成功寫入、NAS 複製、LINE 圖片與 72 小時清理；驗收前原 V4.492 不動。
