@@ -38,3 +38,9 @@
 - 這個橋接在測試模式使用 **Google 使用者白名單＋預設關閉**，僅供授權帳號進行受控測試。
 - 靜態 GitHub 網頁無法安全保管公司密鑰。不得把私人 Google Drive 存取權杖、LINE Token、NAS 密碼或永久上傳密碼寫入 GitHub。
 - 若正式場域必須提供多人免登入上傳，必須與既有工單後端建立可驗證的短效授權或採公司認可的身分驗證，不能直接把此 Apps Script 變成公開匿名上傳 API。
+
+## 程式測試紀錄（2026-11-03）
+- 前端 `index.html` 與後端 `PhotoDriveBridge.gs`：JavaScript 語法檢查均通過。
+- 前端 mock：Google Drive 回執成功、POST 使用 `text/plain` + `no-cors`、持續無回執時正確拒絕，共 3/3 通過。
+- 後端 mock：預設關閉禁止寫入、授權帳號成功寫入、相同照片防重、非白名單拒絕、錯誤 MIME 拒絕、工單不存在拒絕、未完成回執回傳 pending，共 7/7 通過。
+- 這些是**模擬測試**，不代表真實 Google Drive、手機、公司 Windows 或 NAS 端對端驗收成功。尚未進行部署。
