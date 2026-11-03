@@ -597,7 +597,7 @@ html,body{background:#f5f7f8}
   </header>
 
   <main class="container">
-    <div class="notice" style="background:#fff0d9;color:#5e4300;border:2px solid #d59a1d">🧪 PhotoAgent 照片測試 V4.493：照片改傳 Google Drive（目前後端開關仍為 NO）。<strong>送出報修仍會寫入正式機修維修單。</strong> 測試前請用核准的測試工單，並取消 LINE 通知。原本 V4.492 正式頁面不受影響。</div>
+    <div class="notice" style="background:#fff0d9;color:#5e4300;border:2px solid #d59a1d">🧪 PhotoAgent 照片測試 V4.493：照片改傳 Google Drive（接收端是否啟用，以實際檢查結果為準）。<strong>送出報修仍會寫入正式機修維修單。</strong> LINE 通知保留原本預設勾選。照片接收端未驗證前，請勿送出測試工單。原本 V4.492 正式頁面不受影響。</div>
     <div class="notice" style="background:#edf6ff;color:#173a59;border:1px solid #97b7d8"><button id="photoProbeBtn" type="button" style="font-size:14px;padding:10px 12px;border:1px solid #2f6a95;border-radius:8px;background:white;color:#173a59;font-weight:700">🔍 檢查照片接收端（唯讀）</button><div id="photoProbeStatus" role="status" style="margin-top:6px;font-size:13px">先檢查，通過後才進行測試工單上傳。</div></div>
 
     <div class="mode-switch">
@@ -2074,7 +2074,9 @@ el("photo").addEventListener("change",()=>{
 });
 
 // Pilot-only read-only connectivity check; does NOT upload a photo or change any order.
+let photoProbeSucceeded_=false;
 el("photoProbeBtn").onclick=async()=>{
+  photoProbeSucceeded_=false;
   const btn=el("photoProbeBtn"),status=el("photoProbeStatus");
   btn.disabled=true;status.textContent="正在確認 GitHub 與 Google Apps Script 是否能跨網站取得回執…";
   try{
@@ -2082,6 +2084,7 @@ el("photoProbeBtn").onclick=async()=>{
     const id="PD"+Date.now()+"_"+Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,"0")).join("");
     const r=await photoDriveReceipt_(id,15000);
     if(r&&r.status==="pending"){
+      photoProbeSucceeded_=true;
       status.textContent="✅ Google Apps Script 回執端可連線（唯讀）。目前還沒有上傳照片；需先在 Apps Script 核准啟用照片寫入。";
     }else{
       status.textContent="⚠️ 連線有回應，但結果異常："+JSON.stringify(r).slice(0,190);
@@ -2271,8 +2274,51 @@ function clearRepairPhotoSelection_(){
   el("repairPhotoPreview").classList.remove("show");
   el("repairPhotoCount").textContent="目前尚未選擇維修照片。";
 }
+
+// V10 requires POST to create a report, followed by GET polling (no GET writes).
+// Keep requestId across failures: retrying with a new ID can create duplicate work orders.
+async function createMobileReportPostVerified_(report){
+  if(!/^MOB-\d{13}-\d{1,8}$/.test(String(report.requestId||""))){
+    throw new Error("送單識別碼不正確，已停止避免重複建單");
+  }
+  let postFailure="";
+  try{
+    // Returns an opaque response under no-cors; NOT proof that the report was created.
+    await syncPost_({action:"createMobileReportTest",...report});
+  }catch(err){
+    postFailure=String(err&&err.message||err);
+  }
+  let pollError="";
+  for(let attempt=0;attempt<18;attempt++){
+    try{
+      const result=await jsonp_("createReportResult",{requestId:report.requestId},10000);
+      if(result&&result.pending===true){
+        pollError="後端尚未完成建立";
+      }else if(result&&result.ok===false){
+        throw new Error(result.error||"後端拒絕建立報修工單");
+      }else if(result&&result.orderNo&&result.verified===true){
+        return result;
+      }else{
+        pollError="後端回覆缺少已驗證的 MR 工單編號";
+      }
+    }catch(err){
+      const message=String(err&&err.message||err);
+      if(/後端拒絕|報修|未授權|工單|配額|驗證/.test(message)
+        && !/逾時|尚未完成|缺少/.test(message))throw err;
+      pollError=message;
+    }
+    await new Promise(resolve=>setTimeout(resolve,1250));
+  }
+  throw new Error(
+    "送單結果尚未確認，請先查詢正式工單，切勿重複按送出。"+
+    (postFailure?" POST: "+postFailure+"。":"")+
+    (pollError?" 回讀: "+pollError:"")
+  );
+}
+
 el("submitBtn").onclick=async()=>{
   const issue=el("issue").value.trim();
+  if(!photoProbeSucceeded_){alert("照片接收端尚未驗證連線，測試版禁止建立正式工單。請先執行「檢查照片接收端（唯讀）」。");return;}
   if(!(state.dept&&state.person&&state.machine&&state.stop&&state.level&&issue))return;
 
   const reportPhotos=[...reportPhotoFiles];
@@ -2286,7 +2332,7 @@ el("submitBtn").onclick=async()=>{
       state.requestId="MOB-"+Date.now()+"-"+Math.floor(Math.random()*1000000);
     }
 
-    const data=await jsonp_("createMobileReportTest",{
+    const data=await createMobileReportPostVerified_({
       dept:state.dept,
       person:state.person,
       machine:state.machine,
@@ -2295,7 +2341,7 @@ el("submitBtn").onclick=async()=>{
       issue:issue,
       lineNotify:el("lineNotify").checked?"1":"0",
       requestId:state.requestId
-    },35000);
+    });
 
     if(!data || !data.orderNo)throw new Error("沒有取得工單編號");
     if(!data.verified || data.spreadsheetId!==EXPECTED_SPREADSHEET_ID){
