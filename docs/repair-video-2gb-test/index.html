@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>設備維修中心｜2 GB 手機影片分段測試</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f2f6fa;color:#172536;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif;line-height:1.55}
+main{max-width:680px;margin:0 auto;padding:16px 14px 52px}
+h1{font-size:24px;margin:6px 0}h2{font-size:17px;margin:0 0 12px}.muted{color:#58677b;font-size:14px}.panel{background:white;border:1px solid #d5e1eb;box-shadow:0 1px 4px #283d5310;border-radius:14px;padding:17px;margin-top:14px}
+.banner{background:#fff5df;border:1px solid #e5c783;color:#5d4110;border-radius:12px;padding:12px;font-size:14px;font-weight:600}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:130px}button{cursor:pointer;font:inherit;border:0;border-radius:10px;padding:12px 14px;font-size:16px;font-weight:700;background:#1768a4;color:#fff;min-height:48px}
+button:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#e6eef7;color:#235074}.danger{background:#f3e4e4;color:#8d3030}
+select{font:inherit;font-size:17px;border-radius:9px;padding:11px;border:1px solid #b4c9d8;background:white;width:100%;margin:4px 0 12px}
+.detail{background:#f6f9fc;border-radius:9px;padding:10px 12px;margin-top:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
+progress{width:100%;height:17px;accent-color:#1379a5}.value{font-weight:750;font-size:20px;margin:6px 0}.state{font-weight:700;color:#15577d}.small{font-size:13px;color:#58677b}
+ol{padding-left:21px;margin:8px 0}li{margin:4px 0}
+</style></head>
+<body><main>
+<header><div class="muted">設備維修中心・獨立測試</div><h1>手機影片 2 GB 分段測試</h1><p class="muted">iPhone／Android・MOV／MP4 等原始影片，不壓縮、不轉檔</p></header>
+<div class="banner">🧪 這個測試只讀取你選的影片，驗證手機能否以小區塊處理大型檔案。<strong>不會上傳到雲端、LINE、NAS，也不會建立正式報修單。</strong></div>
+<section class="panel"><h2>① 選擇報修或維修影片</h2>
+<label for="kind" class="small">影片種類</label><select id="kind"><option value="報修影片">報修影片</option><option value="維修影片">維修影片</option></select>
+<div class="row"><button id="camera" type="button">🎥 直接錄影</button><button id="library" type="button" class="secondary">📁 從相簿選影片</button></div>
+<input hidden id="cameraInput" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.webm,.mkv" capture="environment">
+<input hidden id="libraryInput" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.webm,.mkv">
+<div id="detail" class="detail" aria-live="polite">尚未選取影片。</div></section>
+<section class="panel"><h2>② 測試 4 MB 分段讀取</h2><div class="muted">一次只處理 4 MB，不會把整段 2 GB 影片一次載入記憶體。</div>
+<div class="row" style="margin:12px 0"><button id="start" disabled>開始驗證影片</button><button id="pause" class="secondary" disabled>暫停</button><button id="reset" class="danger">重設</button></div>
+<progress id="progress" max="100" value="0" aria-label="分段讀取進度"></progress><div id="pct" class="value">0%</div>
+<div id="status" class="state" role="status" aria-live="polite">等待選擇影片</div><div id="stats" class="small">尚未測試</div>
+</section>
+<section class="panel"><h2>③ 2 GB 邊界檢查</h2>
+<button id="limits" class="secondary" type="button">檢查容量上限</button><div id="limitResult" class="detail">測試上限：2 GiB（2,147,483,648 bytes）。</div>
+</section>
+<section class="panel"><h2>目前能證明什麼？</h2>
+<ol><li>手機能否選取 MOV／MP4 等影片。</li><li>單檔是否在 2 GB 上限內。</li><li>瀏覽器能否逐段讀取並計算 SHA-256，支援暫停後從目前進度接續。</li></ol>
+<p class="muted">尚未測試：伺服器分段上傳、真正斷線續傳、Google Drive 儲存、PhotoAgent NAS 備份，以及 LINE 影片通知。正式系統不受影響。</p></section>
+</main>
+<script>
+(function(){
+'use strict';
+var MiB=1024*1024, maxBytes=2*1024*MiB, chunkBytes=4*MiB;
+var file=null, offset=0, running=false, paused=false, generation=0, started=0, chunks=0, digestMarker='';
+function $(x){return document.getElementById(x);}
+function formatBytes(b){return (b/(1024*1024)).toFixed(1)+' MB';}
+function safeMessage(x){$('status').textContent=x;}
+function allowed(f){return /\.(mov|mp4|m4v|3gp|webm|mkv)$/i.test(f.name)||/^(video\/)/i.test(f.type);}
+function update(){
+var pct=file&&file.size?Math.min(100,offset/file.size*100):0;
+$('progress').value=pct;$('pct').textContent=pct.toFixed(1)+'%';
+$('start').disabled=!file||running||offset>=file.size;
+$('pause').disabled=!running;
+$('pause').textContent=paused?'繼續':'暫停';
+}
+function reset(){generation++;file=null;offset=0;running=false;paused=false;chunks=0;digestMarker='';$('detail').textContent='尚未選取影片。';$('stats').textContent='尚未測試';safeMessage('等待選擇影片');update();}
+function pick(f){
+generation++;running=false;paused=false;file=null;offset=0;chunks=0;digestMarker='';
+if(!f){safeMessage('已取消選取');update();return;}
+if(!allowed(f)){safeMessage('不支援此格式。請選擇 MOV、MP4、M4V、3GP、WEBM 或 MKV。');update();return;}
+if(f.size===0){safeMessage('空白檔案不能驗證');update();return;}
+if(f.size>maxBytes){safeMessage('影片超過 2 GB 設計上限，此次停止。');$('detail').textContent=f.name+'\n大小：'+formatBytes(f.size);update();return;}
+file=f;
+$('detail').textContent='種類：'+$('kind').value+'\n檔名：'+f.name+'\n大小：'+formatBytes(f.size)+'\n格式：'+(f.type||'瀏覽器未提供 MIME')+'\n預計區塊：'+Math.ceil(f.size/chunkBytes);
+safeMessage('選取成功，尚未開始測試');update();
+}
+async function run(){
+if(!file||running)return;
+if(!window.crypto||!crypto.subtle){safeMessage('瀏覽器不提供 SHA-256 功能，無法執行此測試');return;}
+running=true;paused=false;var token=++generation;started=performance.now();safeMessage('正在逐段讀取本機影片');update();
+try{
+while(file&&offset<file.size&&token===generation){
+if(paused){running=false;safeMessage('已暫停，影片仍在手機，沒有上傳');update();return;}
+var end=Math.min(offset+chunkBytes,file.size);
+var part=await file.slice(offset,end).arrayBuffer();
+if(token!==generation)return;
+if(part.byteLength!==(end-offset))throw new Error('讀取位元組數不一致');
+var hash=await crypto.subtle.digest('SHA-256',part);
+if(token!==generation)return;
+var bytes=new Uint8Array(hash);digestMarker=[bytes[0],bytes[1],bytes[2],bytes[3]].map(function(v){return v.toString(16).padStart(2,'0');}).join('');
+offset=end;chunks++;update();
+if(chunks%3===0||offset===file.size){
+var t=Math.max(0.01,(performance.now()-started)/1000);
+$('stats').textContent='已讀取 '+formatBytes(offset)+' / '+formatBytes(file.size)+'　|　'+chunks+' 區塊　|　最近區塊雜湊 '+digestMarker+'…　|　'+(offset/MiB/t).toFixed(1)+' MB/s';
+await new Promise(function(resolve){setTimeout(resolve,0);});
+}
+}
+if(token===generation&&file){running=false;paused=false;safeMessage('✅ 完成：本機影片分段讀取及每段 SHA-256 計算通過。沒有上傳任何資料。');update();}
+}catch(err){if(token===generation){running=false;safeMessage('❌ 本機讀取失敗：'+String(err.message||err));update();}}
+}
+$('camera').onclick=function(){$('cameraInput').click();};$('library').onclick=function(){$('libraryInput').click();};
+$('cameraInput').onchange=function(){pick(this.files&&this.files[0]);this.value='';};
+$('libraryInput').onchange=function(){pick(this.files&&this.files[0]);this.value='';};
+$('start').onclick=run;
+$('pause').onclick=function(){if(!running)return;paused=!paused;if(!paused){running=false;run();}else safeMessage('準備暫停，完成目前區塊後停止');update();};
+$('reset').onclick=reset;
+$('limits').onclick=function(){
+var values=[maxBytes-1,maxBytes,maxBytes+1];
+$('limitResult').textContent=values.map(function(n){return n.toLocaleString('en-US')+' bytes：'+(n<=maxBytes?'允許':'拒絕');}).join('\n')+'\n每區塊 4 MiB；完整 2 GiB 共 '+(maxBytes/chunkBytes)+' 個區塊。';
+};
+update();
+})();
+</script></body></html>
