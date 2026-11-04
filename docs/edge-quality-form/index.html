@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.06：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.07：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -591,6 +591,16 @@
     .backend-offline .retry{background:#215884}
     .backend-offline .link-note{font-size:13px;word-break:break-all;margin-top:9px;font-weight:600}
     .backend-offline .diagnostics{font-size:12px;color:#765d25;line-height:1.6;margin-top:8px}
+  
+    /* E4: cross-factory staff selectors for each primary role */
+    .support-pickers { display:grid; grid-template-columns:minmax(115px,38%) minmax(0,1fr);
+      gap:9px 10px; align-items:center; margin-top:10px; padding:10px 10px 2px;
+      border-radius:12px; background:#f7f9fc; }
+    .support-label { font-weight:750; font-size:14px; display:flex; gap:6px; align-items:center; }
+    .support-pickers select { width:100%; height:47px; min-width:0; font-size:15px; }
+    .support-chip { flex:none; padding:4px 7px; border-radius:7px; background:#1661a7; color:#fff; font-size:13px; }
+    .support-chip.w8 { background:#7b2aa8; }
+    @media(max-width:390px) { .support-pickers{grid-template-columns:1fr;row-gap:6px;} }
   </style>
 </head>
 
@@ -654,10 +664,22 @@
         <div class="field">
           <label class="label"><span data-i18n="leadInspector">主手</span> <span class="required">*</span></label>
           <select id="leadInspector"><option value="" data-i18n="selectLead">請選擇主手</option></select>
+          <div id="leadSupportGroup" class="support-pickers hidden">
+            <label class="support-label" for="leadSupportE3"><span class="support-chip">E3</span><span data-i18n="supportE3">E3支援人員（可選）</span></label>
+            <select id="leadSupportE3"><option value="" data-i18n="noSupport">無支援</option></select>
+            <label class="support-label" for="leadSupportW8"><span class="support-chip w8">W8</span><span data-i18n="supportW8">W8支援人員（可選）</span></label>
+            <select id="leadSupportW8"><option value="" data-i18n="noSupport">無支援</option></select>
+          </div>
         </div>
         <div class="field">
           <label class="label"><span data-i18n="assistantInspector">副手</span> <span class="required">*</span></label>
           <select id="assistantInspector"><option value="" data-i18n="selectAssistant">請選擇副手</option></select>
+          <div id="assistantSupportGroup" class="support-pickers hidden">
+            <label class="support-label" for="assistantSupportE3"><span class="support-chip">E3</span><span data-i18n="supportE3">E3支援人員（可選）</span></label>
+            <select id="assistantSupportE3"><option value="" data-i18n="noSupport">無支援</option></select>
+            <label class="support-label" for="assistantSupportW8"><span class="support-chip w8">W8</span><span data-i18n="supportW8">W8支援人員（可選）</span></label>
+            <select id="assistantSupportW8"><option value="" data-i18n="noSupport">無支援</option></select>
+          </div>
         </div>
 
         <div id="machineStateBox" class="machine-state hidden">
@@ -962,7 +984,7 @@ const I18N = {
     appTitle:'系統櫃廠－封邊品質檢查', systemLoading:'系統載入中…', systemPrefix:'系統櫃廠 櫥櫃課｜', back:'返回', home:'首頁',
     selectFactory:'選擇廠別', historySearch:'🔎 歷史追溯查詢', historyPlaceholder:'輸入單號、B碼或工件QR', search:'查詢',
     historyNote:'可跨 E3 / E4 / W8 查詢完整相符的單號、B碼或工件號碼(QR Code)。', machine:'機台', selectMachine:'請選擇機台',
-    leadInspector:'主手', selectLead:'請選擇主手', assistantInspector:'副手', selectAssistant:'請選擇副手', todayMachineStatus:'今日機台狀態',
+    leadInspector:'主手', selectLead:'請選擇主手', assistantInspector:'副手', selectAssistant:'請選擇副手', supportE3:'E3支援人員（可選）', supportW8:'W8支援人員（可選）', noSupport:'無支援', todayMachineStatus:'今日機台狀態',
     normalInspection:'✅ 正常檢查', todayStopped:'今日停機', todayStoppedButton:'⏸ 今日停機', resumeStop:'▶ 解除停機', inspectionTime:'檢查時段',
     adhesionStatus:'貼附接著狀態', appearance:'外觀', pass:'合格', fail:'不合格', adhesionBasis:'檢查基準：浮起、間隙不可', appearanceBasis:'檢查基準：汙損不可',
     labelPhotoRecognition:'標籤拍照辨識', takeLabelPhoto:'📸 拍標籤自動辨識', labelAutoRecognize:'拍照後會自動辨識：工件號碼(QR Code)、單號、B碼',
@@ -988,7 +1010,7 @@ const I18N = {
     appTitle:'โรงงานตู้ระบบ－ตรวจสอบคุณภาพการปิดขอบ', systemLoading:'กำลังโหลดระบบ…', systemPrefix:'แผนกตู้ระบบ｜', back:'ย้อนกลับ', home:'หน้าหลัก',
     selectFactory:'เลือกโรงงาน', historySearch:'🔎 ค้นหาประวัติย้อนหลัง', historyPlaceholder:'กรอกเลขที่ใบงาน, รหัส B หรือ QR ชิ้นงาน', search:'ค้นหา',
     historyNote:'ค้นหาข้อมูลที่ตรงกันจาก E3 / E4 / W8 ด้วยเลขที่ใบงาน รหัส B หรือหมายเลขชิ้นงาน (QR Code)', machine:'เครื่องจักร', selectMachine:'กรุณาเลือกเครื่องจักร',
-    leadInspector:'ผู้ปฏิบัติงานหลัก', selectLead:'กรุณาเลือกผู้ปฏิบัติงานหลัก', assistantInspector:'ผู้ช่วย', selectAssistant:'กรุณาเลือกผู้ช่วย', todayMachineStatus:'สถานะเครื่องวันนี้',
+    leadInspector:'ผู้ปฏิบัติงานหลัก', selectLead:'กรุณาเลือกผู้ปฏิบัติงานหลัก', assistantInspector:'ผู้ช่วย', selectAssistant:'กรุณาเลือกผู้ช่วย', supportE3:'พนักงานสนับสนุน E3 (ไม่บังคับ)', supportW8:'พนักงานสนับสนุน W8 (ไม่บังคับ)', noSupport:'ไม่มีพนักงานสนับสนุน', todayMachineStatus:'สถานะเครื่องวันนี้',
     normalInspection:'✅ ตรวจสอบได้ตามปกติ', todayStopped:'หยุดเครื่องวันนี้', todayStoppedButton:'⏸ หยุดเครื่องวันนี้', resumeStop:'▶ ยกเลิกการหยุดเครื่อง', inspectionTime:'ช่วงเวลาตรวจสอบ',
     adhesionStatus:'สถานะการยึดติด', appearance:'ลักษณะภายนอก', pass:'ผ่าน', fail:'ไม่ผ่าน', adhesionBasis:'เกณฑ์ตรวจ: ห้ามมีขอบยกหรือช่องว่าง', appearanceBasis:'เกณฑ์ตรวจ: ห้ามมีคราบหรือความเสียหาย',
     labelPhotoRecognition:'ถ่ายรูปฉลากเพื่ออ่านข้อมูล', takeLabelPhoto:'📸 ถ่ายฉลากเพื่ออ่านอัตโนมัติ', labelAutoRecognize:'หลังถ่ายรูป ระบบจะอ่าน: หมายเลขชิ้นงาน (QR Code), เลขที่ใบงาน, รหัส B',
@@ -1014,7 +1036,7 @@ const I18N = {
     appTitle:'Xưởng tủ hệ thống－Kiểm tra chất lượng dán cạnh', systemLoading:'Đang tải hệ thống…', systemPrefix:'Bộ phận tủ hệ thống｜', back:'Quay lại', home:'Trang chủ',
     selectFactory:'Chọn xưởng', historySearch:'🔎 Tra cứu lịch sử', historyPlaceholder:'Nhập số đơn, mã B hoặc QR chi tiết', search:'Tra cứu',
     historyNote:'Tra cứu dữ liệu khớp chính xác trên E3 / E4 / W8 bằng số đơn, mã B hoặc mã chi tiết (QR Code).', machine:'Máy', selectMachine:'Vui lòng chọn máy',
-    leadInspector:'Nhân viên chính', selectLead:'Vui lòng chọn nhân viên chính', assistantInspector:'Nhân viên phụ', selectAssistant:'Vui lòng chọn nhân viên phụ', todayMachineStatus:'Trạng thái máy hôm nay',
+    leadInspector:'Nhân viên chính', selectLead:'Vui lòng chọn nhân viên chính', assistantInspector:'Nhân viên phụ', selectAssistant:'Vui lòng chọn nhân viên phụ', supportE3:'Nhân viên hỗ trợ E3 (tùy chọn)', supportW8:'Nhân viên hỗ trợ W8 (tùy chọn)', noSupport:'Không hỗ trợ', todayMachineStatus:'Trạng thái máy hôm nay',
     normalInspection:'✅ Kiểm tra bình thường', todayStopped:'Dừng máy hôm nay', todayStoppedButton:'⏸ Dừng máy hôm nay', resumeStop:'▶ Hủy dừng máy', inspectionTime:'Khung giờ kiểm tra',
     adhesionStatus:'Tình trạng bám dính', appearance:'Ngoại quan', pass:'Đạt', fail:'Không đạt', adhesionBasis:'Tiêu chuẩn: không được bong mép hoặc có khe hở', appearanceBasis:'Tiêu chuẩn: không được bẩn hoặc hư hỏng',
     labelPhotoRecognition:'Chụp nhãn để nhận dạng', takeLabelPhoto:'📸 Chụp nhãn để nhận dạng tự động', labelAutoRecognize:'Sau khi chụp, hệ thống sẽ đọc: mã chi tiết (QR Code), số đơn, mã B',
@@ -1124,6 +1146,10 @@ function refreshLanguageSensitiveOptions() {
   if (lead && lead.options.length) lead.options[0].textContent = t('selectLead');
   const assistant = document.getElementById('assistantInspector');
   if (assistant && assistant.options.length) assistant.options[0].textContent = t('selectAssistant');
+  ['leadSupportE3','leadSupportW8','assistantSupportE3','assistantSupportW8'].forEach(function(id){
+    const el=document.getElementById(id);
+    if(el&&el.options.length)el.options[0].textContent=t('noSupport');
+  });
 }
 
 function localizeServerMessage(message) {
@@ -1228,6 +1254,9 @@ function goHome() {
   if (machine) machine.value = '';
   if (lead) lead.value = '';
   if (assistant) assistant.value = '';
+  ['leadSupportE3','leadSupportW8','assistantSupportE3','assistantSupportW8'].forEach(function(id){
+    const el=document.getElementById(id);if(el)el.value='';
+  });
 
   document.querySelectorAll('.factory-btn').forEach(function(button) {
     button.classList.remove('active');
@@ -1307,76 +1336,76 @@ function fillMachines(machines) {
   };
 }
 
-function fillInspectors(inspectors) {
-  const lead = document.getElementById('leadInspector');
-  const assistant = document.getElementById('assistantInspector');
-
-  lead.innerHTML = '<option value="">' + escapeHtml(t('selectLead')) + '</option>';
-  assistant.innerHTML = '<option value="">' + escapeHtml(t('selectAssistant')) + '</option>';
-
-  inspectors.forEach(person => {
-    const leadOption = document.createElement('option');
-    leadOption.value = person;
-    leadOption.textContent = person;
-    lead.appendChild(leadOption);
-
-    const assistantOption = document.createElement('option');
-    assistantOption.value = person;
-    assistantOption.textContent = person;
-    assistant.appendChild(assistantOption);
+function getInspectorCode(value) {
+  const raw=String(value||'').split('｜').pop().trim();
+  return raw ? raw.split(/\s+/)[0] : '';
+}
+function applyPersonnelChoice(role, origin, value) {
+  const key=role==='lead'?'leadInspector':'assistantInspector';
+  const other=role==='lead'?'assistantInspector':'leadInspector';
+  const own=role==='lead'?'leadInspector':'assistantInspector';
+  const prefix=role==='lead'?'leadSupport':'assistantSupport';
+  if(value && selected[other] && getInspectorCode(value)===getInspectorCode(selected[other])){
+    const el=document.getElementById(origin==='E4'?own:prefix+origin);
+    if(el)el.value='';
+    showToast(t('sameInspector'),'warning');
+    return;
+  }
+  [own,prefix+'E3',prefix+'W8'].forEach(function(id){
+    const el=document.getElementById(id); if(!el)return;
+    const keep=origin==='E4'?id===own:id===prefix+origin;
+    if(!keep)el.value='';
   });
-
-  lead.onchange = function() {
-    selected.leadInspector = this.value;
-
-    if (
-      selected.assistantInspector &&
-      selected.assistantInspector ===
-      selected.leadInspector
-    ) {
-      selected.assistantInspector = '';
-      assistant.value = '';
-      showToast(t('sameInspector'),'warning');
-    }
-
-    updatePersonnelOptions();
-    updateSummary();
-  };
-
-  assistant.onchange = function() {
-    selected.assistantInspector = this.value;
-
-    if (
-      selected.leadInspector &&
-      selected.leadInspector ===
-      selected.assistantInspector
-    ) {
-      selected.assistantInspector = '';
-      assistant.value = '';
-      showToast(t('sameInspector'),'warning');
-    }
-
-    updatePersonnelOptions();
-    updateSummary();
-  };
-
+  selected[key]=String(value||'');
+  updatePersonnelOptions();
+  updateSummary();
+}
+function fillInspectors(inspectors) {
+  const isE4=selected.factory==='E4';
+  document.getElementById('leadSupportGroup').classList.toggle('hidden',!isE4);
+  document.getElementById('assistantSupportGroup').classList.toggle('hidden',!isE4);
+  function fill(select,people,origin,prompt){
+    select.innerHTML='';
+    const empty=document.createElement('option');empty.value='';empty.textContent=prompt;
+    select.appendChild(empty);
+    (people||[]).forEach(function(person){
+      const option=document.createElement('option');
+      option.value=origin==='E4'?person:origin+'｜'+person;
+      option.textContent=person;
+      select.appendChild(option);
+    });
+    select.value='';
+  }
+  const lead=document.getElementById('leadInspector');
+  const assistant=document.getElementById('assistantInspector');
+  fill(lead,inspectors,'E4',t('selectLead'));
+  fill(assistant,inspectors,'E4',t('selectAssistant'));
+  lead.onchange=function(){applyPersonnelChoice('lead','E4',this.value);};
+  assistant.onchange=function(){applyPersonnelChoice('assistant','E4',this.value);};
+  ['lead','assistant'].forEach(function(role){
+    ['E3','W8'].forEach(function(factory){
+      const select=document.getElementById((role==='lead'?'leadSupport':'assistantSupport')+factory);
+      const people=isE4&&APP_DATA&&APP_DATA.factories&&APP_DATA.factories[factory]
+        ?APP_DATA.factories[factory].inspectors:[];
+      fill(select,people,factory,t('noSupport'));
+      select.onchange=function(){applyPersonnelChoice(role,factory,this.value);};
+    });
+  });
   updatePersonnelOptions();
 }
-
 function updatePersonnelOptions() {
-  const lead = document.getElementById('leadInspector');
-  const assistant = document.getElementById('assistantInspector');
-
-  Array.from(lead.options).forEach(option => {
-    option.disabled =
-      !!selected.assistantInspector &&
-      option.value === selected.assistantInspector;
-  });
-
-  Array.from(assistant.options).forEach(option => {
-    option.disabled =
-      !!selected.leadInspector &&
-      option.value === selected.leadInspector;
+  const groups=[
+    {ids:['leadInspector','leadSupportE3','leadSupportW8'],against:getInspectorCode(selected.assistantInspector)},
+    {ids:['assistantInspector','assistantSupportE3','assistantSupportW8'],against:getInspectorCode(selected.leadInspector)}
+  ];
+  groups.forEach(function(group){
+    group.ids.forEach(function(id){
+      const select=document.getElementById(id);
+      if(!select)return;
+      Array.from(select.options).forEach(function(opt){
+        opt.disabled=!!opt.value&&!!group.against&&getInspectorCode(opt.value)===group.against;
+      });
+    });
   });
 }
 
@@ -1439,8 +1468,7 @@ function toggleMachineStop() {
   }
 
   if (
-    selected.leadInspector ===
-    selected.assistantInspector
+    getInspectorCode(selected.leadInspector) === getInspectorCode(selected.assistantInspector)
   ) {
     showToast(t('sameInspector'),'error');
     return;
@@ -4068,7 +4096,7 @@ function validateClient(form) {
   if (!form.machine) return t('selectMachineFirst');
   if (!form.leadInspector) return t('selectLeadFirst');
   if (!form.assistantInspector) return t('selectAssistantFirst');
-  if (form.leadInspector === form.assistantInspector) return t('sameInspector');
+  if (getInspectorCode(form.leadInspector) === getInspectorCode(form.assistantInspector)) return t('sameInspector');
   if (!form.inspectionTime) return t('selectInspectionTime');
   if (!form.adhesion) return t('selectAdhesion');
   if (!form.appearance) return t('selectAppearance');
