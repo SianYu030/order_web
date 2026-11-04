@@ -580,6 +580,17 @@ html,body{background:#f5f7f8}
   .line-notify-sub,.line-notify-test{font-size:14px}
 }
 
+
+/* PhotoAgent video integration pilot: hidden by default; ?video_test=1 enables */
+.video-pilot[hidden]{display:none!important}
+.video-pilot{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.video-pilot-warning{background:#fff6e8;color:#754e17;border:1px solid #ebd3a2;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.55}
+.video-pilot-detail{font-size:13px;line-height:1.55;color:#34485c;overflow-wrap:anywhere;margin:9px 0}
+.video-pilot video{width:100%;max-height:230px;border-radius:12px;background:#101820}
+.video-pilot-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.video-pilot-controls .smallbtn{flex:1;min-width:95px;min-height:44px}
+.video-pilot-controls .smallbtn[disabled]{opacity:.5}
+.video-pilot-progress{display:block;width:100%;height:13px;margin-top:8px;accent-color:#1771b5}
 </style>
 </head>
 <body>
@@ -671,6 +682,23 @@ html,body{background:#f5f7f8}
         </label>
       </div>
       <div class="photo-grid" id="photoPreview"></div><div class="photo-note" id="photoCount"></div><div class="photo-note">照片選填。拍照或從相簿選取都會累加、不覆蓋；送出後依 MR 工單號歸檔。</div>
+        <div class="video-pilot" id="reportVideoPilot" hidden>
+          <div class="section-title">🎥 報修影片（影片測試）</div>
+          <div class="video-pilot-warning">目前僅測試影片選取、預覽與 2 GB 分段讀取，<b>尚未上傳到雲端、LINE 或 NAS</b>。本功能不影響原本照片上傳。</div>
+          <div class="photo-actions" style="margin-top:10px">
+            <label class="filebox">🎥 直接錄影<input id="reportVideoCamera" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.webm,.mkv" capture="environment"></label>
+            <label class="filebox">🎞️ 從相簿選影片<input id="reportVideoLibrary" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.webm,.mkv"></label>
+          </div>
+          <div class="video-pilot-detail" id="reportVideoDetails" role="status" aria-live="polite">尚未選擇影片。</div>
+          <div id="reportVideoPreview"></div>
+          <div class="video-pilot-controls">
+            <button type="button" class="smallbtn" id="reportVideoTest" disabled>開始分段測試</button>
+            <button type="button" class="smallbtn" id="reportVideoPause" disabled>暫停</button>
+            <button type="button" class="smallbtn" id="reportVideoClear">清除影片</button>
+          </div>
+          <progress class="video-pilot-progress" id="reportVideoProgress" value="0" max="100" aria-label="影片分段測試進度"></progress>
+          <div class="photo-note" id="reportVideoStatus" role="status">測試不會上傳檔案。選擇影片後可檢查分段處理是否正常。</div>
+        </div>
     </section>
 
     <section class="card hidden" id="summaryCard">
@@ -915,6 +943,23 @@ html,body{background:#f5f7f8}
         </div>
         <div class="photo-grid" id="repairPhotoPreview"></div>
         <div class="photo-note" id="repairPhotoCount">目前尚未選擇維修照片。</div><div class="photo-note">照片選填。拍照或從相簿選取都會累加、不覆蓋；儲存後依 MR 工單號歸檔。</div>
+        <div class="video-pilot" id="repairVideoPilot" hidden>
+          <div class="section-title">🎥 維修影片（影片測試）</div>
+          <div class="video-pilot-warning">目前僅測試影片選取、預覽與 2 GB 分段讀取，<b>尚未上傳到雲端、LINE 或 NAS</b>。本功能不影響原本照片上傳。</div>
+          <div class="photo-actions" style="margin-top:10px">
+            <label class="filebox">🎥 直接錄影<input id="repairVideoCamera" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.webm,.mkv" capture="environment"></label>
+            <label class="filebox">🎞️ 從相簿選影片<input id="repairVideoLibrary" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.webm,.mkv"></label>
+          </div>
+          <div class="video-pilot-detail" id="repairVideoDetails" role="status" aria-live="polite">尚未選擇影片。</div>
+          <div id="repairVideoPreview"></div>
+          <div class="video-pilot-controls">
+            <button type="button" class="smallbtn" id="repairVideoTest" disabled>開始分段測試</button>
+            <button type="button" class="smallbtn" id="repairVideoPause" disabled>暫停</button>
+            <button type="button" class="smallbtn" id="repairVideoClear">清除影片</button>
+          </div>
+          <progress class="video-pilot-progress" id="repairVideoProgress" value="0" max="100" aria-label="影片分段測試進度"></progress>
+          <div class="photo-note" id="repairVideoStatus" role="status">測試不會上傳檔案。選擇影片後可檢查分段處理是否正常。</div>
+        </div>
 
         <div class="section-title">維修狀態</div>
         <div class="current-status-box">
@@ -2304,6 +2349,118 @@ function reset(){
   el("submitBtn").disabled=true;update();
 }
 update();
+</script>
+
+<script>
+// Report / repair video trial kept inside V4.492. No video is transmitted to any server.
+(function(){
+"use strict";
+var enabled;
+try{ enabled = new URLSearchParams(location.search).get("video_test")==="1"; }catch(e){enabled=false;}
+if(!enabled)return;
+var MAX_BYTES=2*1024*1024*1024,CHUNK_BYTES=4*1024*1024;
+var items=Object.create(null);
+function el(id){return document.getElementById(id);}
+function mb(n){return (n/(1024*1024)).toFixed(1)+" MB";}
+function accepted(file){
+  return /\.(mov|mp4|m4v|3gp|webm|mkv)$/i.test(file.name||"") || /^video\//i.test(file.type||"");
+}
+function clearVideo(state){
+  state.ticket++;
+  state.running=false;
+  state.paused=false;
+  state.file=null;
+  state.offset=0;
+  if(state.url){URL.revokeObjectURL(state.url);state.url=null;}
+  el(state.prefix+"VideoPreview").replaceChildren();
+  el(state.prefix+"VideoDetails").textContent="尚未選擇影片。";
+  el(state.prefix+"VideoStatus").textContent="測試不會上傳檔案。選擇影片後可檢查分段處理是否正常。";
+  el(state.prefix+"VideoCamera").value="";
+  el(state.prefix+"VideoLibrary").value="";
+  render(state);
+}
+function render(state){
+  var p=state.file&&state.file.size?Math.min(100,state.offset/state.file.size*100):0;
+  el(state.prefix+"VideoProgress").value=p;
+  el(state.prefix+"VideoTest").disabled=!state.file||state.running||state.offset>=state.file.size;
+  el(state.prefix+"VideoTest").textContent=state.offset?"繼續分段測試":"開始分段測試";
+  el(state.prefix+"VideoPause").disabled=!state.running;
+}
+function select(state,file){
+  clearVideo(state);
+  if(!file)return;
+  if(!accepted(file)){el(state.prefix+"VideoStatus").textContent="不支援此格式。請選擇 MOV、MP4、M4V、3GP、WEBM 或 MKV。";return;}
+  if(file.size<1){el(state.prefix+"VideoStatus").textContent="無法使用 0 位元組的影片。";return;}
+  if(file.size>MAX_BYTES){el(state.prefix+"VideoStatus").textContent="⚠️ 影片超過 2 GB 測試上限，未載入也未上傳。";el(state.prefix+"VideoDetails").textContent=file.name+"（"+mb(file.size)+"）";return;}
+  state.file=file;
+  state.url=URL.createObjectURL(file);
+  var video=document.createElement("video");
+  video.setAttribute("controls","");
+  video.setAttribute("playsinline","");
+  video.setAttribute("preload","metadata");
+  video.src=state.url;
+  el(state.prefix+"VideoPreview").appendChild(video);
+  el(state.prefix+"VideoDetails").textContent="檔名："+file.name+"　｜　大小："+mb(file.size)+"　｜　格式："+(file.type||"未提供")+"　｜　預計 "+Math.ceil(file.size/CHUNK_BYTES)+" 個區塊";
+  el(state.prefix+"VideoStatus").textContent="✅ 已載入手機本機影片，未上傳。按「開始分段測試」檢查讀取能力。";
+  render(state);
+}
+async function run(state){
+  if(!state.file||state.running)return;
+  if(!crypto||!crypto.subtle){el(state.prefix+"VideoStatus").textContent="目前瀏覽器不支援 SHA-256 分段驗證";return;}
+  state.running=true;state.paused=false;
+  var ticket=++state.ticket, file=state.file;
+  render(state);
+  try{
+    while(state.offset<file.size && ticket===state.ticket){
+      var end=Math.min(file.size,state.offset+CHUNK_BYTES);
+      var buffer=await file.slice(state.offset,end).arrayBuffer();
+      if(ticket!==state.ticket)return;
+      if(buffer.byteLength!==end-state.offset)throw new Error("讀取長度不一致");
+      var hash=await crypto.subtle.digest("SHA-256",buffer);
+      if(ticket!==state.ticket)return;
+      if(!hash||hash.byteLength!==32)throw new Error("SHA-256 計算失敗");
+      state.offset=end;
+      var done=state.offset>=file.size;
+      el(state.prefix+"VideoStatus").textContent="已驗證 "+mb(state.offset)+"／"+mb(file.size)+"（"+(state.offset/file.size*100).toFixed(1)+"%），只讀本機檔案。";
+      if(done||state.paused)break;
+      await new Promise(function(resolve){setTimeout(resolve,0);});
+    }
+    if(ticket!==state.ticket)return;
+    if(state.offset>=file.size)el(state.prefix+"VideoStatus").textContent="✅ 本機分段驗證完成！尚未上傳任何影片，NAS 亦未備份。";
+    else if(state.paused)el(state.prefix+"VideoStatus").textContent="已暫停本機測試，可按繼續。";
+  }catch(e){if(ticket===state.ticket)el(state.prefix+"VideoStatus").textContent="❌ 分段讀取失敗："+String(e.message||e);}
+  finally{if(ticket===state.ticket){state.running=false;state.paused=false;render(state);}}
+}
+["report","repair"].forEach(function(prefix){
+  var state={prefix:prefix,file:null,url:null,offset:0,running:false,paused:false,ticket:0};
+  items[prefix]=state;
+  el(prefix+"VideoPilot").hidden=false;
+  ["Camera","Library"].forEach(function(suffix){
+    var input=el(prefix+"Video"+suffix);
+    input.addEventListener("change",function(){select(state,input.files&&input.files[0]);});
+  });
+  el(prefix+"VideoTest").addEventListener("click",function(){run(state);});
+  el(prefix+"VideoPause").addEventListener("click",function(){
+    state.paused=true;
+    el(prefix+"VideoStatus").textContent="準備在本區塊結束後暫停…";
+  });
+  el(prefix+"VideoClear").addEventListener("click",function(){clearVideo(state);});
+  render(state);
+});
+var notice=document.querySelector(".notice");
+if(notice){var note=document.createElement("div");note.textContent="🎥 已啟用影片測試模式。影片僅供本機選取與分段讀取，尚無上傳功能。";note.style.cssText="font-weight:800;margin-top:5px";notice.appendChild(note);}
+document.addEventListener("click",function(ev){
+  var target=ev.target&&ev.target.closest&&ev.target.closest("#submitBtn,#saveRepairBtn,#completeRepairBtn");
+  if(!target)return;
+  var state=items[target.id==="submitBtn"?"report":"repair"];
+  if(!state||!state.file)return;
+  ev.preventDefault();ev.stopPropagation();ev.stopImmediatePropagation();
+  alert("影片目前只供本機測試，尚未接通雲端上傳或 NAS 備份。\n請先按「清除影片」，再送出工單或儲存維修資料，避免誤以為影片已經備份。");
+},true);
+["resetBtn","successHomeBtn","againBtn"].forEach(function(id){
+  var button=el(id);if(button)button.addEventListener("click",function(){clearVideo(items.report);});
+});
+})();
 </script>
 <script src="./v10_version_gate.js?v=20261028c" defer></script>
 </body>
