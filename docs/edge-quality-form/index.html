@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.09：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.12（實際標籤三區定位與B碼複核測試版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -1938,7 +1938,7 @@ async function inlineScanLoop(ts){
   if(ts-INLINE_SCAN_LAST<210){requestAnimationFrame(inlineScanLoop);return;}
   INLINE_SCAN_LAST=ts;
   const session=INLINE_SCAN_SESSION;
-  const frame=inlineCaptureFrame(document.getElementById('inlineLiveVideo'),1600);
+  const frame=inlineCaptureFrame(document.getElementById('inlineLiveVideo'),2000);
   if(!frame){requestAnimationFrame(inlineScanLoop);return;}
 
   const q=inlineFrameQuality(frame);
@@ -2066,7 +2066,11 @@ async function inlineScanLoop(ts){
 
       const check=readCurrentLabelResult();
       const validResult=/^\d{8}$/.test(check.qr)&&/^20\d{10}$/.test(check.order)&&/^B\d{9}$/.test(check.b);
-      if(validResult){
+      const reviewPending=['warnLabelOrderNo','warnLabelBCode'].some(function(id){
+        const el=document.getElementById(id);
+        return el && !el.classList.contains('hidden');
+      });
+      if(validResult && !reviewPending){
         status.textContent='✅ QR／單號／B碼都已辨識，請核對後送出';
         meta.textContent='完整三欄已填入同一頁';
         await stopInlineScanner(false);
@@ -2076,6 +2080,15 @@ async function inlineScanLoop(ts){
           const box=document.getElementById('inlineCameraBox');
           if(box)box.classList.remove('show');
         },950);
+      }else if(validResult && reviewPending){
+        // 格式完整但未經可靠複核時不顯示綠色成功，保留欄位供現場核對。
+        status.textContent='⚠️ 單號或B碼可能誤判，請核對黃色欄位';
+        meta.textContent='QR 已讀取｜文字結果需要人工確認';
+        await stopInlineScanner(false);
+        const box=document.getElementById('inlineCameraBox');
+        if(box)box.classList.remove('show');
+        const labelStatus=document.getElementById('labelOcrStatus');
+        if(labelStatus)labelStatus.textContent='⚠️ 文字辨識信心不足，請核對實際標籤，確認後再送出';
       }else{
         const missing=[!/^20\d{10}$/.test(check.order)?'單號':'',!/^B\d{9}$/.test(check.b)?'B碼':'',
                        !/^\d{8}$/.test(check.qr)?'QR':''].filter(Boolean).join('、');
@@ -2143,6 +2156,32 @@ async function readUpperLabelFields_(worker,labelCanvas){
     orderNo:chooseFastOrderCandidate_(reads).code,
     bCode:chooseFastBCodeCandidate_(reads).code
   };
+}
+
+function ocrNeedsHumanReview_(value,diagnostics) {
+  // OCR的格式正確不等於辨識正確；單一候選或互相衝突需要核對。
+  return !value || !diagnostics ||
+    Number(diagnostics.votes || 0)<2 ||
+    Number(diagnostics.agreement || 0)<0.6;
+}
+
+// 三區獨立辨識：單號、B碼、QR工件號碼。
+// B碼寬框獨立再讀一次；不同結果不可拼接或自動採用。
+function reconcileBCode_(focusedPick,wideText) {
+  const focused=String((focusedPick&&focusedPick.code)||'').trim();
+  const wide=parseFastBCode_(wideText);
+  const conflict=!!(focused && wide && focused!==wide);
+  return {
+    code:conflict?'':(focused||wide),
+    focused:focused,wide:wide,
+    agree:!!(focused && wide && focused===wide),
+    conflict:conflict
+  };
+}
+
+function ocrBNeedsHumanReview_(value,diag) {
+  return ocrNeedsHumanReview_(value,diag) ||
+    !diag || !diag.independentAgree || !!diag.conflict;
 }
 
 async function handleLabelPhoto(event) {
@@ -2213,7 +2252,10 @@ async function handleLabelPhoto(event) {
     if(!data.orderNo || !data.bCode){
       const supplement=await readUpperLabelFields_(worker,normalized.canvas);
       if(!data.orderNo && supplement.orderNo)data.orderNo=supplement.orderNo;
-      if(!data.bCode && supplement.bCode)data.bCode=supplement.bCode;
+      if(!data.bCode && supplement.bCode && !(data.bDiagnostics&&data.bDiagnostics.conflict)){
+        data.bCode=supplement.bCode;
+        data.bDiagnostics={votes:1,agreement:1,candidates:[supplement.bCode],independentAgree:false,conflict:false};
+      }
 
       // 若白標籤定位不成功，再用展開的QR錨點做第二條定位路徑。
       if((!data.orderNo || !data.bCode) && locateMode!=='QR'){
@@ -2221,7 +2263,10 @@ async function handleLabelPhoto(event) {
         if(qrNorm){
           const supplementQr=await readUpperLabelFields_(worker,qrNorm.canvas);
           if(!data.orderNo && supplementQr.orderNo)data.orderNo=supplementQr.orderNo;
-          if(!data.bCode && supplementQr.bCode)data.bCode=supplementQr.bCode;
+          if(!data.bCode && supplementQr.bCode && !(data.bDiagnostics&&data.bDiagnostics.conflict)){
+            data.bCode=supplementQr.bCode;
+            data.bDiagnostics={votes:1,agreement:1,candidates:[supplementQr.bCode],independentAgree:false,conflict:false};
+          }
         }
       }
     }
@@ -2234,19 +2279,8 @@ async function handleLabelPhoto(event) {
     selected.labelBCode = data.bCode || '';
 
     const warnings = {
-      orderNo:
-        !data.orderNo ||
-        (data.orderDiagnostics &&
-         data.orderDiagnostics.candidates &&
-         data.orderDiagnostics.candidates.length >= 2 &&
-         data.orderDiagnostics.agreement < 0.55),
-
-      bCode:
-        !data.bCode ||
-        (data.bDiagnostics &&
-         data.bDiagnostics.candidates &&
-         data.bDiagnostics.candidates.length >= 2 &&
-         data.bDiagnostics.agreement < 0.55)
+      orderNo:ocrNeedsHumanReview_(data.orderNo,data.orderDiagnostics),
+      bCode:ocrBNeedsHumanReview_(data.bCode,data.bDiagnostics)
     };
 
     applyOcrWarnings(warnings);
@@ -3517,48 +3551,7 @@ function chooseFastOrderCandidate_(items) {
   let agreement =
     ranked[0].count / valid.length;
 
-  if (
-    ranked[0].count < 2 &&
-    valid.length >= 2
-  ) {
-    let out = '';
-    let agreementSum = 0;
-
-    for (let pos = 0; pos < 12; pos++) {
-      const bucket = {};
-      let total = 0;
-
-      valid.forEach(function(item) {
-        const ch = item.code[pos];
-        const weight =
-          Math.max(20,item.confidence);
-
-        bucket[ch] =
-          (bucket[ch] || 0) +
-          weight;
-
-        total += weight;
-      });
-
-      const top =
-        Object.entries(bucket)
-          .sort(function(a,b) {
-            return b[1]-a[1];
-          })[0];
-
-      out += top[0];
-
-      agreementSum +=
-        total
-          ? top[1]/total
-          : 0;
-    }
-
-    if (/^20\d{10}$/.test(out)) {
-      code = out;
-      agreement = agreementSum/12;
-    }
-  }
+  // 禁止逐位組合出不存在的單號：候選值必須是 OCR 真正讀出的完整文字。
 
   const avgConf =
     valid.reduce(function(sum,item) {
@@ -3583,15 +3576,14 @@ function chooseFastOrderCandidate_(items) {
 
 
 function parseFastBCode_(input) {
-  const text =
-    String(input || '')
-      .toUpperCase()
-      .replace(/[^B0-9]/g,'');
-
-  const match =
-    text.match(/B\d{9}/);
-
-  return match ? match[0] : '';
+  // 不可跨行拼接數字，以免組出照片中沒有的B碼；單行允許OCR分隔空白。
+  const lines=String(input||'').toUpperCase().split(/\r?\n/);
+  for (const line of lines) {
+    const normalized=line.replace(/[\s._-]/g,'');
+    const match=normalized.match(/(?:^|[^0-9])(B\d{9})(?!\d)/);
+    if(match)return match[1];
+  }
+  return '';
 }
 
 
@@ -3656,52 +3648,7 @@ function chooseFastBCodeCandidate_(items) {
   let agreement =
     ranked[0].count / valid.length;
 
-  if (
-    ranked[0].count < 2 &&
-    valid.length >= 2
-  ) {
-    let out = 'B';
-    let agreementSum = 0;
-
-    for (let pos = 1; pos < 10; pos++) {
-      const bucket = {};
-      let total = 0;
-
-      valid.forEach(function(item) {
-        const ch = item.code[pos];
-        const weight =
-          Math.max(20,item.confidence);
-
-        bucket[ch] =
-          (bucket[ch] || 0) +
-          weight;
-
-        total += weight;
-      });
-
-      const top =
-        Object.entries(bucket)
-          .sort(function(a,b) {
-            return b[1]-a[1];
-          })[0];
-
-      out += top[0];
-
-      agreementSum +=
-        total
-          ? top[1]/total
-          : 0;
-    }
-
-    if (/^B\d{9}$/.test(out)) {
-      code = out;
-      agreement = agreementSum/9;
-      votes =
-        valid.filter(function(item) {
-          return item.code === out;
-        }).length;
-    }
-  }
+  // 禁止逐位組合出不存在的B碼：候選值必須是 OCR 真正讀出的完整文字。
 
   const avgConf =
     valid.reduce(function(sum,item) {
@@ -3723,16 +3670,13 @@ function chooseFastBCodeCandidate_(items) {
 
 
 function parseFastQrHuman_(input) {
-  const matches =
-    String(input || '')
-      .match(/\d{7,10}/g) || [];
-
-  const eight =
-    matches.find(function(value) {
-      return value.length === 8;
-    });
-
-  return eight || matches[0] || '';
+  // QR文字只能為八位完整數字，保留前導零；拒絕其他文字上的日期與尺寸。
+  const matches=String(input||'').match(/(?:^|[^0-9])(\d{8})(?![0-9])/g)||[];
+  for(const part of matches){
+    const code=(part.match(/\d{8}/)||[])[0];
+    if(code)return code;
+  }
+  return '';
 }
 
 
@@ -3814,27 +3758,13 @@ async function readFastLabelFields(
 
   let orderNo = orderPick.code;
 
+  // B碼位於標籤上方偏右，允許貼紙尺寸、拍攝角度造成的偏移。
   const bJobs = [
-    {
-      canvas:cropFastLabel_(labelCanvas,0.315,0.000,0.285,0.105,1200,null),
-      psm:7
-    },
-    {
-      canvas:cropFastLabel_(labelCanvas,0.315,0.000,0.285,0.105,1200,'contrast'),
-      psm:7
-    },
-    {
-      canvas:cropFastLabel_(labelCanvas,0.305,0.000,0.315,0.120,1300,'contrast'),
-      psm:6
-    },
-    {
-      canvas:cropFastLabel_(labelCanvas,0.325,0.005,0.265,0.095,1200,'binary'),
-      psm:7
-    },
-    {
-      canvas:cropFastLabel_(labelCanvas,0.285,0.000,0.350,0.135,1350,'contrast'),
-      psm:13
-    }
+    {canvas:cropFastLabel_(labelCanvas,0.30,0.000,0.38,0.155,1350,null),psm:7},
+    {canvas:cropFastLabel_(labelCanvas,0.32,0.000,0.40,0.18,1450,'contrast'),psm:7},
+    {canvas:cropFastLabel_(labelCanvas,0.37,0.025,0.36,0.17,1500,null),psm:7},
+    {canvas:cropFastLabel_(labelCanvas,0.28,0.000,0.48,0.22,1450,'contrast'),psm:6},
+    {canvas:cropFastLabel_(labelCanvas,0.30,0.000,0.42,0.18,1350,'binary'),psm:7}
   ];
 
   const bReads = [];
@@ -3853,36 +3783,43 @@ async function readFastLabelFields(
   let bPick =
     chooseFastBCodeCandidate_(bReads);
 
-  let bCode = bPick.code;
+  // 將標籤上方較寬區域獨立辨識，不和B碼小框合併投票，避免假共識。
+  const wideBRead=await fastOcr_(
+    worker,cropFastLabel_(labelCanvas,0.20,0.0,0.76,0.26,1600,'contrast'),
+    'B0123456789',6
+  );
+  let bCheck=reconcileBCode_(bPick,wideBRead.text);
+  let bCode=bCheck.code;
 
   let qrHumanConfidence = 0;
 
   if (!qrCode) {
-    const humanRegion =
-      cropFastLabel_(
-        labelCanvas,
-        0.37,0.67,0.28,0.15,
-        900,
-        'contrast'
-      );
-
-    const human =
-      await fastOcr_(
-        worker,
-        humanRegion,
-        '0123456789',
-        7
-      );
-
-    const qrHuman =
-      parseFastQrHuman_(human.text);
-
-    qrHumanConfidence =
-      human.confidence;
-
-    if (qrHuman) {
-      qrCode = qrHuman;
-      qrSource = 'TEXT';
+    // 實際標籤：QR圖形在中下，人工可見的8位工件號在QR正下方。
+    // 之前 0.67~0.82 的範圍偏高，常讀到QR圖形而漏掉末端號碼。
+    // 嘗試兩種裁切高度，保持OCR限定數字，僅接受完整8碼。
+    const humanSpecs=[
+      // 精準裁切 QR 下方數字行，不要把上方 QR 方塊一同送進文字 OCR。
+      [0.430,0.805,0.200,0.060,1200,null,7],
+      [0.405,0.790,0.235,0.115,1200,'contrast',7],
+      [0.425,0.810,0.205,0.080,1250,'contrast',7]
+    ];
+    const seen=[];
+    for(const v of humanSpecs){
+      const region=cropFastLabel_(labelCanvas,v[0],v[1],v[2],v[3],v[4],v[5]);
+      const read=await fastOcr_(worker,region,'0123456789',v[6]);
+      const candidate=parseFastQrHuman_(read.text);
+      if(candidate)seen.push({code:candidate,confidence:read.confidence});
+    }
+    if(seen.length){
+      const counts={};
+      for(const hit of seen)counts[hit.code]=(counts[hit.code]||0)+1;
+      const ranked=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+      // 全部候選衝突且沒有多數一致時不猜測8碼，交給現場核對。
+      if(ranked.length===1 || counts[ranked[0]]>counts[ranked[1]]){
+        qrCode=ranked[0];
+        qrSource='TEXT';
+      }
+      qrHumanConfidence=Math.max(...seen.map(hit=>hit.confidence));
     }
   }
 
@@ -3954,7 +3891,8 @@ async function readFastLabelFields(
 
     if (extraPick.code) {
       bPick = extraPick;
-      bCode = extraPick.code;
+      bCheck=reconcileBCode_(bPick,wideBRead.text);
+      bCode=bCheck.code;
     }
   }
 
@@ -3979,7 +3917,11 @@ async function readFastLabelFields(
     bDiagnostics:{
       votes:bPick.votes || 0,
       agreement:bPick.agreement || 0,
-      candidates:bPick.candidates || []
+      candidates:bPick.candidates || [],
+      independentAgree:bCheck.agree,
+      conflict:bCheck.conflict,
+      focusedCode:bCheck.focused,
+      wideCode:bCheck.wide
     }
   };
 }
@@ -4163,6 +4105,11 @@ function submitForm(forceUpdate) {
     showToast(error,'error');
     return;
   }
+  const needsReview=['warnLabelOrderNo','warnLabelBCode'].some(function(id){
+    const el=document.getElementById(id);
+    return el&&!el.classList.contains('hidden');
+  });
+  if(needsReview&&!window.confirm('⚠️ 單號或B碼的辨識信心不足。請對照標籤確認三個號碼，確認無誤才按確定送出。'))return;
 
   showLoading(true);
 
