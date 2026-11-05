@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.11（標籤三區定位與B碼複核測試版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.12（實際標籤三區定位與B碼複核測試版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -3794,31 +3794,31 @@ async function readFastLabelFields(
   let qrHumanConfidence = 0;
 
   if (!qrCode) {
-    const humanRegion =
-      cropFastLabel_(
-        labelCanvas,
-        0.37,0.67,0.28,0.15,
-        900,
-        'contrast'
-      );
-
-    const human =
-      await fastOcr_(
-        worker,
-        humanRegion,
-        '0123456789',
-        7
-      );
-
-    const qrHuman =
-      parseFastQrHuman_(human.text);
-
-    qrHumanConfidence =
-      human.confidence;
-
-    if (qrHuman) {
-      qrCode = qrHuman;
-      qrSource = 'TEXT';
+    // 實際標籤：QR圖形在中下，人工可見的8位工件號在QR正下方。
+    // 之前 0.67~0.82 的範圍偏高，常讀到QR圖形而漏掉末端號碼。
+    // 嘗試兩種裁切高度，保持OCR限定數字，僅接受完整8碼。
+    const humanSpecs=[
+      [0.405,0.800,0.235,0.115,1200,'contrast',7],
+      [0.39,0.770,0.265,0.160,1200,null,7],
+      [0.41,0.820,0.240,0.105,1250,'contrast',7]
+    ];
+    const seen=[];
+    for(const v of humanSpecs){
+      const region=cropFastLabel_(labelCanvas,v[0],v[1],v[2],v[3],v[4],v[5]);
+      const read=await fastOcr_(worker,region,'0123456789',v[6]);
+      const candidate=parseFastQrHuman_(read.text);
+      if(candidate)seen.push({code:candidate,confidence:read.confidence});
+    }
+    if(seen.length){
+      const counts={};
+      for(const hit of seen)counts[hit.code]=(counts[hit.code]||0)+1;
+      const ranked=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+      // 全部候選衝突且沒有多數一致時不猜測8碼，交給現場核對。
+      if(ranked.length===1 || counts[ranked[0]]>counts[ranked[1]]){
+        qrCode=ranked[0];
+        qrSource='TEXT';
+      }
+      qrHumanConfidence=Math.max(...seen.map(hit=>hit.confidence));
     }
   }
 
