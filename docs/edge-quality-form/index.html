@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.09：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.10（OCR防誤判測試版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -1938,7 +1938,7 @@ async function inlineScanLoop(ts){
   if(ts-INLINE_SCAN_LAST<210){requestAnimationFrame(inlineScanLoop);return;}
   INLINE_SCAN_LAST=ts;
   const session=INLINE_SCAN_SESSION;
-  const frame=inlineCaptureFrame(document.getElementById('inlineLiveVideo'),1600);
+  const frame=inlineCaptureFrame(document.getElementById('inlineLiveVideo'),2000);
   if(!frame){requestAnimationFrame(inlineScanLoop);return;}
 
   const q=inlineFrameQuality(frame);
@@ -2066,7 +2066,11 @@ async function inlineScanLoop(ts){
 
       const check=readCurrentLabelResult();
       const validResult=/^\d{8}$/.test(check.qr)&&/^20\d{10}$/.test(check.order)&&/^B\d{9}$/.test(check.b);
-      if(validResult){
+      const reviewPending=['warnLabelOrderNo','warnLabelBCode'].some(function(id){
+        const el=document.getElementById(id);
+        return el && !el.classList.contains('hidden');
+      });
+      if(validResult && !reviewPending){
         status.textContent='✅ QR／單號／B碼都已辨識，請核對後送出';
         meta.textContent='完整三欄已填入同一頁';
         await stopInlineScanner(false);
@@ -2076,6 +2080,15 @@ async function inlineScanLoop(ts){
           const box=document.getElementById('inlineCameraBox');
           if(box)box.classList.remove('show');
         },950);
+      }else if(validResult && reviewPending){
+        // 格式完整但未經可靠複核時不顯示綠色成功，保留欄位供現場核對。
+        status.textContent='⚠️ 單號或B碼可能誤判，請核對黃色欄位';
+        meta.textContent='QR 已讀取｜文字結果需要人工確認';
+        await stopInlineScanner(false);
+        const box=document.getElementById('inlineCameraBox');
+        if(box)box.classList.remove('show');
+        const labelStatus=document.getElementById('labelOcrStatus');
+        if(labelStatus)labelStatus.textContent='⚠️ 文字辨識信心不足，請核對實際標籤，確認後再送出';
       }else{
         const missing=[!/^20\d{10}$/.test(check.order)?'單號':'',!/^B\d{9}$/.test(check.b)?'B碼':'',
                        !/^\d{8}$/.test(check.qr)?'QR':''].filter(Boolean).join('、');
@@ -2143,6 +2156,13 @@ async function readUpperLabelFields_(worker,labelCanvas){
     orderNo:chooseFastOrderCandidate_(reads).code,
     bCode:chooseFastBCodeCandidate_(reads).code
   };
+}
+
+function ocrNeedsHumanReview_(value,diagnostics) {
+  // OCR的格式正確不等於辨識正確；單一候選或互相衝突需要核對。
+  return !value || !diagnostics ||
+    Number(diagnostics.votes || 0)<2 ||
+    Number(diagnostics.agreement || 0)<0.6;
 }
 
 async function handleLabelPhoto(event) {
@@ -2234,19 +2254,8 @@ async function handleLabelPhoto(event) {
     selected.labelBCode = data.bCode || '';
 
     const warnings = {
-      orderNo:
-        !data.orderNo ||
-        (data.orderDiagnostics &&
-         data.orderDiagnostics.candidates &&
-         data.orderDiagnostics.candidates.length >= 2 &&
-         data.orderDiagnostics.agreement < 0.55),
-
-      bCode:
-        !data.bCode ||
-        (data.bDiagnostics &&
-         data.bDiagnostics.candidates &&
-         data.bDiagnostics.candidates.length >= 2 &&
-         data.bDiagnostics.agreement < 0.55)
+      orderNo:ocrNeedsHumanReview_(data.orderNo,data.orderDiagnostics),
+      bCode:ocrNeedsHumanReview_(data.bCode,data.bDiagnostics)
     };
 
     applyOcrWarnings(warnings);
@@ -3517,48 +3526,7 @@ function chooseFastOrderCandidate_(items) {
   let agreement =
     ranked[0].count / valid.length;
 
-  if (
-    ranked[0].count < 2 &&
-    valid.length >= 2
-  ) {
-    let out = '';
-    let agreementSum = 0;
-
-    for (let pos = 0; pos < 12; pos++) {
-      const bucket = {};
-      let total = 0;
-
-      valid.forEach(function(item) {
-        const ch = item.code[pos];
-        const weight =
-          Math.max(20,item.confidence);
-
-        bucket[ch] =
-          (bucket[ch] || 0) +
-          weight;
-
-        total += weight;
-      });
-
-      const top =
-        Object.entries(bucket)
-          .sort(function(a,b) {
-            return b[1]-a[1];
-          })[0];
-
-      out += top[0];
-
-      agreementSum +=
-        total
-          ? top[1]/total
-          : 0;
-    }
-
-    if (/^20\d{10}$/.test(out)) {
-      code = out;
-      agreement = agreementSum/12;
-    }
-  }
+  // 禁止逐位組合出不存在的單號：候選值必須是 OCR 真正讀出的完整文字。
 
   const avgConf =
     valid.reduce(function(sum,item) {
@@ -3583,15 +3551,14 @@ function chooseFastOrderCandidate_(items) {
 
 
 function parseFastBCode_(input) {
-  const text =
-    String(input || '')
-      .toUpperCase()
-      .replace(/[^B0-9]/g,'');
-
-  const match =
-    text.match(/B\d{9}/);
-
-  return match ? match[0] : '';
+  // 不可跨行拼接數字，以免組出照片中沒有的B碼；單行允許OCR分隔空白。
+  const lines=String(input||'').toUpperCase().split(/\r?\n/);
+  for (const line of lines) {
+    const normalized=line.replace(/[\s._-]/g,'');
+    const match=normalized.match(/(?:^|[^0-9])(B\d{9})(?!\d)/);
+    if(match)return match[1];
+  }
+  return '';
 }
 
 
@@ -3656,52 +3623,7 @@ function chooseFastBCodeCandidate_(items) {
   let agreement =
     ranked[0].count / valid.length;
 
-  if (
-    ranked[0].count < 2 &&
-    valid.length >= 2
-  ) {
-    let out = 'B';
-    let agreementSum = 0;
-
-    for (let pos = 1; pos < 10; pos++) {
-      const bucket = {};
-      let total = 0;
-
-      valid.forEach(function(item) {
-        const ch = item.code[pos];
-        const weight =
-          Math.max(20,item.confidence);
-
-        bucket[ch] =
-          (bucket[ch] || 0) +
-          weight;
-
-        total += weight;
-      });
-
-      const top =
-        Object.entries(bucket)
-          .sort(function(a,b) {
-            return b[1]-a[1];
-          })[0];
-
-      out += top[0];
-
-      agreementSum +=
-        total
-          ? top[1]/total
-          : 0;
-    }
-
-    if (/^B\d{9}$/.test(out)) {
-      code = out;
-      agreement = agreementSum/9;
-      votes =
-        valid.filter(function(item) {
-          return item.code === out;
-        }).length;
-    }
-  }
+  // 禁止逐位組合出不存在的B碼：候選值必須是 OCR 真正讀出的完整文字。
 
   const avgConf =
     valid.reduce(function(sum,item) {
