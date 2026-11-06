@@ -2218,12 +2218,15 @@ function ocrNeedsHumanReview_(value,diagnostics) {
 // 三區獨立辨識：單號、B碼、QR工件號碼。
 // B碼寬框獨立再讀一次；不同結果不可拼接或自動採用。
 function bCodeHas8PrefixSupport_(text,code) {
-  // 某些iPhone影格OCR將B讀成8。此處只比對既有B碼的9位數字，
-  // 不會單憑「8+9碼」自行建立B碼，也不接受被其他數字黏住的片段。
+  // OCR有時把B讀成8，或把B碼後方另一行字誤接1至2位數。
+  // 這裡只能用於「已有另一個裁切完整讀出B+9碼」的補強證據；
+  // 單獨出現8開頭或B+多位數，一律不能建立新的B碼。
   if(!/^B\d{9}$/.test(String(code||'')))return false;
   const digits=code.slice(1);
-  const needle=new RegExp('(?:^|[^A-Z0-9])8'+digits+'(?![0-9])');
-  return String(text||'').toUpperCase().split(/\r?\n/).some(line=>needle.test(line));
+  const prefix8=new RegExp('(?:^|[^0-9])8'+digits+'[0-9]{0,2}(?![0-9])');
+  const trailingNoise=new RegExp('B'+digits+'[0-9]{1,2}(?![0-9])');
+  return String(text||'').toUpperCase().split(/\r?\n/)
+    .some(line=>prefix8.test(line)||trailingNoise.test(line));
 }
 function reconcileBCode_(focusedPick,wideText) {
   const focused=String((focusedPick&&focusedPick.code)||'').trim();
