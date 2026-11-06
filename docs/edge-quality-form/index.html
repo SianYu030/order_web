@@ -1051,6 +1051,7 @@ const I18N = {
     labelPhotoRecognition:'標籤拍照辨識', takeLabelPhoto:'📸 拍標籤自動辨識', labelAutoRecognize:'拍照後會自動辨識：工件號碼(QR Code)、單號、B碼',
     qrManualLabel:'⚠️ QR 未辨識，請手動輸入', qrManualPlaceholder:'請輸入標籤上的工件號碼(QR Code)', orderNo:'單號', bCode:'B碼', pleaseConfirm:'⚠️ 請確認',
     ocrReviewExplanation:'尚有號碼無法交叉確認，請對照實際標籤後核對。',
+    rescanBusy:'整張標籤正在辨識，完成後再重拍這個欄位。',
     rescanOldValue:'原號碼：',rescanAdoptConfirm:'已對照實體標籤，確定採用新的辨識號碼？',
     rescanTitle:'📸 某個號碼讀錯？只重拍該欄',rescanHelp:'QR 請近拍圖碼，單號／B碼只拍文字那一排。結果請對照標籤確認。',rescanQr:'重拍 QR',rescanOrder:'重拍單號',rescanB:'重拍 B碼',rescanWorking:'重新辨識中…',rescanEmpty:'沒有辨識到完整號碼，原資料保留，請靠近重拍。',rescanConflict:'多次結果不一致，原資料保留，請核對。',rescanDifferent:'重拍結果與原值不同，原資料保留。請核對：',rescanFound:'讀到候選號碼，請核對標籤：',
     ocrReviewConfirm:'✓ 核對無誤', ocrConfirmed:'✅ 已由現場人員人工核對三個號碼', ocrReviewIncomplete:'請先填妥8碼工件QR、12碼單號與B碼，再核對實體標籤。',
@@ -1081,6 +1082,7 @@ const I18N = {
     labelPhotoRecognition:'ถ่ายรูปฉลากเพื่ออ่านข้อมูล', takeLabelPhoto:'📸 ถ่ายฉลากเพื่ออ่านอัตโนมัติ', labelAutoRecognize:'หลังถ่ายรูป ระบบจะอ่าน: หมายเลขชิ้นงาน (QR Code), เลขที่ใบงาน, รหัส B',
     qrManualLabel:'⚠️ อ่าน QR ไม่ได้ กรุณากรอกเอง', qrManualPlaceholder:'กรอกหมายเลขชิ้นงาน (QR Code) บนฉลาก', orderNo:'เลขที่ใบงาน', bCode:'รหัส B', pleaseConfirm:'⚠️ กรุณาตรวจสอบ',
     ocrReviewExplanation:'ยังมีหมายเลขที่ตรวจซ้ำไม่ได้ กรุณาตรวจสอบกับฉลากจริง',
+    rescanBusy:'กำลังอ่านฉลากทั้งใบ กรุณารอให้เสร็จก่อนถ่ายใหม่',
     rescanOldValue:'รหัสเดิม: ',rescanAdoptConfirm:'ตรวจสอบฉลากแล้ว ยืนยันใช้รหัสใหม่หรือไม่?',
     rescanTitle:'📸 ถ่ายเฉพาะรหัสที่อ่านผิด',rescanHelp:'ถ่าย QR ใกล้ๆ หรือถ่ายเฉพาะบรรทัดเลขงานหรือรหัส B และตรวจสอบผล',rescanQr:'ถ่าย QR ใหม่',rescanOrder:'ถ่ายเลขงาน',rescanB:'ถ่ายรหัส B',rescanWorking:'กำลังอ่านใหม่…',rescanEmpty:'ยังอ่านรหัสไม่ได้ ข้อมูลเดิมยังอยู่',rescanConflict:'รหัสที่อ่านไม่ตรงกัน กรุณาตรวจสอบ',rescanDifferent:'รหัสใหม่ต่างจากเดิม กรุณาตรวจสอบ: ',rescanFound:'อ่านรหัสได้ กรุณาตรวจสอบ: ',
     ocrReviewConfirm:'✓ ตรวจสอบถูกต้องแล้ว', ocrConfirmed:'✅ เจ้าหน้าที่ตรวจสอบหมายเลขทั้งสามแล้ว', ocrReviewIncomplete:'กรุณากรอก QR 8 หลัก เลขที่ใบงาน 12 หลัก และรหัส B ให้ครบก่อนยืนยัน',
@@ -1111,6 +1113,7 @@ const I18N = {
     labelPhotoRecognition:'Chụp nhãn để nhận dạng', takeLabelPhoto:'📸 Chụp nhãn để nhận dạng tự động', labelAutoRecognize:'Sau khi chụp, hệ thống sẽ đọc: mã chi tiết (QR Code), số đơn, mã B',
     qrManualLabel:'⚠️ Không đọc được QR, vui lòng nhập tay', qrManualPlaceholder:'Nhập mã chi tiết (QR Code) trên nhãn', orderNo:'Số đơn', bCode:'Mã B', pleaseConfirm:'⚠️ Vui lòng kiểm tra',
     ocrReviewExplanation:'Có mã chưa được đối chiếu đủ. Hãy kiểm tra nhãn thật.',
+    rescanBusy:'Đang đọc nhãn, hãy chờ xong trước khi chụp lại.',
     rescanOldValue:'Mã cũ: ',rescanAdoptConfirm:'Đã đối chiếu nhãn thật, xác nhận dùng mã mới?',
     rescanTitle:'📸 Chỉ chụp lại mã đọc sai',rescanHelp:'Chụp riêng mã QR, dòng số đơn hoặc mã B thật rõ rồi kiểm tra kết quả.',rescanQr:'Chụp lại QR',rescanOrder:'Chụp lại số đơn',rescanB:'Chụp lại mã B',rescanWorking:'Đang đọc lại…',rescanEmpty:'Không nhận ra mã. Giữ nguyên dữ liệu cũ.',rescanConflict:'Kết quả không thống nhất. Hãy kiểm tra.',rescanDifferent:'Mã mới khác mã cũ, chưa thay đổi: ',rescanFound:'Đã đọc mã. Vui lòng kiểm tra: ',
     ocrReviewConfirm:'✓ Đã kiểm tra đúng', ocrConfirmed:'✅ Nhân viên đã kiểm tra cả ba mã', ocrReviewIncomplete:'Hãy điền đủ QR 8 số, số đơn 12 số và mã B trước khi xác nhận.',
@@ -2287,6 +2290,10 @@ async function rescanOneField(event,type){
   const inp=event.target,file=inp&&inp.files&&inp.files[0],info=document.getElementById('rescanInfo');
   if(!file)return;
   if(!selected.factory||!selected.machine){showToast(!selected.factory?t('selectFactoryFirst'):t('selectMachineFirst'),'warning');inp.value='';return;}
+  // 即時掃描若仍在執行，可能把前一次 OCR 結果覆蓋新拍結果，先確實結束。
+  if(INLINE_SCAN_BUSY){showToast(t('rescanBusy'),'warning');inp.value='';return;}
+  INLINE_SCAN_SESSION++;
+  if(INLINE_SCANNING)await stopInlineScanner(true);
   if(info)info.textContent=t('rescanWorking');
   showLoading(true,t('rescanWorking'));
   try{
