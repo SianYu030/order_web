@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.12（實際標籤三區定位與B碼複核測試版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.13（B碼前導文字與模式6辨識修正版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -2082,13 +2082,13 @@ async function inlineScanLoop(ts){
         },950);
       }else if(validResult && reviewPending){
         // 格式完整但未經可靠複核時不顯示綠色成功，保留欄位供現場核對。
-        status.textContent='⚠️ 單號或B碼可能誤判，請核對黃色欄位';
-        meta.textContent='QR 已讀取｜文字結果需要人工確認';
+        status.textContent='✅ 三個號碼已填入｜⚠️ 黃色欄位請核對標籤';
+        meta.textContent='QR 已讀取，單號與B碼已填入；黃色欄位表示仍需核對';
         await stopInlineScanner(false);
         const box=document.getElementById('inlineCameraBox');
         if(box)box.classList.remove('show');
         const labelStatus=document.getElementById('labelOcrStatus');
-        if(labelStatus)labelStatus.textContent='⚠️ 文字辨識信心不足，請核對實際標籤，確認後再送出';
+        if(labelStatus)labelStatus.textContent='✅ 三個號碼已填入，黃色欄位請核對實際標籤後再送出';
       }else{
         const missing=[!/^20\d{10}$/.test(check.order)?'單號':'',!/^B\d{9}$/.test(check.b)?'B碼':'',
                        !/^\d{8}$/.test(check.qr)?'QR':''].filter(Boolean).join('、');
@@ -3576,12 +3576,16 @@ function chooseFastOrderCandidate_(items) {
 
 
 function parseFastBCode_(input) {
-  // 不可跨行拼接數字，以免組出照片中沒有的B碼；單行允許OCR分隔空白。
-  const lines=String(input||'').toUpperCase().split(/\r?\n/);
-  for (const line of lines) {
-    const normalized=line.replace(/[\s._-]/g,'');
-    const match=normalized.match(/(?:^|[^0-9])(B\d{9})(?!\d)/);
-    if(match)return match[1];
+  // 每行獨立解析。保留前面的空白與數字，避免「08 B260525007」
+  // 被誤判：舊程式移除空白後變「08B...」，錯誤要求B前不能有數字。
+  for(const line of String(input||'').toUpperCase().split(/\r?\n/)){
+    const direct=line.match(/B\d{9}(?!\d)/);
+    if(direct)return direct[0];
+    const separated=line.match(/B(?:[\s._-]*\d){9}(?![\s._-]*\d)/);
+    if(separated){
+      const code=separated[0].replace(/[\s._-]/g,'');
+      if(/^B\d{9}$/.test(code))return code;
+    }
   }
   return '';
 }
@@ -3760,9 +3764,10 @@ async function readFastLabelFields(
 
   // B碼位於標籤上方偏右，允許貼紙尺寸、拍攝角度造成的偏移。
   const bJobs = [
-    {canvas:cropFastLabel_(labelCanvas,0.30,0.000,0.38,0.155,1350,null),psm:7},
-    {canvas:cropFastLabel_(labelCanvas,0.32,0.000,0.40,0.18,1450,'contrast'),psm:7},
-    {canvas:cropFastLabel_(labelCanvas,0.37,0.025,0.36,0.17,1500,null),psm:7},
+    // 真實錄影顯示單行模式容易將 B 當作 8，改以區塊模式讀多個裁切版本。
+    {canvas:cropFastLabel_(labelCanvas,0.30,0.000,0.38,0.155,1350,null),psm:6},
+    {canvas:cropFastLabel_(labelCanvas,0.32,0.000,0.40,0.18,1450,'contrast'),psm:6},
+    {canvas:cropFastLabel_(labelCanvas,0.37,0.025,0.36,0.17,1500,null),psm:6},
     {canvas:cropFastLabel_(labelCanvas,0.28,0.000,0.48,0.22,1450,'contrast'),psm:6},
     {canvas:cropFastLabel_(labelCanvas,0.30,0.000,0.42,0.18,1350,'binary'),psm:7}
   ];
