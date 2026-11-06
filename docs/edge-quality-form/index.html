@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.16（補強複核證據與減少誤警示）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.17（實際標籤裁切與OCR文字解析修正版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -2217,14 +2217,26 @@ function ocrNeedsHumanReview_(value,diagnostics) {
 
 // 三區獨立辨識：單號、B碼、QR工件號碼。
 // B碼寬框獨立再讀一次；不同結果不可拼接或自動採用。
+function bCodeHas8PrefixSupport_(text,code) {
+  // 某些iPhone影格OCR將B讀成8。此處只比對既有B碼的9位數字，
+  // 不會單憑「8+9碼」自行建立B碼，也不接受被其他數字黏住的片段。
+  if(!/^B\d{9}$/.test(String(code||'')))return false;
+  const digits=code.slice(1);
+  const needle=new RegExp('(?:^|[^A-Z0-9])8'+digits+'(?![0-9])');
+  return String(text||'').toUpperCase().split(/\r?\n/).some(line=>needle.test(line));
+}
 function reconcileBCode_(focusedPick,wideText) {
   const focused=String((focusedPick&&focusedPick.code)||'').trim();
   const wide=parseFastBCode_(wideText);
   const conflict=!!(focused && wide && focused!==wide);
+  // 至少一個裁切真的辨識到B；第二個裁切把B誤認為8但9碼完全相同，
+  // 可以視為「數字內容互相支持」，同時保留原始雙路衝突檢查。
+  const supported8=!!(focused && !wide && bCodeHas8PrefixSupport_(wideText,focused));
   return {
     code:conflict?'':(focused||wide),
     focused:focused,wide:wide,
-    agree:!!(focused && wide && focused===wide),
+    agree:!!(focused && (wide===focused || supported8)),
+    weakBPrefixSupport:supported8,
     conflict:conflict
   };
 }
@@ -3522,44 +3534,26 @@ async function fastOcr_(
 
 
 function parseFastOrder_(input) {
-  const raw =
-    String(input || '')
-      .toUpperCase();
-
-  const lines =
-    raw.split(/\r?\n/);
-
-  for (let i = 0; i < lines.length; i++) {
-    const compact =
-      lines[i]
-        .replace(/[^0-9]/g,'');
-
-    const match =
-      compact.match(/20\d{10}/);
-
-    if (match) {
-      return match[0];
+  // 只擷取同一行的完整12碼。禁止將不同文字行或不相關欄位逐字接成單號。
+  for(const line of String(input||'').toUpperCase().split(/\r?\n/)){
+    // 精準ROI可能將左側「單號」中的一字誤讀成 8，容許一個8字元雜訊；
+    // 這只產生候選，最後仍要由其他裁切與上沿OCR複核。
+    let m=line.match(/(?:^|[^0-9])20\d{10}(?!\d)/);
+    if(m){
+      const code=(m[0].match(/20\d{10}/)||[])[0];
+      if(code)return code;
+    }
+    m=line.match(/(?:^|[^0-9])8(20\d{10})(?!\d)/);
+    if(m)return m[1];
+    // 在同一數字群中可容許少量空格/分隔符，不能跨英文字或換行拼接。
+    m=line.match(/(?:^|[^0-9A-Z])((?:20(?:[ \t._-]*\d){10}))(?![0-9])/);
+    if(m){
+      const code=m[1].replace(/[ \t._-]/g,'');
+      if(/^20\d{10}$/.test(code))return code;
     }
   }
-
-  const tokens =
-    raw.match(
-      /20[0-9\s._-]{10,20}/g
-    ) || [];
-
-  for (let i = 0; i < tokens.length; i++) {
-    const digits =
-      tokens[i]
-        .replace(/[^0-9]/g,'');
-
-    if (/^20\d{10}$/.test(digits)) {
-      return digits;
-    }
-  }
-
   return '';
 }
-
 
 function chooseFastOrderCandidate_(items) {
   const valid =
@@ -3793,12 +3787,13 @@ async function readFastLabelFields(
 
   const orderJobs = [
     {
-      canvas:cropFastLabel_(labelCanvas,0.005,0.000,0.34,0.090,1250,null),
-      psm:7
+      // 現場標籤的數字不是從最左上角開始。避免裁入「單號」或裁掉數字。
+      canvas:cropFastLabel_(labelCanvas,0.13,0.03,0.30,0.13,1350,null),
+      psm:6
     },
     {
-      canvas:cropFastLabel_(labelCanvas,0.005,0.000,0.34,0.095,1250,'contrast'),
-      psm:7
+      canvas:cropFastLabel_(labelCanvas,0.13,0.03,0.30,0.13,1350,'binary'),
+      psm:6
     },
     {
       canvas:cropFastLabel_(labelCanvas,0.000,0.000,0.38,0.110,1350,'binary'),
@@ -3835,8 +3830,8 @@ async function readFastLabelFields(
   // B碼位於標籤上方偏右，允許貼紙尺寸、拍攝角度造成的偏移。
   const bJobs = [
     // 真實錄影顯示單行模式容易將 B 當作 8，改以區塊模式讀多個裁切版本。
-    {canvas:cropFastLabel_(labelCanvas,0.30,0.000,0.38,0.155,1350,null),psm:6},
-    {canvas:cropFastLabel_(labelCanvas,0.32,0.000,0.40,0.18,1450,'contrast'),psm:6},
+    {canvas:cropFastLabel_(labelCanvas,0.40,0.010,0.32,0.160,1450,null),psm:6},
+    {canvas:cropFastLabel_(labelCanvas,0.38,0.005,0.36,0.17,1450,null),psm:6},
     {canvas:cropFastLabel_(labelCanvas,0.37,0.025,0.36,0.17,1500,null),psm:6},
     {canvas:cropFastLabel_(labelCanvas,0.28,0.000,0.48,0.22,1450,'contrast'),psm:6},
     {canvas:cropFastLabel_(labelCanvas,0.30,0.000,0.42,0.18,1350,'binary'),psm:7}
@@ -3996,7 +3991,8 @@ async function readFastLabelFields(
       independentAgree:bCheck.agree,
       conflict:bCheck.conflict,
       focusedCode:bCheck.focused,
-      wideCode:bCheck.wide
+      wideCode:bCheck.wide,
+      weakBPrefixSupport:bCheck.weakBPrefixSupport
     }
   };
 }
@@ -4206,9 +4202,10 @@ function validateClient(form) {
   if (!form.inspectionTime) return t('selectInspectionTime');
   if (!form.adhesion) return t('selectAdhesion');
   if (!form.appearance) return t('selectAppearance');
-  if (!form.orderNo) return t('confirmOrder');
-  if (!form.bCode) return t('confirmBCode');
-  if (!form.workpieceQr) return t('needWorkpieceQr');
+  // 擷取到的三個欄位必須完整符合標籤格式；不要只檢查「非空」。
+  if (!/^20\d{10}$/.test(form.orderNo||'')) return t('confirmOrder');
+  if (!/^B\d{9}$/.test(form.bCode||'')) return t('confirmBCode');
+  if (!/^\d{8}$/.test(form.workpieceQr||'')) return t('needWorkpieceQr');
   return '';
 }
 
