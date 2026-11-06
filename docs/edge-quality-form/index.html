@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.14（QR中心放大搜尋與即時辨識按鈕修正版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.15（文字辨識待核對與人工確認功能修正版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -367,6 +367,10 @@
       font-size:.84em;
       font-weight:800;
     }
+    .ocr-review-actions { margin-top:15px; padding:13px; border:1px solid #ead19e; border-radius:12px; background:#fffaf2; }
+    .ocr-review-explainer { color:#7c4a08; font-size:15px; font-weight:700; line-height:1.6; margin-bottom:11px; }
+    .ocr-review-confirm-btn { display:block; width:100%; min-height:54px; padding:11px 13px; border:0; border-radius:10px; background:#1c6d3d; color:#fff; font-size:17px; font-weight:800; cursor:pointer; }
+    .ocr-review-confirmed { margin-top:12px; padding:12px; border-radius:10px; background:#eaf7ec; color:#23602c; font-size:16px; font-weight:800; line-height:1.5; }
     input.ocr-needs-check {
       border-color:#d99b22 !important;
       background:#fffaf0;
@@ -798,6 +802,11 @@
               <input id="labelBCode" type="text" autocomplete="off" placeholder="例如 B260525007" data-i18n-placeholder="bCodeExample">
             </div>
           </div>
+          <div id="ocrReviewActions" class="ocr-review-actions hidden" role="group" aria-labelledby="ocrReviewExplainer">
+            <div id="ocrReviewExplainer" class="ocr-review-explainer" data-i18n="ocrReviewExplanation">黃色代表OCR尚未充分複核，並非一定讀錯。請對照實際標籤的QR、單號與B碼。</div>
+            <button id="ocrReviewConfirmBtn" type="button" class="ocr-review-confirm-btn" onclick="confirmOcrFields_()" data-i18n="ocrReviewConfirm">✅ 我已核對三個號碼，內容正確</button>
+          </div>
+          <div id="ocrReviewConfirmed" class="ocr-review-confirmed hidden" aria-live="polite" data-i18n="ocrConfirmed">✅ 已由現場人員人工核對三個號碼</div>
 
           <div class="label-hint" data-i18n="labelHint">
             建議直接按「掃描＋AI辨識」：相機會在本頁直接開啟，手持對準標籤即可；系統會連續取樣並挑最佳影格，自動填入 工件QR／單號／B碼。紫色拍照按鈕保留作為備援。
@@ -1022,6 +1031,8 @@ const I18N = {
     adhesionStatus:'貼附接著狀態', appearance:'外觀', pass:'合格', fail:'不合格', adhesionBasis:'檢查基準：浮起、間隙不可', appearanceBasis:'檢查基準：汙損不可',
     labelPhotoRecognition:'標籤拍照辨識', takeLabelPhoto:'📸 拍標籤自動辨識', labelAutoRecognize:'拍照後會自動辨識：工件號碼(QR Code)、單號、B碼',
     qrManualLabel:'⚠️ QR 未辨識，請手動輸入', qrManualPlaceholder:'請輸入標籤上的工件號碼(QR Code)', orderNo:'單號', bCode:'B碼', pleaseConfirm:'⚠️ 請確認',
+    ocrReviewExplanation:'黃色代表OCR尚未充分複核，並非一定讀錯。請對照實際標籤的QR、單號與B碼。',
+    ocrReviewConfirm:'✅ 我已核對三個號碼，內容正確', ocrConfirmed:'✅ 已由現場人員人工核對三個號碼', ocrReviewIncomplete:'請先填妥8碼工件QR、12碼單號與B碼，再核對實體標籤。',
     orderExample:'例如 202605221446', bCodeExample:'例如 B260525007', labelHint:'拍照時請讓完整標籤入鏡並對焦清楚，可稍微斜拍。系統會優先用 QR 定位並自動校正，再辨識工件號碼(QR Code)、單號、B碼；有疑慮的欄位會標示「⚠️ 請確認」。',
     currentInspectionData:'本次品質檢查資料', completeInspectionData:'請完成品質檢查資料', submitInspection:'送出品質檢查', processing:'資料處理中…',
     sameInspector:'主手與副手不可選同一人', selectFactoryFirst:'請先選擇廠別', selectMachineFirst:'請先選擇機台', selectLeadFirst:'請先選擇主手', selectAssistantFirst:'請先選擇副手',
@@ -1048,6 +1059,8 @@ const I18N = {
     adhesionStatus:'สถานะการยึดติด', appearance:'ลักษณะภายนอก', pass:'ผ่าน', fail:'ไม่ผ่าน', adhesionBasis:'เกณฑ์ตรวจ: ห้ามมีขอบยกหรือช่องว่าง', appearanceBasis:'เกณฑ์ตรวจ: ห้ามมีคราบหรือความเสียหาย',
     labelPhotoRecognition:'ถ่ายรูปฉลากเพื่ออ่านข้อมูล', takeLabelPhoto:'📸 ถ่ายฉลากเพื่ออ่านอัตโนมัติ', labelAutoRecognize:'หลังถ่ายรูป ระบบจะอ่าน: หมายเลขชิ้นงาน (QR Code), เลขที่ใบงาน, รหัส B',
     qrManualLabel:'⚠️ อ่าน QR ไม่ได้ กรุณากรอกเอง', qrManualPlaceholder:'กรอกหมายเลขชิ้นงาน (QR Code) บนฉลาก', orderNo:'เลขที่ใบงาน', bCode:'รหัส B', pleaseConfirm:'⚠️ กรุณาตรวจสอบ',
+    ocrReviewExplanation:'สีเหลืองหมายถึงระบบยังตรวจทานผล OCR ไม่เพียงพอ ไม่ได้แปลว่าข้อมูลผิด กรุณาเทียบ QR เลขที่ใบงาน และรหัส B กับฉลากจริง',
+    ocrReviewConfirm:'✅ ฉันตรวจสอบทั้งสามหมายเลขกับฉลากแล้ว', ocrConfirmed:'✅ เจ้าหน้าที่ตรวจสอบหมายเลขทั้งสามแล้ว', ocrReviewIncomplete:'กรุณากรอก QR 8 หลัก เลขที่ใบงาน 12 หลัก และรหัส B ให้ครบก่อนยืนยัน',
     orderExample:'ตัวอย่าง 202605221446', bCodeExample:'ตัวอย่าง B260525007', labelHint:'ถ่ายให้เห็นฉลากทั้งใบและโฟกัสให้ชัด สามารถเอียงกล้องเล็กน้อยได้ ระบบจะใช้ QR จัดตำแหน่งและแก้ภาพก่อนอ่านหมายเลขชิ้นงาน เลขที่ใบงาน และรหัส B ช่องที่น่าสงสัยจะแสดง “⚠️ กรุณาตรวจสอบ”',
     currentInspectionData:'ข้อมูลการตรวจสอบคุณภาพครั้งนี้', completeInspectionData:'กรุณากรอกข้อมูลการตรวจสอบให้ครบ', submitInspection:'ส่งผลตรวจสอบคุณภาพ', processing:'กำลังประมวลผล…',
     sameInspector:'ผู้ปฏิบัติงานหลักและผู้ช่วยต้องเป็นคนละคน', selectFactoryFirst:'กรุณาเลือกโรงงานก่อน', selectMachineFirst:'กรุณาเลือกเครื่องจักรก่อน', selectLeadFirst:'กรุณาเลือกผู้ปฏิบัติงานหลักก่อน', selectAssistantFirst:'กรุณาเลือกผู้ช่วยก่อน',
@@ -1074,6 +1087,8 @@ const I18N = {
     adhesionStatus:'Tình trạng bám dính', appearance:'Ngoại quan', pass:'Đạt', fail:'Không đạt', adhesionBasis:'Tiêu chuẩn: không được bong mép hoặc có khe hở', appearanceBasis:'Tiêu chuẩn: không được bẩn hoặc hư hỏng',
     labelPhotoRecognition:'Chụp nhãn để nhận dạng', takeLabelPhoto:'📸 Chụp nhãn để nhận dạng tự động', labelAutoRecognize:'Sau khi chụp, hệ thống sẽ đọc: mã chi tiết (QR Code), số đơn, mã B',
     qrManualLabel:'⚠️ Không đọc được QR, vui lòng nhập tay', qrManualPlaceholder:'Nhập mã chi tiết (QR Code) trên nhãn', orderNo:'Số đơn', bCode:'Mã B', pleaseConfirm:'⚠️ Vui lòng kiểm tra',
+    ocrReviewExplanation:'Màu vàng nghĩa là OCR chưa được xác minh đủ, không nhất thiết là sai. Hãy đối chiếu QR, số đơn và mã B với nhãn thật.',
+    ocrReviewConfirm:'✅ Tôi đã đối chiếu và xác nhận cả ba mã', ocrConfirmed:'✅ Nhân viên đã kiểm tra cả ba mã', ocrReviewIncomplete:'Hãy điền đủ QR 8 số, số đơn 12 số và mã B trước khi xác nhận.',
     orderExample:'Ví dụ 202605221446', bCodeExample:'Ví dụ B260525007', labelHint:'Khi chụp, hãy để toàn bộ nhãn trong khung hình và lấy nét rõ; có thể chụp hơi nghiêng. Hệ thống ưu tiên dùng QR để định vị và chỉnh phối cảnh trước khi đọc mã chi tiết, số đơn và mã B. Dữ liệu cần chú ý sẽ hiện “⚠️ Vui lòng kiểm tra”.',
     currentInspectionData:'Dữ liệu kiểm tra chất lượng lần này', completeInspectionData:'Vui lòng hoàn tất dữ liệu kiểm tra', submitInspection:'Gửi kết quả kiểm tra', processing:'Đang xử lý dữ liệu…',
     sameInspector:'Nhân viên chính và nhân viên phụ không được trùng nhau', selectFactoryFirst:'Vui lòng chọn xưởng trước', selectMachineFirst:'Vui lòng chọn máy trước', selectLeadFirst:'Vui lòng chọn nhân viên chính trước', selectAssistantFirst:'Vui lòng chọn nhân viên phụ trước',
@@ -1842,7 +1857,15 @@ function applyMergedInlineResult(first,second){
     qrResult.textContent=t('qrMissingManual');
     showQrFallback(true);
   }
-  applyOcrWarnings({orderNo:!order,bCode:!b});
+  const orderWarn=document.getElementById('warnLabelOrderNo');
+  const bWarn=document.getElementById('warnLabelBCode');
+  const oldOrderWarn=orderWarn && !orderWarn.classList.contains('hidden');
+  const oldBWarn=bWarn && !bWarn.classList.contains('hidden');
+  // 第二影格複核也不能抹去第一/第二影格留下的低可信度提醒。
+  applyOcrWarnings({
+    orderNo:!order || oldOrderWarn || !first.order || !second.order,
+    bCode:!b || oldBWarn || !first.b || !second.b
+  });
   updateSummary();
 }
 
@@ -3958,6 +3981,51 @@ async function readFastLabelFields(
 }
 
 
+let OCR_MANUAL_CONFIRMED = false;
+function ocrReviewValuesComplete_(){
+  const qr=(document.getElementById('workpieceQr')?.value||'').trim();
+  const order=(document.getElementById('labelOrderNo')?.value||'').trim();
+  const b=(document.getElementById('labelBCode')?.value||'').trim();
+  return /^\d{8}$/.test(qr) && /^20\d{10}$/.test(order) && /^B\d{9}$/.test(b);
+}
+function refreshOcrReviewUI_(){
+  const actions=document.getElementById('ocrReviewActions');
+  const confirmed=document.getElementById('ocrReviewConfirmed');
+  const pending=['warnLabelOrderNo','warnLabelBCode'].some(function(id){
+    const el=document.getElementById(id);
+    return !!el && !el.classList.contains('hidden');
+  });
+  if(actions)actions.classList.toggle('hidden',OCR_MANUAL_CONFIRMED || !pending || !ocrReviewValuesComplete_());
+  if(confirmed)confirmed.classList.toggle('hidden',!OCR_MANUAL_CONFIRMED);
+}
+function confirmOcrFields_(){
+  if(!ocrReviewValuesComplete_()){
+    showToast(t('ocrReviewIncomplete'),'warning');
+    return;
+  }
+  // 只有現場人員明確按下確認才取消待核對警示，OCR不會自行標記已核對。
+  OCR_MANUAL_CONFIRMED=true;
+  clearOcrWarningForField('labelOrderNo');
+  clearOcrWarningForField('labelBCode');
+  refreshOcrReviewUI_();
+  const status=document.getElementById('labelOcrStatus');
+  if(status)status.textContent=t('ocrConfirmed');
+  showToast(t('ocrConfirmed'),'success');
+}
+function invalidateOcrConfirmation_(id){
+  const wasConfirmed=OCR_MANUAL_CONFIRMED;
+  OCR_MANUAL_CONFIRMED=false;
+  // 已核對後，任一號碼若被編輯，原確認失效；仍需再次核對。
+  if(wasConfirmed){
+    const ids=id==='workpieceQr'?['warnLabelOrderNo','warnLabelBCode']:
+      [id==='labelOrderNo'?'warnLabelOrderNo':'warnLabelBCode'];
+    ids.forEach(function(warnId){
+      const el=document.getElementById(warnId);if(el)el.classList.remove('hidden');
+    });
+  }
+  refreshOcrReviewUI_();
+}
+
 function applyOcrWarnings(warnings) {
   warnings = warnings || {};
 
@@ -4000,6 +4068,8 @@ function applyOcrWarnings(warnings) {
       !!warnings.bCode
     );
   }
+  OCR_MANUAL_CONFIRMED=false;
+  refreshOcrReviewUI_();
 }
 
 
@@ -4031,8 +4101,10 @@ function clearOcrWarningForField(id) {
 
 
 function clearOcrWarnings() {
+  OCR_MANUAL_CONFIRMED=false;
   clearOcrWarningForField('labelOrderNo');
   clearOcrWarningForField('labelBCode');
+  refreshOcrReviewUI_();
 }
 
 
@@ -4253,6 +4325,7 @@ function updateSummary() {
     '<br>' + escapeHtml(t('orderNo')) + '：' + escapeHtml(orderNo || '－') +
     '<br>' + escapeHtml(t('bCode')) + '：' + escapeHtml(bCode || '－') +
     '<br>' + escapeHtml(t('workpieceNo')) + '：' + escapeHtml(workpieceQr || '－');
+  refreshOcrReviewUI_();
 }
 
 function toggleHistoryPanel() {
@@ -4334,10 +4407,19 @@ function escapeHtml(value) {
     .replace(/'/g,'&#039;');
 }
 
-document.getElementById('workpieceQr').addEventListener('input', updateSummary);
+document.getElementById('workpieceQr').addEventListener('input', function(){
+  invalidateOcrConfirmation_('workpieceQr');
+  updateSummary();
+});
 ['labelOrderNo','labelBCode'].forEach(id => {
   document.getElementById(id).addEventListener('input', function() {
+    const hadConfirmation=OCR_MANUAL_CONFIRMED;
     clearOcrWarningForField(id);
+    invalidateOcrConfirmation_(id);
+    if(hadConfirmation){
+      const el=document.getElementById(id);
+      if(el)el.classList.add('ocr-warning-input');
+    }
     updateSummary();
   });
 });
