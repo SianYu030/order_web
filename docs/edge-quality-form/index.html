@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.17（實際標籤裁切與OCR文字解析修正版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.18（QR單號B碼獨立近拍測試版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -614,6 +614,15 @@
     .support-chip.e4 { background:#388025; }
     .support-chip.w8 { background:#7b2aa8; }
     @media(max-width:390px) { .support-row{grid-template-columns:1fr;row-gap:6px;} }
+
+    .rescan-panel{margin-top:13px;padding:13px;background:#f4f9fc;border:1px solid #c8e0ed;border-radius:12px}
+    .rescan-title{font-size:16px;font-weight:800;margin-bottom:7px}
+    .rescan-help{font-size:14px;line-height:1.5;color:#425867;margin-bottom:10px}
+    .rescan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+    .rescan-btn{position:relative;display:flex;align-items:center;justify-content:center;min-height:52px;border:2px solid #8cbcd6;border-radius:10px;background:#fff;color:#145477;font-size:14px;font-weight:800;text-align:center;line-height:1.3;cursor:pointer;overflow:hidden}
+    .rescan-btn input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:100px}
+    .rescan-info{min-height:19px;margin-top:9px;font-size:14px;font-weight:700;line-height:1.5;color:#985d00}
+    @media(max-width:390px){.rescan-btn{font-size:13px}}
   </style>
 </head>
 
@@ -801,6 +810,16 @@
               <label class="label"><span data-i18n="bCode">B碼</span> <span id="warnLabelBCode" class="ocr-check hidden" data-i18n="pleaseConfirm">⚠️ 請確認</span></label>
               <input id="labelBCode" type="text" autocomplete="off" placeholder="例如 B260525007" data-i18n-placeholder="bCodeExample">
             </div>
+          </div>
+          <div class="rescan-panel">
+            <div class="rescan-title" data-i18n="rescanTitle">📸 某個號碼讀錯？只重拍該欄</div>
+            <div class="rescan-help" data-i18n="rescanHelp">QR 請近拍圖碼，單號／B碼只拍文字那一排。結果請對照標籤確認。</div>
+            <div class="rescan-grid">
+              <label class="rescan-btn"><span data-i18n="rescanQr">重拍 QR</span><input id="rescanQrInput" type="file" accept="image/*" capture="environment" onchange="rescanOneField(event,'qr')"></label>
+              <label class="rescan-btn"><span data-i18n="rescanOrder">重拍單號</span><input id="rescanOrderInput" type="file" accept="image/*" capture="environment" onchange="rescanOneField(event,'order')"></label>
+              <label class="rescan-btn"><span data-i18n="rescanB">重拍 B碼</span><input id="rescanBInput" type="file" accept="image/*" capture="environment" onchange="rescanOneField(event,'b')"></label>
+            </div>
+            <div id="rescanInfo" class="rescan-info" aria-live="polite"></div>
           </div>
           <div id="ocrReviewActions" class="ocr-review-actions hidden" role="group" aria-labelledby="ocrReviewExplainer">
             <div id="ocrReviewExplainer" class="ocr-review-explainer" data-i18n="ocrReviewExplanation">尚有號碼無法交叉確認，請對照實際標籤後核對。</div>
@@ -1032,6 +1051,7 @@ const I18N = {
     labelPhotoRecognition:'標籤拍照辨識', takeLabelPhoto:'📸 拍標籤自動辨識', labelAutoRecognize:'拍照後會自動辨識：工件號碼(QR Code)、單號、B碼',
     qrManualLabel:'⚠️ QR 未辨識，請手動輸入', qrManualPlaceholder:'請輸入標籤上的工件號碼(QR Code)', orderNo:'單號', bCode:'B碼', pleaseConfirm:'⚠️ 請確認',
     ocrReviewExplanation:'尚有號碼無法交叉確認，請對照實際標籤後核對。',
+    rescanTitle:'📸 某個號碼讀錯？只重拍該欄',rescanHelp:'QR 請近拍圖碼，單號／B碼只拍文字那一排。結果請對照標籤確認。',rescanQr:'重拍 QR',rescanOrder:'重拍單號',rescanB:'重拍 B碼',rescanWorking:'重新辨識中…',rescanEmpty:'沒有辨識到完整號碼，原資料保留，請靠近重拍。',rescanConflict:'多次結果不一致，原資料保留，請核對。',rescanDifferent:'重拍結果與原值不同，原資料保留。請核對：',rescanFound:'讀到候選號碼，請核對標籤：',
     ocrReviewConfirm:'✓ 核對無誤', ocrConfirmed:'✅ 已由現場人員人工核對三個號碼', ocrReviewIncomplete:'請先填妥8碼工件QR、12碼單號與B碼，再核對實體標籤。',
     orderExample:'例如 202605221446', bCodeExample:'例如 B260525007', labelHint:'拍照時請讓完整標籤入鏡並對焦清楚，可稍微斜拍。系統會優先用 QR 定位並自動校正，再辨識工件號碼(QR Code)、單號、B碼；有疑慮的欄位會標示「⚠️ 請確認」。',
     currentInspectionData:'本次品質檢查資料', completeInspectionData:'請完成品質檢查資料', submitInspection:'送出品質檢查', processing:'資料處理中…',
@@ -1060,6 +1080,7 @@ const I18N = {
     labelPhotoRecognition:'ถ่ายรูปฉลากเพื่ออ่านข้อมูล', takeLabelPhoto:'📸 ถ่ายฉลากเพื่ออ่านอัตโนมัติ', labelAutoRecognize:'หลังถ่ายรูป ระบบจะอ่าน: หมายเลขชิ้นงาน (QR Code), เลขที่ใบงาน, รหัส B',
     qrManualLabel:'⚠️ อ่าน QR ไม่ได้ กรุณากรอกเอง', qrManualPlaceholder:'กรอกหมายเลขชิ้นงาน (QR Code) บนฉลาก', orderNo:'เลขที่ใบงาน', bCode:'รหัส B', pleaseConfirm:'⚠️ กรุณาตรวจสอบ',
     ocrReviewExplanation:'ยังมีหมายเลขที่ตรวจซ้ำไม่ได้ กรุณาตรวจสอบกับฉลากจริง',
+    rescanTitle:'📸 ถ่ายเฉพาะรหัสที่อ่านผิด',rescanHelp:'ถ่าย QR ใกล้ๆ หรือถ่ายเฉพาะบรรทัดเลขงานหรือรหัส B และตรวจสอบผล',rescanQr:'ถ่าย QR ใหม่',rescanOrder:'ถ่ายเลขงาน',rescanB:'ถ่ายรหัส B',rescanWorking:'กำลังอ่านใหม่…',rescanEmpty:'ยังอ่านรหัสไม่ได้ ข้อมูลเดิมยังอยู่',rescanConflict:'รหัสที่อ่านไม่ตรงกัน กรุณาตรวจสอบ',rescanDifferent:'รหัสใหม่ต่างจากเดิม กรุณาตรวจสอบ: ',rescanFound:'อ่านรหัสได้ กรุณาตรวจสอบ: ',
     ocrReviewConfirm:'✓ ตรวจสอบถูกต้องแล้ว', ocrConfirmed:'✅ เจ้าหน้าที่ตรวจสอบหมายเลขทั้งสามแล้ว', ocrReviewIncomplete:'กรุณากรอก QR 8 หลัก เลขที่ใบงาน 12 หลัก และรหัส B ให้ครบก่อนยืนยัน',
     orderExample:'ตัวอย่าง 202605221446', bCodeExample:'ตัวอย่าง B260525007', labelHint:'ถ่ายให้เห็นฉลากทั้งใบและโฟกัสให้ชัด สามารถเอียงกล้องเล็กน้อยได้ ระบบจะใช้ QR จัดตำแหน่งและแก้ภาพก่อนอ่านหมายเลขชิ้นงาน เลขที่ใบงาน และรหัส B ช่องที่น่าสงสัยจะแสดง “⚠️ กรุณาตรวจสอบ”',
     currentInspectionData:'ข้อมูลการตรวจสอบคุณภาพครั้งนี้', completeInspectionData:'กรุณากรอกข้อมูลการตรวจสอบให้ครบ', submitInspection:'ส่งผลตรวจสอบคุณภาพ', processing:'กำลังประมวลผล…',
@@ -1088,6 +1109,7 @@ const I18N = {
     labelPhotoRecognition:'Chụp nhãn để nhận dạng', takeLabelPhoto:'📸 Chụp nhãn để nhận dạng tự động', labelAutoRecognize:'Sau khi chụp, hệ thống sẽ đọc: mã chi tiết (QR Code), số đơn, mã B',
     qrManualLabel:'⚠️ Không đọc được QR, vui lòng nhập tay', qrManualPlaceholder:'Nhập mã chi tiết (QR Code) trên nhãn', orderNo:'Số đơn', bCode:'Mã B', pleaseConfirm:'⚠️ Vui lòng kiểm tra',
     ocrReviewExplanation:'Có mã chưa được đối chiếu đủ. Hãy kiểm tra nhãn thật.',
+    rescanTitle:'📸 Chỉ chụp lại mã đọc sai',rescanHelp:'Chụp riêng mã QR, dòng số đơn hoặc mã B thật rõ rồi kiểm tra kết quả.',rescanQr:'Chụp lại QR',rescanOrder:'Chụp lại số đơn',rescanB:'Chụp lại mã B',rescanWorking:'Đang đọc lại…',rescanEmpty:'Không nhận ra mã. Giữ nguyên dữ liệu cũ.',rescanConflict:'Kết quả không thống nhất. Hãy kiểm tra.',rescanDifferent:'Mã mới khác mã cũ, chưa thay đổi: ',rescanFound:'Đã đọc mã. Vui lòng kiểm tra: ',
     ocrReviewConfirm:'✓ Đã kiểm tra đúng', ocrConfirmed:'✅ Nhân viên đã kiểm tra cả ba mã', ocrReviewIncomplete:'Hãy điền đủ QR 8 số, số đơn 12 số và mã B trước khi xác nhận.',
     orderExample:'Ví dụ 202605221446', bCodeExample:'Ví dụ B260525007', labelHint:'Khi chụp, hãy để toàn bộ nhãn trong khung hình và lấy nét rõ; có thể chụp hơi nghiêng. Hệ thống ưu tiên dùng QR để định vị và chỉnh phối cảnh trước khi đọc mã chi tiết, số đơn và mã B. Dữ liệu cần chú ý sẽ hiện “⚠️ Vui lòng kiểm tra”.',
     currentInspectionData:'Dữ liệu kiểm tra chất lượng lần này', completeInspectionData:'Vui lòng hoàn tất dữ liệu kiểm tra', submitInspection:'Gửi kết quả kiểm tra', processing:'Đang xử lý dữ liệu…',
@@ -2248,6 +2270,63 @@ function ocrBNeedsHumanReview_(value,diag) {
   // B碼至少兩個不同裁切區域讀到相同的B+9碼才能自動解除警告。
   return !/^B\d{9}$/.test(String(value||'')) || !diag ||
     !!diag.independentConflict || !!diag.conflict || !diag.independentAgree;
+}
+
+
+function rescanDecision_(current,candidates,pattern){
+  const seen=Array.from(new Set((candidates||[]).filter(v=>pattern.test(String(v||'')))));
+  if(!seen.length)return {state:'empty',value:''};
+  if(seen.length>1)return {state:'conflict',value:'',options:seen};
+  if(current&&String(current).trim()!==seen[0])return {state:'different',value:seen[0]};
+  return {state:'candidate',value:seen[0]};
+}
+async function rescanOneField(event,type){
+  const inp=event.target,file=inp&&inp.files&&inp.files[0],info=document.getElementById('rescanInfo');
+  if(!file)return;
+  if(!selected.factory||!selected.machine){showToast(!selected.factory?t('selectFactoryFirst'):t('selectMachineFirst'),'warning');inp.value='';return;}
+  if(info)info.textContent=t('rescanWorking');
+  showLoading(true,t('rescanWorking'));
+  try{
+    const image=await loadFastLabelImage(file),c=scaledImageCanvas_(image,2200).canvas;
+    const id=type==='qr'?'workpieceQr':type==='order'?'labelOrderNo':'labelBCode';
+    const field=document.getElementById(id),hits=[];
+    if(type==='qr'){
+      const decoded=await decodeQrCanvasRobust_(c),hit=await robustQrHitFromImage_(image);
+      for(const raw of [decoded,hit&&hit.data]){const v=extractQrNumber(raw);if(/^\d{8}$/.test(v))hits.push(v);}
+    }else{
+      const worker=await getFastLabelOcrWorker(null);
+      for(const [mode,psm] of [[null,7],['contrast',7],['binary',6]]){
+        const photo=cropFastLabel_(c,0,0,1,1,1750,mode);
+        const text=(await fastOcr_(worker,photo,type==='b'?'B0123456789':'0123456789',psm)).text;
+        const v=type==='b'?parseFastBCode_(text):parseFastOrder_(text);
+        if(v)hits.push(v);
+      }
+    }
+    const pattern=type==='qr'?/^\d{8}$/:type==='order'?/^20\d{10}$/:/^B\d{9}$/;
+    const result=rescanDecision_(String(field.value||'').trim(),hits,pattern);
+    if(result.state==='empty'){if(info)info.textContent=t('rescanEmpty');return;}
+    if(result.state==='conflict'){if(info)info.textContent=t('rescanConflict')+' '+result.options.join(' / ');return;}
+    if(result.state==='different'){if(info)info.textContent=t('rescanDifferent')+result.value;return;}
+    field.value=result.value;
+    if(type==='qr'){
+      selected.workpieceQr=result.value;
+      const qrBox=document.getElementById('qrResult');
+      if(qrBox){qrBox.className='qr-result qr-warning';qrBox.textContent=t('rescanFound')+result.value;}
+      showQrFallback(true);
+      invalidateOcrConfirmation_('workpieceQr');
+    }else{
+      selected[type==='order'?'labelOrderNo':'labelBCode']=result.value;
+      document.getElementById('labelFields').classList.remove('hidden');
+      invalidateOcrConfirmation_(id);
+      const warning=document.getElementById(type==='order'?'warnLabelOrderNo':'warnLabelBCode');
+      if(warning)warning.classList.remove('hidden');
+      field.classList.add('ocr-warning-input');
+      refreshOcrReviewUI_();
+    }
+    if(info)info.textContent=t('rescanFound')+result.value;
+    updateSummary();
+  }catch(e){if(info)info.textContent=t('textRecognitionFailed');showToast(t('textRecognitionFailedToast'),'warning');}
+  finally{showLoading(false);inp.value='';}
 }
 
 async function handleLabelPhoto(event) {
