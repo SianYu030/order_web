@@ -3922,7 +3922,7 @@ async function readFastLabelFields(
     const roi=cropFastLabel_(labelCanvas,...spec.slice(0,6));
     orderReads.push(await fastOcr_(worker,roi,'0123456789',spec[6]));
     const trial=chooseFastOrderCandidate_(orderReads);
-    if(trial.code&&trial.votes>=2&&trial.agreement>=0.67)break;
+    if(trial.code&&trial.votes>=2&&trial.agreement>=0.75)break;
   }
   let orderPick=chooseFastOrderCandidate_(orderReads);
 
