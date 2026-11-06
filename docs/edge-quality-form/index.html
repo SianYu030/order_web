@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.18（QR單號B碼獨立近拍測試版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.19（現場標籤三區精準裁切與OCR減次版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -2256,6 +2256,28 @@ function bCodeHas8PrefixSupport_(text,code) {
   return String(text||'').toUpperCase().split(/\r?\n/)
     .some(line=>prefix8.test(line)||trailingNoise.test(line));
 }
+function reconcileBReads_(focusedPick,reads) {
+  // 只有真的看見 B+9碼，才可以成立 B碼候選。
+  // 另一個小框看到「8+相同9碼」僅作數字佐證，絕不獨立生成B碼。
+  const focused=String((focusedPick&&focusedPick.code)||'').trim();
+  if(!/^B\d{9}$/.test(focused)){
+    return {code:'',focused:'',wide:'',agree:false,weakBPrefixSupport:false,conflict:false};
+  }
+  const exact=(reads||[]).map(r=>parseFastBCode_(r.text)).filter(Boolean);
+  const conflict=exact.some(code=>code!==focused);
+  const fullAgreement=exact.filter(code=>code===focused).length>=2;
+  const weakSupport=(reads||[]).some(r=>
+    !parseFastBCode_(r.text)&&bCodeHas8PrefixSupport_(r.text,focused));
+  return {
+    code:conflict?'':focused,
+    focused:focused,
+    wide:'',
+    agree:!conflict&&(fullAgreement||weakSupport),
+    weakBPrefixSupport:!!weakSupport,
+    conflict:conflict
+  };
+}
+
 function reconcileBCode_(focusedPick,wideText) {
   const focused=String((focusedPick&&focusedPick.code)||'').trim();
   const wide=parseFastBCode_(wideText);
@@ -3884,81 +3906,64 @@ async function readFastLabelFields(
     }
   }
 
-  const orderJobs = [
-    {
-      // 現場標籤的數字不是從最左上角開始。避免裁入「單號」或裁掉數字。
-      canvas:cropFastLabel_(labelCanvas,0.13,0.03,0.30,0.13,1350,null),
-      psm:6
-    },
-    {
-      canvas:cropFastLabel_(labelCanvas,0.13,0.03,0.30,0.13,1350,'binary'),
-      psm:6
-    },
-    {
-      canvas:cropFastLabel_(labelCanvas,0.000,0.000,0.38,0.110,1350,'binary'),
-      psm:7
-    },
-    {
-      canvas:cropFastLabel_(labelCanvas,0.000,0.000,0.40,0.125,1400,'contrast'),
-      psm:6
-    },
-    {
-      canvas:cropFastLabel_(labelCanvas,0.010,0.005,0.33,0.085,1250,'contrast'),
-      psm:13
-    }
+  // 第一階段只讀標籤左上單號行；排除「單號」中文字及其他板材數字。
+  // 兩個不同裁切結果一致就停，不必每張照片都做完原本五次文字辨識。
+  const orderJobs=[
+    [0.10,0.03,0.29,0.10,1400,null,6],
+    [0.09,0.02,0.30,0.11,1350,null,7],
+    // 偏移／舊版格式備援，只有前兩張無法形成一致證據才會執行。
+    [0.13,0.03,0.30,0.13,1350,null,6],
+    [0.13,0.03,0.30,0.13,1350,'binary',6],
+    [0.00,0.00,0.40,0.125,1400,'contrast',6],
+    [0.01,0.005,0.33,0.085,1250,'contrast',13]
   ];
-
-  const orderReads = [];
-
-  for (let i = 0; i < orderJobs.length; i++) {
-    orderReads.push(
-      await fastOcr_(
-        worker,
-        orderJobs[i].canvas,
-        '0123456789',
-        orderJobs[i].psm
-      )
-    );
+  const orderReads=[];
+  for(const spec of orderJobs){
+    const roi=cropFastLabel_(labelCanvas,...spec.slice(0,6));
+    orderReads.push(await fastOcr_(worker,roi,'0123456789',spec[6]));
+    const trial=chooseFastOrderCandidate_(orderReads);
+    if(trial.code&&trial.votes>=2&&trial.agreement>=0.67)break;
   }
-
-  let orderPick =
-    chooseFastOrderCandidate_(orderReads);
+  let orderPick=chooseFastOrderCandidate_(orderReads);
 
   let orderNo = orderPick.code;
 
-  // B碼位於標籤上方偏右，允許貼紙尺寸、拍攝角度造成的偏移。
-  const bJobs = [
-    // 真實錄影顯示單行模式容易將 B 當作 8，改以區塊模式讀多個裁切版本。
-    {canvas:cropFastLabel_(labelCanvas,0.40,0.010,0.32,0.160,1450,null),psm:6},
-    {canvas:cropFastLabel_(labelCanvas,0.38,0.005,0.36,0.17,1450,null),psm:6},
-    {canvas:cropFastLabel_(labelCanvas,0.37,0.025,0.36,0.17,1500,null),psm:6},
-    {canvas:cropFastLabel_(labelCanvas,0.28,0.000,0.48,0.22,1450,'contrast'),psm:6},
-    {canvas:cropFastLabel_(labelCanvas,0.30,0.000,0.42,0.18,1350,'binary'),psm:7}
+  // 第二階段只讀上方B碼行。整張上沿另含單號及交期，容易把B讀成8。
+  // 前兩張為專用精準ROI；讀到完整B碼並得到另一裁切的數字佐證就停止。
+  const bJobs=[
+    [0.40,0.025,0.30,0.120,1400,null,6],
+    [0.40,0.030,0.28,0.115,1400,null,6],
+    [0.40,0.025,0.30,0.120,1400,'contrast',6],
+    // 上方B碼位置偏移時才使用舊版大一些的裁切。
+    [0.40,0.010,0.32,0.160,1450,null,6],
+    [0.38,0.005,0.36,0.170,1450,null,6],
+    [0.37,0.025,0.36,0.170,1500,null,6],
+    [0.30,0.000,0.42,0.180,1350,'binary',7]
   ];
-
-  const bReads = [];
-
-  for (let i = 0; i < bJobs.length; i++) {
-    bReads.push(
-      await fastOcr_(
-        worker,
-        bJobs[i].canvas,
-        'B0123456789',
-        bJobs[i].psm
-      )
-    );
+  const bReads=[];
+  let bPick={code:'',votes:0,agreement:0,candidates:[],confidence:0};
+  let bCheck={code:'',agree:false,conflict:false,focused:'',wide:'',weakBPrefixSupport:false};
+  for(const spec of bJobs){
+    const roi=cropFastLabel_(labelCanvas,...spec.slice(0,6));
+    bReads.push(await fastOcr_(worker,roi,'B0123456789',spec[6]));
+    bPick=chooseFastBCodeCandidate_(bReads);
+    bCheck=reconcileBReads_(bPick,bReads);
+    if(bCheck.code&&bCheck.agree)break;
+    // 有兩組互相衝突的完整B碼時，不再繼續拼湊結果。
+    if(bCheck.conflict)break;
   }
-
-  let bPick =
-    chooseFastBCodeCandidate_(bReads);
-
-  // 將標籤上方較寬區域獨立辨識，不和B碼小框合併投票，避免假共識。
-  const wideBRead=await fastOcr_(
-    worker,cropFastLabel_(labelCanvas,0.20,0.0,0.76,0.26,1600,'contrast'),
-    'B0123456789',6
-  );
-  let bCheck=reconcileBCode_(bPick,wideBRead.text);
   let bCode=bCheck.code;
+  // 精準裁切完全找不到B時才做較寬區域備援。它不能獨立算作高信心證明。
+  if(!bCode&&!bCheck.conflict){
+    const broad=await fastOcr_(worker,
+      cropFastLabel_(labelCanvas,0.20,0.0,0.76,0.26,1450,'contrast'),
+      'B0123456789',6);
+    const backup=reconcileBCode_(bPick,broad.text);
+    if(backup.code){
+      bCode=backup.code;
+      bCheck=backup;
+    }
+  }
 
   let qrHumanConfidence = 0;
 
@@ -4028,7 +4033,7 @@ async function readFastLabelFields(
     }
   }
 
-  if (!bCode) {
+  if (!bCode && !bCheck.conflict) {
     const extraBReads = [];
 
     const bSpecs = [
@@ -4060,7 +4065,7 @@ async function readFastLabelFields(
 
     if (extraPick.code) {
       bPick = extraPick;
-      bCheck=reconcileBCode_(bPick,wideBRead.text);
+      bCheck=reconcileBReads_(bPick,bReads.concat(extraBReads));
       bCode=bCheck.code;
     }
   }
