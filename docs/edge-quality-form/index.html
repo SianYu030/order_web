@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 封邊品質檢查 Web App v3.15（文字辨識待核對與人工確認功能修正版）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
+<!-- 封邊品質檢查 Web App v3.16（補強複核證據與減少誤警示）：一頁到底＋LINE連線重試與明確指引＋內嵌即時相機＋Google Apps Script 隱藏RPC橋接 -->
 <html lang="zh-TW">
 <head>
   <base target="_top">
@@ -367,10 +367,10 @@
       font-size:.84em;
       font-weight:800;
     }
-    .ocr-review-actions { margin-top:15px; padding:13px; border:1px solid #ead19e; border-radius:12px; background:#fffaf2; }
-    .ocr-review-explainer { color:#7c4a08; font-size:15px; font-weight:700; line-height:1.6; margin-bottom:11px; }
-    .ocr-review-confirm-btn { display:block; width:100%; min-height:54px; padding:11px 13px; border:0; border-radius:10px; background:#1c6d3d; color:#fff; font-size:17px; font-weight:800; cursor:pointer; }
-    .ocr-review-confirmed { margin-top:12px; padding:12px; border-radius:10px; background:#eaf7ec; color:#23602c; font-size:16px; font-weight:800; line-height:1.5; }
+    .ocr-review-actions { margin-top:9px; padding:10px; border:1px solid #ead19e; border-radius:9px; background:#fffaf2; }
+    .ocr-review-explainer { color:#7c4a08; font-size:14px; font-weight:650; line-height:1.45; margin-bottom:8px; }
+    .ocr-review-confirm-btn { display:block; width:100%; min-height:44px; padding:8px 12px; border:0; border-radius:8px; background:#1c6d3d; color:#fff; font-size:15px; font-weight:750; cursor:pointer; }
+    .ocr-review-confirmed { margin-top:8px; padding:8px 10px; border-radius:8px; background:#eaf7ec; color:#23602c; font-size:14px; font-weight:700; line-height:1.45; }
     input.ocr-needs-check {
       border-color:#d99b22 !important;
       background:#fffaf0;
@@ -803,8 +803,8 @@
             </div>
           </div>
           <div id="ocrReviewActions" class="ocr-review-actions hidden" role="group" aria-labelledby="ocrReviewExplainer">
-            <div id="ocrReviewExplainer" class="ocr-review-explainer" data-i18n="ocrReviewExplanation">黃色代表OCR尚未充分複核，並非一定讀錯。請對照實際標籤的QR、單號與B碼。</div>
-            <button id="ocrReviewConfirmBtn" type="button" class="ocr-review-confirm-btn" onclick="confirmOcrFields_()" data-i18n="ocrReviewConfirm">✅ 我已核對三個號碼，內容正確</button>
+            <div id="ocrReviewExplainer" class="ocr-review-explainer" data-i18n="ocrReviewExplanation">尚有號碼無法交叉確認，請對照實際標籤後核對。</div>
+            <button id="ocrReviewConfirmBtn" type="button" class="ocr-review-confirm-btn" onclick="confirmOcrFields_()" data-i18n="ocrReviewConfirm">✓ 核對無誤</button>
           </div>
           <div id="ocrReviewConfirmed" class="ocr-review-confirmed hidden" aria-live="polite" data-i18n="ocrConfirmed">✅ 已由現場人員人工核對三個號碼</div>
 
@@ -1031,8 +1031,8 @@ const I18N = {
     adhesionStatus:'貼附接著狀態', appearance:'外觀', pass:'合格', fail:'不合格', adhesionBasis:'檢查基準：浮起、間隙不可', appearanceBasis:'檢查基準：汙損不可',
     labelPhotoRecognition:'標籤拍照辨識', takeLabelPhoto:'📸 拍標籤自動辨識', labelAutoRecognize:'拍照後會自動辨識：工件號碼(QR Code)、單號、B碼',
     qrManualLabel:'⚠️ QR 未辨識，請手動輸入', qrManualPlaceholder:'請輸入標籤上的工件號碼(QR Code)', orderNo:'單號', bCode:'B碼', pleaseConfirm:'⚠️ 請確認',
-    ocrReviewExplanation:'黃色代表OCR尚未充分複核，並非一定讀錯。請對照實際標籤的QR、單號與B碼。',
-    ocrReviewConfirm:'✅ 我已核對三個號碼，內容正確', ocrConfirmed:'✅ 已由現場人員人工核對三個號碼', ocrReviewIncomplete:'請先填妥8碼工件QR、12碼單號與B碼，再核對實體標籤。',
+    ocrReviewExplanation:'尚有號碼無法交叉確認，請對照實際標籤後核對。',
+    ocrReviewConfirm:'✓ 核對無誤', ocrConfirmed:'✅ 已由現場人員人工核對三個號碼', ocrReviewIncomplete:'請先填妥8碼工件QR、12碼單號與B碼，再核對實體標籤。',
     orderExample:'例如 202605221446', bCodeExample:'例如 B260525007', labelHint:'拍照時請讓完整標籤入鏡並對焦清楚，可稍微斜拍。系統會優先用 QR 定位並自動校正，再辨識工件號碼(QR Code)、單號、B碼；有疑慮的欄位會標示「⚠️ 請確認」。',
     currentInspectionData:'本次品質檢查資料', completeInspectionData:'請完成品質檢查資料', submitInspection:'送出品質檢查', processing:'資料處理中…',
     sameInspector:'主手與副手不可選同一人', selectFactoryFirst:'請先選擇廠別', selectMachineFirst:'請先選擇機台', selectLeadFirst:'請先選擇主手', selectAssistantFirst:'請先選擇副手',
@@ -1059,8 +1059,8 @@ const I18N = {
     adhesionStatus:'สถานะการยึดติด', appearance:'ลักษณะภายนอก', pass:'ผ่าน', fail:'ไม่ผ่าน', adhesionBasis:'เกณฑ์ตรวจ: ห้ามมีขอบยกหรือช่องว่าง', appearanceBasis:'เกณฑ์ตรวจ: ห้ามมีคราบหรือความเสียหาย',
     labelPhotoRecognition:'ถ่ายรูปฉลากเพื่ออ่านข้อมูล', takeLabelPhoto:'📸 ถ่ายฉลากเพื่ออ่านอัตโนมัติ', labelAutoRecognize:'หลังถ่ายรูป ระบบจะอ่าน: หมายเลขชิ้นงาน (QR Code), เลขที่ใบงาน, รหัส B',
     qrManualLabel:'⚠️ อ่าน QR ไม่ได้ กรุณากรอกเอง', qrManualPlaceholder:'กรอกหมายเลขชิ้นงาน (QR Code) บนฉลาก', orderNo:'เลขที่ใบงาน', bCode:'รหัส B', pleaseConfirm:'⚠️ กรุณาตรวจสอบ',
-    ocrReviewExplanation:'สีเหลืองหมายถึงระบบยังตรวจทานผล OCR ไม่เพียงพอ ไม่ได้แปลว่าข้อมูลผิด กรุณาเทียบ QR เลขที่ใบงาน และรหัส B กับฉลากจริง',
-    ocrReviewConfirm:'✅ ฉันตรวจสอบทั้งสามหมายเลขกับฉลากแล้ว', ocrConfirmed:'✅ เจ้าหน้าที่ตรวจสอบหมายเลขทั้งสามแล้ว', ocrReviewIncomplete:'กรุณากรอก QR 8 หลัก เลขที่ใบงาน 12 หลัก และรหัส B ให้ครบก่อนยืนยัน',
+    ocrReviewExplanation:'ยังมีหมายเลขที่ตรวจซ้ำไม่ได้ กรุณาตรวจสอบกับฉลากจริง',
+    ocrReviewConfirm:'✓ ตรวจสอบถูกต้องแล้ว', ocrConfirmed:'✅ เจ้าหน้าที่ตรวจสอบหมายเลขทั้งสามแล้ว', ocrReviewIncomplete:'กรุณากรอก QR 8 หลัก เลขที่ใบงาน 12 หลัก และรหัส B ให้ครบก่อนยืนยัน',
     orderExample:'ตัวอย่าง 202605221446', bCodeExample:'ตัวอย่าง B260525007', labelHint:'ถ่ายให้เห็นฉลากทั้งใบและโฟกัสให้ชัด สามารถเอียงกล้องเล็กน้อยได้ ระบบจะใช้ QR จัดตำแหน่งและแก้ภาพก่อนอ่านหมายเลขชิ้นงาน เลขที่ใบงาน และรหัส B ช่องที่น่าสงสัยจะแสดง “⚠️ กรุณาตรวจสอบ”',
     currentInspectionData:'ข้อมูลการตรวจสอบคุณภาพครั้งนี้', completeInspectionData:'กรุณากรอกข้อมูลการตรวจสอบให้ครบ', submitInspection:'ส่งผลตรวจสอบคุณภาพ', processing:'กำลังประมวลผล…',
     sameInspector:'ผู้ปฏิบัติงานหลักและผู้ช่วยต้องเป็นคนละคน', selectFactoryFirst:'กรุณาเลือกโรงงานก่อน', selectMachineFirst:'กรุณาเลือกเครื่องจักรก่อน', selectLeadFirst:'กรุณาเลือกผู้ปฏิบัติงานหลักก่อน', selectAssistantFirst:'กรุณาเลือกผู้ช่วยก่อน',
@@ -1087,8 +1087,8 @@ const I18N = {
     adhesionStatus:'Tình trạng bám dính', appearance:'Ngoại quan', pass:'Đạt', fail:'Không đạt', adhesionBasis:'Tiêu chuẩn: không được bong mép hoặc có khe hở', appearanceBasis:'Tiêu chuẩn: không được bẩn hoặc hư hỏng',
     labelPhotoRecognition:'Chụp nhãn để nhận dạng', takeLabelPhoto:'📸 Chụp nhãn để nhận dạng tự động', labelAutoRecognize:'Sau khi chụp, hệ thống sẽ đọc: mã chi tiết (QR Code), số đơn, mã B',
     qrManualLabel:'⚠️ Không đọc được QR, vui lòng nhập tay', qrManualPlaceholder:'Nhập mã chi tiết (QR Code) trên nhãn', orderNo:'Số đơn', bCode:'Mã B', pleaseConfirm:'⚠️ Vui lòng kiểm tra',
-    ocrReviewExplanation:'Màu vàng nghĩa là OCR chưa được xác minh đủ, không nhất thiết là sai. Hãy đối chiếu QR, số đơn và mã B với nhãn thật.',
-    ocrReviewConfirm:'✅ Tôi đã đối chiếu và xác nhận cả ba mã', ocrConfirmed:'✅ Nhân viên đã kiểm tra cả ba mã', ocrReviewIncomplete:'Hãy điền đủ QR 8 số, số đơn 12 số và mã B trước khi xác nhận.',
+    ocrReviewExplanation:'Có mã chưa được đối chiếu đủ. Hãy kiểm tra nhãn thật.',
+    ocrReviewConfirm:'✓ Đã kiểm tra đúng', ocrConfirmed:'✅ Nhân viên đã kiểm tra cả ba mã', ocrReviewIncomplete:'Hãy điền đủ QR 8 số, số đơn 12 số và mã B trước khi xác nhận.',
     orderExample:'Ví dụ 202605221446', bCodeExample:'Ví dụ B260525007', labelHint:'Khi chụp, hãy để toàn bộ nhãn trong khung hình và lấy nét rõ; có thể chụp hơi nghiêng. Hệ thống ưu tiên dùng QR để định vị và chỉnh phối cảnh trước khi đọc mã chi tiết, số đơn và mã B. Dữ liệu cần chú ý sẽ hiện “⚠️ Vui lòng kiểm tra”.',
     currentInspectionData:'Dữ liệu kiểm tra chất lượng lần này', completeInspectionData:'Vui lòng hoàn tất dữ liệu kiểm tra', submitInspection:'Gửi kết quả kiểm tra', processing:'Đang xử lý dữ liệu…',
     sameInspector:'Nhân viên chính và nhân viên phụ không được trùng nhau', selectFactoryFirst:'Vui lòng chọn xưởng trước', selectMachineFirst:'Vui lòng chọn máy trước', selectLeadFirst:'Vui lòng chọn nhân viên chính trước', selectAssistantFirst:'Vui lòng chọn nhân viên phụ trước',
@@ -2208,10 +2208,11 @@ async function readUpperLabelFields_(worker,labelCanvas){
 }
 
 function ocrNeedsHumanReview_(value,diagnostics) {
-  // OCR的格式正確不等於辨識正確；單一候選或互相衝突需要核對。
-  return !value || !diagnostics ||
-    Number(diagnostics.votes || 0)<2 ||
-    Number(diagnostics.agreement || 0)<0.6;
+  // 低票數另以標籤整排上沿OCR交叉複核。不同裁切一致可通過，衝突則保留黃色。
+  if(!/^20\d{10}$/.test(String(value||'')) || !diagnostics ||
+     diagnostics.independentConflict || diagnostics.conflict)return true;
+  if(diagnostics.independentAgree)return false;
+  return Number(diagnostics.votes||0)<2 || Number(diagnostics.agreement||0)<0.6;
 }
 
 // 三區獨立辨識：單號、B碼、QR工件號碼。
@@ -2229,8 +2230,9 @@ function reconcileBCode_(focusedPick,wideText) {
 }
 
 function ocrBNeedsHumanReview_(value,diag) {
-  return ocrNeedsHumanReview_(value,diag) ||
-    !diag || !diag.independentAgree || !!diag.conflict;
+  // B碼至少兩個不同裁切區域讀到相同的B+9碼才能自動解除警告。
+  return !/^B\d{9}$/.test(String(value||'')) || !diag ||
+    !!diag.independentConflict || !!diag.conflict || !diag.independentAgree;
 }
 
 async function handleLabelPhoto(event) {
@@ -2296,25 +2298,44 @@ async function handleLabelPhoto(event) {
       normalized.anchor === 'QR' ? 'QR' : ''
     );
 
-    // 標籤上沿完整文字備援：QR 與單號/B碼可能來自不同裁切路徑。
-    // 只在主辨識缺欄時啟動，避免增加正常掃描時間。
-    if(!data.orderNo || !data.bCode){
+    // 有完整碼但證據不足也啟動獨立上緣OCR。之前只在缺欄時啟動，
+    // 使正確且只有1票的號碼永遠呈現黃色「請確認」。
+    const orderNeedsProof=ocrNeedsHumanReview_(data.orderNo,data.orderDiagnostics);
+    const bNeedsProof=ocrBNeedsHumanReview_(data.bCode,data.bDiagnostics);
+    if(!data.orderNo || !data.bCode || orderNeedsProof || bNeedsProof){
       const supplement=await readUpperLabelFields_(worker,normalized.canvas);
-      if(!data.orderNo && supplement.orderNo)data.orderNo=supplement.orderNo;
-      if(!data.bCode && supplement.bCode && !(data.bDiagnostics&&data.bDiagnostics.conflict)){
-        data.bCode=supplement.bCode;
-        data.bDiagnostics={votes:1,agreement:1,candidates:[supplement.bCode],independentAgree:false,conflict:false};
+      if(data.orderNo && supplement.orderNo){
+        const d=data.orderDiagnostics||(data.orderDiagnostics={votes:1,agreement:1,candidates:[data.orderNo]});
+        if(data.orderNo===supplement.orderNo)d.independentAgree=true;
+        else d.independentConflict=true;
+      }else if(!data.orderNo && supplement.orderNo){
+        data.orderNo=supplement.orderNo;
+        data.orderDiagnostics={votes:1,agreement:1,candidates:[supplement.orderNo],
+          independentAgree:false,independentConflict:false};
       }
-
-      // 若白標籤定位不成功，再用展開的QR錨點做第二條定位路徑。
+      if(data.bCode && supplement.bCode){
+        const d=data.bDiagnostics||(data.bDiagnostics={votes:1,agreement:1,candidates:[data.bCode]});
+        if(data.bCode===supplement.bCode && !d.conflict)d.independentAgree=true;
+        else d.independentConflict=true;
+      }else if(!data.bCode && supplement.bCode && !(data.bDiagnostics&&data.bDiagnostics.conflict)){
+        data.bCode=supplement.bCode;
+        data.bDiagnostics={votes:1,agreement:1,candidates:[supplement.bCode],
+          independentAgree:false,independentConflict:false};
+      }
+      // QR錨點補讀只用於缺欄；同一掃描結果不可當成「獨立證據」。
       if((!data.orderNo || !data.bCode) && locateMode!=='QR'){
         const qrNorm=await normalizeLabelByQrAnchor(image);
         if(qrNorm){
           const supplementQr=await readUpperLabelFields_(worker,qrNorm.canvas);
-          if(!data.orderNo && supplementQr.orderNo)data.orderNo=supplementQr.orderNo;
+          if(!data.orderNo && supplementQr.orderNo){
+            data.orderNo=supplementQr.orderNo;
+            data.orderDiagnostics={votes:1,agreement:1,candidates:[supplementQr.orderNo],
+              independentAgree:false,independentConflict:false};
+          }
           if(!data.bCode && supplementQr.bCode && !(data.bDiagnostics&&data.bDiagnostics.conflict)){
             data.bCode=supplementQr.bCode;
-            data.bDiagnostics={votes:1,agreement:1,candidates:[supplementQr.bCode],independentAgree:false,conflict:false};
+            data.bDiagnostics={votes:1,agreement:1,candidates:[supplementQr.bCode],
+              independentAgree:false,independentConflict:false};
           }
         }
       }
