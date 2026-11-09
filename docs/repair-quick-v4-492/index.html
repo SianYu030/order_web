@@ -1858,6 +1858,9 @@ el("completeRepairBtn").onclick=async()=>{
   }
 
   if(!confirm("確定設備已維修完成並結案？"))return;
+  if(window.repairDrive?.enabled && (repairPhotoFiles.length || window.repairDrive.videoFiles("repair").length)){
+    try{await window.repairDrive.preflight();}catch(err){alert("附件接收器尚未就緒，結案未送出："+err.message);return;}
+  }
 
   const now=new Date();
   if(s.activeStart)closeActive(s,now);
@@ -1904,13 +1907,15 @@ el("completeRepairBtn").onclick=async()=>{
     }
 
     const repairPhotos=[...repairPhotoFiles];
-    if(repairPhotos.length && repairState.order?.no){
+    const repairMediaFiles=window.repairDrive?.enabled?[...repairPhotos,...window.repairDrive.videoFiles("repair")]:repairPhotos;
+    if(repairMediaFiles.length && repairState.order?.no){
       el("saveRepairMsg").textContent="⏳ 結案完成，正在上傳維修照片 0/"+repairPhotos.length+"…";
-      await uploadPhotoFiles_(repairPhotos,repairState.order.no,"維修照片",(i,total)=>{
+      await (window.repairDrive?.enabled ? window.repairDrive.uploadFiles : uploadPhotoFiles_)(repairMediaFiles,repairState.order.no,"維修照片",(i,total)=>{
         el("saveRepairMsg").textContent="⏳ 上傳維修照片 "+i+"/"+total+"…";
       },repairState.order.photoEpoch||"");
       clearRepairPhotoSelection_();
-      el("saveRepairMsg").textContent="✅ 工單已結案｜📷 維修照片已排入 NAS 自動歸檔";
+      if(window.repairDrive?.enabled)window.repairDrive.clearVideo("repair");
+      el("saveRepairMsg").textContent=window.repairDrive?.enabled?"✅ 工單已結案｜附件已寫入 Google Drive，NAS 備份待核對":"✅ 工單已結案｜📷 維修照片已排入 NAS 自動歸檔";
     }else{
       el("saveRepairMsg").textContent=SYNC_API_URL?"✅ 已同步至電腦「機修維修單」":"✅ 工單已模擬結案";
     }
@@ -1939,6 +1944,7 @@ el("saveRepairBtn").onclick=async()=>{
   el("saveRepairMsg").classList.remove("hidden");
 
   try{
+    if(window.repairDrive?.enabled && (repairPhotoFiles.length || window.repairDrive.videoFiles("repair").length))await window.repairDrive.preflight();
     if(SYNC_API_URL && repairState.order?._live){
       el("saveRepairMsg").textContent="⏳ 正在同步至電腦…";
       await syncPost_({
@@ -1953,13 +1959,15 @@ el("saveRepairBtn").onclick=async()=>{
     }
 
     const repairPhotos=[...repairPhotoFiles];
-    if(repairPhotos.length && repairState.order?.no){
+    const repairMediaFiles=window.repairDrive?.enabled?[...repairPhotos,...window.repairDrive.videoFiles("repair")]:repairPhotos;
+    if(repairMediaFiles.length && repairState.order?.no){
       el("saveRepairMsg").textContent="⏳ 上傳維修照片 0/"+repairPhotos.length+"…";
-      await uploadPhotoFiles_(repairPhotos,repairState.order.no,"維修照片",(i,total)=>{
+      await (window.repairDrive?.enabled ? window.repairDrive.uploadFiles : uploadPhotoFiles_)(repairMediaFiles,repairState.order.no,"維修照片",(i,total)=>{
         el("saveRepairMsg").textContent="⏳ 上傳維修照片 "+i+"/"+total+"…";
       },repairState.order.photoEpoch||"");
       clearRepairPhotoSelection_();
-      el("saveRepairMsg").textContent="✅ 維修資料已儲存｜📷 維修照片已排入 NAS 自動歸檔";
+      if(window.repairDrive?.enabled)window.repairDrive.clearVideo("repair");
+      el("saveRepairMsg").textContent=window.repairDrive?.enabled?"✅ 維修資料已儲存｜附件已寫入 Google Drive，NAS 備份待核對":"✅ 維修資料已儲存｜📷 維修照片已排入 NAS 自動歸檔";
     }else{
       el("saveRepairMsg").textContent=SYNC_API_URL?"✅ 已同步至電腦「機修維修單」":"✅ 測試儲存成功（未寫入正式資料）";
     }
@@ -2229,6 +2237,7 @@ el("submitBtn").onclick=async()=>{
   if(!(state.dept&&state.person&&state.machine&&state.stop&&state.level&&issue))return;
 
   const reportPhotos=[...reportPhotoFiles];
+  const reportMediaFiles=window.repairDrive?.enabled?[...reportPhotos,...window.repairDrive.videoFiles("report")]:reportPhotos;
   const btn=el("submitBtn");
   const oldText=btn.textContent;
   btn.disabled=true;
@@ -2239,6 +2248,7 @@ el("submitBtn").onclick=async()=>{
       state.requestId="MOB-"+Date.now()+"-"+Math.floor(Math.random()*1000000);
     }
 
+    if(window.repairDrive?.enabled && reportMediaFiles.length) await window.repairDrive.preflight();
     const data=await jsonp_("createMobileReportTest",{
       dept:state.dept,
       person:state.person,
@@ -2272,13 +2282,13 @@ el("submitBtn").onclick=async()=>{
 
     let photoMsg="";
     let uploadedReportPhotos=[];
-    if(reportPhotos.length){
+    if(reportMediaFiles.length){
       btn.textContent="上傳報修照片 0/"+reportPhotos.length+"…";
       try{
-        uploadedReportPhotos=await uploadPhotoFiles_(reportPhotos,data.orderNo,"報修照片",(i,total)=>{
+        uploadedReportPhotos=await (window.repairDrive?.enabled ? window.repairDrive.uploadFiles : uploadPhotoFiles_)(reportMediaFiles,data.orderNo,"報修照片",(i,total)=>{
           btn.textContent="上傳報修照片 "+i+"/"+total+"…";
         },data.photoEpoch||"");
-        photoMsg="｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔";
+        photoMsg=window.repairDrive?.enabled?("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，NAS 備份待核對"):("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
       }catch(photoErr){
         photoMsg="｜⚠️ 工單已建立，但報修照片暫存失敗："+photoErr.message;
       }
@@ -2297,7 +2307,7 @@ el("submitBtn").onclick=async()=>{
           stop:state.stop,
           issue:issue,
           level:state.level,
-          photoIds:uploadedReportPhotos.map(x=>x.id).filter(Boolean)
+          photoIds:window.repairDrive?.enabled?[]:uploadedReportPhotos.map(x=>x.id).filter(Boolean)
         });
         lineMsg="｜📣 LINE 已發送"+(lineData.imageCount?("＋"+lineData.imageCount+" 張照片"):"");
       }catch(lineErr){
@@ -2343,7 +2353,7 @@ update();
 (function(){
 "use strict";
 var enabled=false;
-try{ enabled=new URLSearchParams(location.search).get("video_test")==="1"; }catch(e){}
+try{ enabled=new URLSearchParams(location.search).get("video_test")==="1" && new URLSearchParams(location.search).get("drive_upload")!=="1"; }catch(e){}
 if(!enabled)return;
 var MAX_BYTES=2*1024*1024*1024, items=Object.create(null);
 function el(id){return document.getElementById(id);}
@@ -2399,5 +2409,6 @@ document.addEventListener("click",function(ev){
 })();
 </script>
 <script src="./v10_version_gate.js?v=20261028c" defer></script>
+<script src="./repair-drive-bridge.js?v=20261109c" defer></script>
 </body>
 </html>
