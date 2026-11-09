@@ -210,6 +210,6 @@
   ['resetBtn','successHomeBtn','againBtn'].forEach(id=>{
     const b=$(id);if(b)b.addEventListener('click',()=>clearVideo('report'));
   });
-  window.repairDrive={enabled:true,preflight,uploadFiles,videoFiles(prefix){return files[prefix]?[files[prefix]]:[];}};
+  window.repairDrive={enabled:true,preflight,uploadFiles,clearVideo,videoFiles(prefix){return files[prefix]?[files[prefix]]:[];}};
   bootFrame();
 })();
