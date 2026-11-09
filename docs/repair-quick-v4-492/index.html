@@ -2248,7 +2248,12 @@ el("submitBtn").onclick=async()=>{
       state.requestId="MOB-"+Date.now()+"-"+Math.floor(Math.random()*1000000);
     }
 
-    if(window.repairDrive?.enabled && reportMediaFiles.length) await window.repairDrive.preflight();
+    if(window.repairDrive?.enabled && reportMediaFiles.length){
+      btn.textContent="確認 Google Drive 附件接收器…";
+      try {await window.repairDrive.preflight();}
+      catch(connErr){throw new Error("尚未建立 MR 工單；Google 附件接收器未連線："+connErr.message);}
+      btn.textContent="建立工單中…";
+    }
     const data=await jsonp_("createMobileReportTest",{
       dept:state.dept,
       person:state.person,
