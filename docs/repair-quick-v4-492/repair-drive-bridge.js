@@ -40,17 +40,74 @@
   if (!endpoint) {
     try {endpoint = validateUrl(localStorage.getItem(URL_KEY) || '');} catch (_) {}
   }
-  const bootFrame = () => {
-    if (!endpoint) return;
-    const frame = document.createElement('iframe');
-    const url = new URL(endpoint);
-    url.searchParams.set('bridgeNonce',nonce);
-    frame.src = url.toString();
-    frame.title = 'Google Drive 附件上傳接收器';
-    frame.style.cssText = 'position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;z-index:-1;';
-    frame.setAttribute('aria-hidden','true');
-    document.body.appendChild(frame);
-  };
+  // Apps Script's HTML service can be blocked inside a cross-site hidden iframe.
+  // Open the receiver as a first-party tab only after an explicit user tap.
+  let popup = null;
+  const indicators = [];
+  function connectionStatus(message, good=false) {
+    indicators.forEach(node=>{
+      node.textContent=message;
+      node.style.color=good?'#08713e':'#805024';
+    });
+  }
+  function connectReceiver(event) {
+    const area=event.currentTarget.closest('.repair-drive-connect');
+    const input=area&&area.querySelector('input');
+    if(input && input.value.trim()){
+      const v=validateUrl(input.value.trim());
+      if(!v){connectionStatus('接收器網址不正確，請貼上 Google Apps Script /exec 網址。');return;}
+      endpoint=v;
+      try{localStorage.setItem(URL_KEY,endpoint);}catch(_){}
+    }
+    if(!endpoint){
+      connectionStatus('請先貼上接收器 /exec 網址，再按「連接」。');
+      return;
+    }
+    const u=new URL(endpoint);
+    u.searchParams.set('bridgeNonce',nonce);
+    u.searchParams.set('bridgeMode','popup');
+    remote=null; remoteOrigin='';
+    try {popup=window.open(u.toString(),'repairGoogleDriveReceiver');} catch (_) {popup=null;}
+    if(!popup){
+      connectionStatus('手機阻擋開啟 Google 登入分頁，請允許彈出視窗後再按「連接」。');
+      return;
+    }
+    connectionStatus('已開啟 Google 接收器。請完成 Google 登入，再返回本頁。');
+    awaitReceiver(60000).then(()=>rpc('health',[],45000)).then(result=>{
+      if(!result || !result.ok || result.receiverVersion!=='2.3' || result.testOnly!==false)
+        throw new Error('接收器版本不符，請部署 v2.3 的 Code.gs 與 Bridge.html');
+      connectionStatus('Google Drive 已連線，可直接使用原本報修／維修附件欄位。',true);
+    }).catch(err=>connectionStatus('連線未完成：'+err.message));
+  }
+  function addConnectionBar(prefix){
+    const box=$(prefix+'VideoPilot');
+    if(!box)return;
+    const wrap=document.createElement('div');
+    wrap.className='repair-drive-connect';
+    wrap.style.cssText='margin:8px 0 12px;padding:12px;border:1px solid #bad0e4;border-radius:10px;background:#f7fafc;font-size:13px;';
+    const headline=document.createElement('div');
+    headline.textContent='☁️ Google Drive 附件連線（只需初次設定）';
+    headline.style.cssText='font-weight:800;margin-bottom:8px;color:#264a67';
+    wrap.appendChild(headline);
+    const input=document.createElement('input');
+    input.type='url';
+    input.autocomplete='off';
+    input.placeholder='首次設定：貼上接收器 /exec 網址';
+    input.value=endpoint||'';
+    input.style.cssText='width:100%;box-sizing:border-box;font-size:14px;padding:9px;border:1px solid #bed0df;border-radius:7px;margin-bottom:7px;';
+    wrap.appendChild(input);
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.textContent='連接 Google Drive';
+    btn.style.cssText='width:100%;min-height:43px;background:#1d567e;color:white;border:0;border-radius:8px;font-size:14px;font-weight:700;';
+    btn.addEventListener('click',connectReceiver);
+    wrap.appendChild(btn);
+    const note=document.createElement('div');
+    note.textContent='尚未連線。只支援已授權的廠務室帳號；尚未確認 NAS 備份。';
+    note.style.cssText='margin-top:7px;color:#805024;line-height:1.5;';
+    wrap.appendChild(note);indicators.push(note);
+    box.parentElement.insertBefore(wrap,box);
+  }
   window.addEventListener('message', evt => {
     const data = evt.data;
     if (!data || data.channel !== CHANNEL || data.nonce !== nonce) return;
@@ -60,6 +117,7 @@
     if (data.kind === 'ready') {
       remote = evt.source;
       remoteOrigin = evt.origin;
+      connectionStatus('Google 接收器已回應，正在驗證帳號與權限…');
       return;
     }
     if (data.kind !== 'result' || !pending.has(data.id)) return;
@@ -76,7 +134,7 @@
       const started=Date.now();
       const check=()=>{
         if(remote){resolve();return;}
-        if(Date.now()-started>timeoutMs){reject(new Error('Google 接收器未回應，可能尚未部署、需要登入，或公司瀏覽器阻擋內嵌連線'));return;}
+        if(Date.now()-started>timeoutMs){reject(new Error('Google 接收器未回應，請確認已登入廠務室 Google 帳號、接收器分頁仍開啟，或公司瀏覽器未封鎖連線'));return;}
         setTimeout(check,250);
       };
       check();
@@ -96,17 +154,12 @@
     });
   }
   async function preflight() {
-    if (!endpoint) {
-      const entered=window.prompt('一次性設定：貼上已部署的公司 Google Drive 接收器 /exec 網址（員工不需另填附件表單）','');
-      const valid=validateUrl(entered||'');
-      if(!valid) throw new Error('尚未完成 Google 接收器設定，沒有建立或上傳附件');
-      endpoint=valid;
-      try {localStorage.setItem(URL_KEY,valid);} catch (_) {}
-      bootFrame();
+    if(!endpoint || !remote){
+      throw new Error('請先在原報修／維修畫面按「連接 Google Drive」，確認連線成功後再送出工單。沒有上傳任何附件');
     }
-    const r=await rpc('health',[],35000);
-    if(!r || !r.ok || r.receiverVersion !== '2.2' || r.testOnly !== false)
-      throw new Error('Google 接收器版本或權限與測試設定不符，未上傳任何附件');
+    const r=await rpc('health',[],45000);
+    if(!r || !r.ok || r.receiverVersion!=='2.3' || r.testOnly!==false)
+      throw new Error('Google 接收器版本或權限不符。請更新 v2.3 接收器，附件未上傳');
     return r;
   }
   function extVideo(file) {return SUPPORTED_VIDEO.test(file.name || '');}
@@ -219,5 +272,6 @@
     const b=$(id);if(b)b.addEventListener('click',()=>clearVideo('report'));
   });
   window.repairDrive={enabled:true,preflight,uploadFiles,clearVideo,videoFiles(prefix){return files[prefix]?[files[prefix]]:[];}};
-  bootFrame();
+  addConnectionBar('report');
+  addConnectionBar('repair');
 })();
