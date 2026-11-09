@@ -115,9 +115,10 @@
     if (host !== 'script.google.com' && !host.endsWith('-script.googleusercontent.com') &&
         host !== 'script.googleusercontent.com') return;
     if (data.kind === 'ready') {
+      const changed=remote!==evt.source || remoteOrigin!==evt.origin;
       remote = evt.source;
       remoteOrigin = evt.origin;
-      connectionStatus('Google 接收器已回應，正在驗證帳號與權限…');
+      if(changed) connectionStatus('Google 接收器已回應，正在驗證帳號與權限…');
       return;
     }
     if (data.kind !== 'result' || !pending.has(data.id)) return;
