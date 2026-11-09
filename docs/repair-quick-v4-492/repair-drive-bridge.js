@@ -97,7 +97,7 @@
   }
   async function preflight() {
     const r=await rpc('health',[],35000);
-    if(!r || !r.ok || !r.testOnly || r.testMr !== 'MR2026110999')
+    if(!r || !r.ok || r.receiverVersion !== '2.2' || r.testOnly !== false)
       throw new Error('Google 接收器版本或權限與測試設定不符，未上傳任何附件');
     return r;
   }
@@ -193,8 +193,8 @@
     box.querySelector('.video-hint').textContent='影片上傳至公司 Google Drive 後，仍須由 PhotoAgent 核對 NAS 備份。';
     input.setAttribute('accept','video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm');
     input.addEventListener('change',()=>{
-      clearVideo(prefix);
       const f=input.files&&input.files[0];
+      clearVideo(prefix);
       if(!f)return;
       if(!extVideo(f)||!f.size||f.size>MAX_VIDEO){alert('影片請使用 MP4、MOV、M4V、WEBM，單支不超過 500 MB。');return;}
       files[prefix]=f;
