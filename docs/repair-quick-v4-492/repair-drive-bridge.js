@@ -96,6 +96,14 @@
     });
   }
   async function preflight() {
+    if (!endpoint) {
+      const entered=window.prompt('一次性設定：貼上已部署的公司 Google Drive 接收器 /exec 網址（員工不需另填附件表單）','');
+      const valid=validateUrl(entered||'');
+      if(!valid) throw new Error('尚未完成 Google 接收器設定，沒有建立或上傳附件');
+      endpoint=valid;
+      try {localStorage.setItem(URL_KEY,valid);} catch (_) {}
+      bootFrame();
+    }
     const r=await rpc('health',[],35000);
     if(!r || !r.ok || r.receiverVersion !== '2.2' || r.testOnly !== false)
       throw new Error('Google 接收器版本或權限與測試設定不符，未上傳任何附件');
