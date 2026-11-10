@@ -190,6 +190,6 @@ small{display:block;font-size:12px;color:#6d7c72;margin-top:14px;line-height:1.5
    run("health",[token]).then(r=>setLoggedIn("已驗證")).catch(()=>unsetLogin("上次授權已過期，請重新登入。"));
  }
  setInterval(announceReady,3000);
- if(!NONCE)notice("請從原本設備維修網站開啟此授權分頁。");
+ if(!NONCE)notice("目前為獨立員工附件接收測試模式。完成授權後可在此驗證照片／影片上傳；正式報修網站尚未切換。");
 })();
 </script></body></html>
