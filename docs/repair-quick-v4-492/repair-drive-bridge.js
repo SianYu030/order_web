@@ -15,13 +15,24 @@
   const RECEIVER_EXEC = 'https://script.google.com/macros/s/AKfycbxkVCaNQQ_nOq0vbyAQJndc4UHwgPfN2D6RtsRMF1VwZ3B1zvdJ0fRfNKOphoDZdSqhdg/exec';
   const SUPPORTED_VIDEO = /\.(mp4|mov|m4v|webm)$/i;
   const SUPPORTED_PHOTO = /\.(jpe?g|png|webp|heic|heif)$/i;
-  const nonce = crypto.randomUUID();
+  // Retain only the random tab handshake across reload, never Google credentials.
+  const nonce = (() => {
+    const key='repair_drive_tab_handshake_v1';
+    try {
+      const stored=sessionStorage.getItem(key);
+      if(stored && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(stored)) return stored;
+      const created=crypto.randomUUID();
+      sessionStorage.setItem(key,created);
+      return created;
+    } catch (_) {return crypto.randomUUID();}
+  })();
   const files = {report:null, repair:null};
   const previews = {report:null, repair:null};
   const pending = new Map();
   const endpoint = RECEIVER_EXEC;
   let remote = null, remoteOrigin = '';
   let inFlight = false;
+  let verified=false, verifyPromise=null, autoVerifyAttempted=false;
 
   const $ = id => document.getElementById(id);
   // Apps Script's HTML service can be blocked inside a cross-site hidden iframe.
@@ -38,6 +49,22 @@
     // the redundant connect button for this page session.
     connectButtons.forEach(btn=>{ btn.hidden=!!good; btn.style.display=good?'none':''; });
   }
+  function verifyReceiver() {
+    if(verified)return Promise.resolve(true);
+    if(verifyPromise)return verifyPromise;
+    verifyPromise=rpc('health',[],45000).then(result=>{
+      if(!result || !result.ok || result.receiverVersion!=='2.3' || result.testOnly!==false)
+        throw new Error('Google 接收器版本或權限不符；照片及影片尚未上傳');
+      verified=true;
+      connectionStatus('✅ Google Drive 已連線。本頁附件可直接送出；NAS 備份尚待核對。',true);
+      return true;
+    }).catch(err=>{
+      verified=false;
+      connectionStatus('連線未完成：'+err.message);
+      throw err;
+    }).finally(()=>{verifyPromise=null;});
+    return verifyPromise;
+  }
   function connectReceiver() {
     // A mobile browser requires a user gesture to open the Google login page.
     // The URL is preconfigured; no manual copy/paste or account change is needed.
@@ -45,17 +72,15 @@
     u.searchParams.set('bridgeNonce',nonce);
     u.searchParams.set('bridgeMode','popup');
     remote=null; remoteOrigin='';
+    verified=false;autoVerifyAttempted=false;verifyPromise=null;
     try {popup=window.open(u.toString(),'repairGoogleDriveReceiver');} catch (_) {popup=null;}
     if(!popup){
       connectionStatus('手機阻擋開啟 Google 登入分頁，請允許彈出視窗後再按「連接」。');
       return;
     }
     connectionStatus('已開啟 Google 接收器。請完成 Google 登入，再返回本頁。');
-    awaitReceiver(60000).then(()=>rpc('health',[],45000)).then(result=>{
-      if(!result || !result.ok || result.receiverVersion!=='2.3' || result.testOnly!==false)
-        throw new Error('接收器版本不符，請部署 v2.3 的 Code.gs 與 Bridge.html');
-      connectionStatus('✅ Google Drive 已連線。本頁報修與維修附件可持續使用，不必重複按；NAS 備份另行核對。',true);
-    }).catch(err=>connectionStatus('連線未完成：'+err.message));
+    awaitReceiver(60000).then(()=>verifyReceiver())
+      .catch(err=>connectionStatus('連線未完成：'+err.message));
   }
   function addConnectionBar(prefix){
     const box=$(prefix+'VideoPilot');
@@ -94,7 +119,13 @@
       const changed=remote!==evt.source || remoteOrigin!==evt.origin;
       remote = evt.source;
       remoteOrigin = evt.origin;
-      if(changed) connectionStatus('Google 接收器已回應，正在驗證帳號與權限…');
+      if(changed) connectionStatus('已找到 Google 接收器，正在確認登入與授權…');
+      // The receiver tab sends a ready heartbeat every 3 seconds.
+      // On same-tab reload, safely recheck authorization without another popup.
+      if(!autoVerifyAttempted){
+        autoVerifyAttempted=true;
+        verifyReceiver().catch(()=>{});
+      }
       return;
     }
     if (data.kind !== 'result' || !pending.has(data.id)) return;
@@ -140,7 +171,7 @@
         throw new Error('Google 接收器版本或權限不符。請更新 v2.3 接收器，附件未上傳');
       return r;
     }catch(err){
-      remote=null;remoteOrigin='';
+      verified=false;remote=null;remoteOrigin='';
       connectionStatus('Google Drive 連線已失效，請重新連接：'+err.message);
       throw err;
     }
