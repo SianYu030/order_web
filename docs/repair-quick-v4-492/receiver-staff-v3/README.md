@@ -3,6 +3,25 @@
 日期：2026-11-10  
 來源：既有 V4.492 `repair-drive-bridge.js` 與舊 Google Apps Script 接收器 v2.1；**未讀取任何正式 Apps Script 專案的最新部署原始碼**。
 
+## 本次新增：不依賴原報修網頁的獨立驗收入口（2026-11-10）
+
+加入 `AdminDiagnostics.gs`、`appsscript.json`，以及 `Bridge.html` 的直接上傳測試功能。這一階段不依賴尚未驗證的跨網頁 `window.opener/postMessage` 通訊。管理員可以先完成「員工登入 → 正式 MR 驗證 → Google Drive 分段上傳 → 檔案 ID／大小／MD5 回讀」的單一入口驗收；等成功才處理原網站整合。附加的上傳測試頁不會自動建立 MR，也不發 LINE。
+
+**實際部署程序（無需改動原正式 Apps Script）**
+
+1. 使用廠務室帳號前往 <https://script.google.com/>，新建獨立 Apps Script 專案「設備維修附件_員工接收器V3_測試」，**不改正式 Webhook.gs**。
+2. 建立同名四個檔案：`Code.gs`、`StaffAuth.gs`、`AdminDiagnostics.gs` 及 HTML 檔 `Bridge.html`，貼入本資料夾對應原始碼。
+3. 「專案設定」勾選顯示 `appsscript.json`，以本資料夾資訊清單內容取代；腳本時區 `Asia/Taipei`。
+4. 在編輯器只手動執行 `drivePilotAdminPreflight_`，管理員完成 Google 授權，確認私人 Drive 與正式工單表唯讀查核成功。此檢查不產生工單及附件。
+5. 在 Script Properties 加入 `REPAIR_STAFF_IDS_JSON`（JSON 陣列，僅使用公司授權的員工識別碼），執行 `drivePilotAdminProvision_`。員工專屬代碼僅提供對應員工，勿複製到 GitHub、聊天、LINE 群組，執行日誌應刪除。
+6. **先請 IT/資安審核** Google Apps Script 對外存取範圍與員工代碼登入。核准後才「部署 → 新增部署 → 網頁應用程式」，選「以自己執行（廠務室）」，可存取對象以核准範圍為準。若員工沒有 Google 帳號，開放匿名存取必須經公司明確核准，並先驗證登入與防濫用保護；不應自行改成「所有人」。
+7. 使用不是廠務室的員工身分開啟 `/exec`，驗證錯碼拒絕、正確員工識別碼與授權碼可以登入。此時不用建立 MR。
+8. 待既有核准的測試工單存在，再從授權頁的「檔案上傳驗收」上傳小張照片與短 MP4；檢查 Drive 檔案 ID、大小、MD5，核對實際資料夾及 PhotoAgent 結果。**不要再使用已刪除 MR2026111001**。
+9. 確認以上皆正常之後，才把已核准的 `/exec` 寫入測試分支 `repair-drive-bridge.js` 的 `RECEIVER_EXEC`，測試原網站 `?drive_upload=1` 的跨頁通訊。
+10. 以上通過後才評估合併，正式網站、既有 LINE、NAS 定期同步未經驗收之前均保持原狀。
+
+**重要限制**：本專案已做靜態與 mock 測試，未能使用公司環境真實部署及測試。因此不能聲稱 Google Apps Script、iPhone、公司的端點防護與 NAS 均已通過。Google Apps Script HTML Service 使用 iframe 沙盒，原網站橋接可能需要後續改成以 Apps Script 同頁託管的整合方案。
+
 ## 本次解決的問題
 
 先前接收器設定 `Execute as me + Only myself` 且以 `Session.getActiveUser().getEmail()` 限定廠務室，這只能由部署者使用，不能供 E3、E4、W8 全廠人員直接使用。
