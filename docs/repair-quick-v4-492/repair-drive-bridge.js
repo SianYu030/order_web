@@ -40,14 +40,14 @@
   let popup = null;
   const indicators = [];
   const connectButtons = [];
-  function connectionStatus(message, good=false) {
+  function connectionStatus(message, good=false, allowRetry=true) {
     indicators.forEach(node=>{
       node.textContent=message;
       node.style.color=good?'#08713e':'#805024';
     });
     // Once healthcheck succeeds, keep the normal photo/video UI and hide
     // the redundant connect button for this page session.
-    connectButtons.forEach(btn=>{ btn.hidden=!!good; btn.style.display=good?'none':''; });
+    connectButtons.forEach(btn=>{const show=!!allowRetry&&!good;btn.hidden=!show;btn.style.display=show?'':'none';});
   }
   function verifyReceiver() {
     if(verified)return Promise.resolve(true);
@@ -78,7 +78,7 @@
       connectionStatus('手機阻擋開啟 Google 登入分頁，請允許彈出視窗後再按「連接」。');
       return;
     }
-    connectionStatus('已開啟 Google 接收器。請完成 Google 登入，再返回本頁。');
+    connectionStatus('正在連接 Google 接收器，必要時請完成 Google 登入，再返回原網站。',false,false);
     awaitReceiver(60000).then(()=>verifyReceiver())
       .catch(err=>connectionStatus('連線未完成：'+err.message));
   }
@@ -102,9 +102,10 @@
     btn.style.cssText='width:100%;min-height:43px;background:#1d567e;color:white;border:0;border-radius:8px;font-size:14px;font-weight:700;';
     btn.addEventListener('click',connectReceiver);
     wrap.appendChild(btn);
+    btn.hidden=true;btn.style.display='none';
     connectButtons.push(btn);
     const note=document.createElement('div');
-    note.textContent='尚未連線：請按上方按鈕授權；不影響目前報修資料。';
+    note.textContent='Google Drive 已設定。照原本流程選附件、按「送出／儲存」時，系統會自動連線。';
     note.style.cssText='margin-top:7px;color:#805024;line-height:1.5;';
     wrap.appendChild(note);indicators.push(note);
     box.parentElement.insertBefore(wrap,box);
@@ -119,7 +120,7 @@
       const changed=remote!==evt.source || remoteOrigin!==evt.origin;
       remote = evt.source;
       remoteOrigin = evt.origin;
-      if(changed) connectionStatus('已找到 Google 接收器，正在確認登入與授權…');
+      if(changed) connectionStatus('已找到 Google 接收器，正在確認登入與授權…',false,false);
       // The receiver tab sends a ready heartbeat every 3 seconds.
       // On same-tab reload, safely recheck authorization without another popup.
       if(!autoVerifyAttempted){
@@ -162,8 +163,15 @@
     });
   }
   async function preflight() {
-    if(!endpoint || !remote){
-      throw new Error('請先按「連接 Google Drive」，確認顯示已連線再送出。附件尚未上傳');
+    if(!endpoint)throw new Error('Google 接收器未設定，附件尚未上傳');
+    // Called synchronously from the existing submit/save user interaction.
+    // Open a Google-authenticated receiver tab only when an attachment is sent.
+    if(!remote){
+      connectReceiver();
+      if(!popup)throw new Error('瀏覽器未允許 Google 登入分頁開啟。請使用「連接 Google Drive」重試');
+      await awaitReceiver(60000);
+      await verifyReceiver();
+      return {ok:true,receiverVersion:'2.3',testOnly:false};
     }
     try{
       const r=await rpc('health',[],45000);
