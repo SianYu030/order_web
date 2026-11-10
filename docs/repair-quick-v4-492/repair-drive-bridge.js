@@ -119,14 +119,14 @@
     wrap.appendChild(descr);
     const btn=document.createElement('button');
     btn.type='button';
-    btn.textContent='連接 Google Drive';
+    btn.textContent='重新驗證 Google Drive（另開分頁）';
     btn.style.cssText='width:100%;min-height:43px;background:#1d567e;color:white;border:0;border-radius:8px;font-size:14px;font-weight:700;';
     btn.addEventListener('click',connectReceiver);
     wrap.appendChild(btn);
     btn.hidden=true;btn.style.display='none';
     connectButtons.push(btn);
     const note=document.createElement('div');
-    note.textContent='Google Drive 接收器需另行授權。工單與 LINE 可先獨立送出，附件失敗會另行提示。';
+    note.textContent='Google Drive 未確認時不會自動跳轉登入；工單與 LINE 仍獨立送出。照片／影片上傳未成功會另外警示。';
     note.style.cssText='margin-top:7px;color:#805024;line-height:1.5;';
     wrap.appendChild(note);indicators.push(note);
     const help=document.createElement('div');
@@ -199,14 +199,13 @@
       connectionStatus(detail);
       throw new Error(detail);
     }
-    // Called synchronously from the existing submit/save user interaction.
-    // Open a Google-authenticated receiver tab only when an attachment is sent.
+    // Do not open a broken Google authorization page from the MR submit action.
+    // MR and LINE proceed independently; missing Drive connection is a reported
+    // attachment failure, never a report-submission failure or silent success.
     if(!remote){
-      connectReceiver();
-      if(!popup)throw new Error('瀏覽器未允許 Google 登入分頁開啟。請使用「連接 Google Drive」重試');
-      await awaitReceiver(60000);
-      await verifyReceiver();
-      return {ok:true,receiverVersion:'2.3',testOnly:false};
+      const detail='Google Drive 接收器目前未連線，照片／影片尚未備份。工單與 LINE 會另外處理；請核對接收器 /exec 部署與帳號後再連線。';
+      connectionStatus(detail);
+      throw new Error(detail);
     }
     try{
       const r=await rpc('health',[],45000);
