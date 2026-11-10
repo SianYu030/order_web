@@ -28,11 +28,15 @@
   // Open the receiver as a first-party tab only after an explicit user tap.
   let popup = null;
   const indicators = [];
+  const connectButtons = [];
   function connectionStatus(message, good=false) {
     indicators.forEach(node=>{
       node.textContent=message;
       node.style.color=good?'#08713e':'#805024';
     });
+    // Once healthcheck succeeds, keep the normal photo/video UI and hide
+    // the redundant connect button for this page session.
+    connectButtons.forEach(btn=>{ btn.hidden=!!good; btn.style.display=good?'none':''; });
   }
   function connectReceiver() {
     // A mobile browser requires a user gesture to open the Google login page.
@@ -50,7 +54,7 @@
     awaitReceiver(60000).then(()=>rpc('health',[],45000)).then(result=>{
       if(!result || !result.ok || result.receiverVersion!=='2.3' || result.testOnly!==false)
         throw new Error('接收器版本不符，請部署 v2.3 的 Code.gs 與 Bridge.html');
-      connectionStatus('Google Drive 已連線，可直接使用原本報修／維修附件欄位。',true);
+      connectionStatus('✅ Google Drive 已連線。本頁報修與維修附件可持續使用，不必重複按；NAS 備份另行核對。',true);
     }).catch(err=>connectionStatus('連線未完成：'+err.message));
   }
   function addConnectionBar(prefix){
@@ -73,6 +77,7 @@
     btn.style.cssText='width:100%;min-height:43px;background:#1d567e;color:white;border:0;border-radius:8px;font-size:14px;font-weight:700;';
     btn.addEventListener('click',connectReceiver);
     wrap.appendChild(btn);
+    connectButtons.push(btn);
     const note=document.createElement('div');
     note.textContent='尚未連線：請按上方按鈕授權；不影響目前報修資料。';
     note.style.cssText='margin-top:7px;color:#805024;line-height:1.5;';
@@ -129,10 +134,16 @@
     if(!endpoint || !remote){
       throw new Error('請先按「連接 Google Drive」，確認顯示已連線再送出。附件尚未上傳');
     }
-    const r=await rpc('health',[],45000);
-    if(!r || !r.ok || r.receiverVersion!=='2.3' || r.testOnly!==false)
-      throw new Error('Google 接收器版本或權限不符。請更新 v2.3 接收器，附件未上傳');
-    return r;
+    try{
+      const r=await rpc('health',[],45000);
+      if(!r || !r.ok || r.receiverVersion!=='2.3' || r.testOnly!==false)
+        throw new Error('Google 接收器版本或權限不符。請更新 v2.3 接收器，附件未上傳');
+      return r;
+    }catch(err){
+      remote=null;remoteOrigin='';
+      connectionStatus('Google Drive 連線已失效，請重新連接：'+err.message);
+      throw err;
+    }
   }
   function extVideo(file) {return SUPPORTED_VIDEO.test(file.name || '');}
   function extPhoto(file) {return SUPPORTED_PHOTO.test(file.name || '');}
