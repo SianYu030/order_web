@@ -2369,7 +2369,7 @@ el("submitBtn").onclick=async()=>{
     if(existing>=0)LIVE_ORDERS[existing]=localOrder; else LIVE_ORDERS.push(localOrder);
     saveLiveOrdersCache_();
 
-    let lineMsg="";
+    let lineMsg="",lineVideoTicket="";
     if(el("lineNotify").checked){
       let linePhotoIds=[];
       const lineWarnings=[];
@@ -2400,6 +2400,7 @@ el("submitBtn").onclick=async()=>{
           level:state.level,
           photoIds:linePhotoIds
         });
+        lineVideoTicket=String(lineData.videoLinkTicket||"");
         const sentImages=Number(lineData.imageCount||0);
         lineMsg="｜📣 LINE 文字已送出"+(sentImages?("＋"+sentImages+" 張報修照片"):"");
         if(linePhotoIds.length>sentImages)lineWarnings.push("LINE 後端未確認全部照片");
@@ -2433,11 +2434,11 @@ el("submitBtn").onclick=async()=>{
       const savedVideo=uploadedReportPhotos.find(x=>x&&x.category==="報修影片"&&x.driveId);
       if(!savedVideo){
         lineVideoMsg="｜⚠️ 未取得已備份影片的 Drive 檔案編號，沒有傳送 LINE 影片通知";
-      }else if(el("lineNotify").checked){
+      }else if(el("lineNotify").checked&&lineVideoTicket){
         btn.textContent="傳送 LINE 影片連結…";
         try{
           const videoResult=await sendLineVideoLink_({
-            orderNo:data.orderNo,driveFileId:savedVideo.driveId
+            orderNo:data.orderNo,driveFileId:savedVideo.driveId,videoLinkTicket:lineVideoTicket
           });
           lineVideoMsg=videoResult.alreadySent?
             "｜🎥 LINE 已有此工單影片連結（不重複通知）":
@@ -2445,6 +2446,8 @@ el("submitBtn").onclick=async()=>{
         }catch(videoErr){
           lineVideoMsg="｜⚠️ 影片已寫入 Google Drive，但 LINE 影片連結未確認："+videoErr.message;
         }
+      }else if(el("lineNotify").checked){
+        lineVideoMsg="｜⚠️ 影片已備份，但未取得 LINE 影片連結授權票證，尚未發送";
       }else{
         lineVideoMsg="｜🎥 影片已備份，未勾選 LINE 通知";
       }
