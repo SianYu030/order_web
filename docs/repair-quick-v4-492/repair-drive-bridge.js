@@ -81,7 +81,7 @@
   }
   function connectReceiver() {
     if(isEmbeddedBrowser_()){
-      connectionStatus('目前是 App 內建瀏覽器，無法確認 Google 登入。請在 Safari 開啟原網站並登入廠務室帳號；尚未建立 MR 工單。');
+      connectionStatus('目前是 App 內建瀏覽器，無法確認 Google Drive 附件登入。工單與 LINE 仍會獨立處理；照片備份需改用 Safari 驗證。');
       popup=null;
       return;
     }
@@ -126,7 +126,7 @@
     btn.hidden=true;btn.style.display='none';
     connectButtons.push(btn);
     const note=document.createElement('div');
-    note.textContent='Google Drive 已設定。只有接收器授權確認成功後才能送出附件；請使用 Safari 及廠務室 Google 帳號。';
+    note.textContent='Google Drive 接收器需另行授權。工單與 LINE 可先獨立送出，附件失敗會另行提示。';
     note.style.cssText='margin-top:7px;color:#805024;line-height:1.5;';
     wrap.appendChild(note);indicators.push(note);
     const help=document.createElement('div');
@@ -162,7 +162,7 @@
     else p.reject(new Error(data.error || 'Google Drive 接收器拒絕要求'));
   });
   function awaitReceiver(timeoutMs=15000) {
-    if (!endpoint) return Promise.reject(new Error('接收器設定遺失，附件未上傳，工單尚未送出'));
+    if (!endpoint) return Promise.reject(new Error('Google Drive 接收器設定遺失，附件未上傳；工單與 LINE 狀態請看主畫面'));
     if (remote) return Promise.resolve();
     return new Promise((resolve,reject) => {
       const started=Date.now();
@@ -172,7 +172,7 @@
           reject(new Error('Google 接收器視窗已關閉，授權未確認。原表單仍保留，請核對廠務室帳號及部署網址。'));return;
         }
         if(Date.now()-started>timeoutMs){
-          reject(new Error('Google 接收器未回應，可能是部署 /exec 網址失效、帳號不符或瀏覽器限制。尚未建立 MR 工單。'));return;
+          reject(new Error('Google 接收器未回應，可能是部署 /exec 網址失效、帳號不符或瀏覽器限制；附件未備份，工單與 LINE 結果另行顯示。'));return;
         }
         setTimeout(check,250);
       };
@@ -195,7 +195,7 @@
   async function preflight() {
     if(!endpoint)throw new Error('Google 接收器未設定，附件尚未上傳');
     if(!remote && isEmbeddedBrowser_()){
-      const detail='請用 Safari 開啟設備維修網站，並以授權的廠務室 Google 帳號登入後再送出。此 App 內建瀏覽器無法確認接收器授權；尚未建立 MR 工單、沒有發送 LINE。';
+      const detail='請用 Safari 開啟設備維修網站，並以授權的廠務室 Google 帳號登入才能備份附件。此 App 內建瀏覽器無法確認接收器授權；報修工單及 LINE 仍依原流程獨立處理。';
       connectionStatus(detail);
       throw new Error(detail);
     }
@@ -339,7 +339,7 @@
       const warn=document.createElement('div');
       warn.setAttribute('role','alert');
       warn.style.cssText='background:#fff6e4;border:1px solid #edca88;border-radius:10px;color:#735019;padding:12px;margin:8px 0 12px;font-size:13px;line-height:1.6;';
-      warn.textContent='⚠️ 目前是 App 內建瀏覽器。Google Drive 附件接收器可能無法完成帳號驗證；請先由選單「在 Safari 開啟」本網站，再用廠務室 Google 帳號登入後操作。此頁不會偷偷建立 MR 或發送 LINE。';
+      warn.textContent='⚠️ 目前是 App 內建瀏覽器。Google Drive 附件接收器可能無法完成帳號驗證；請先由選單「在 Safari 開啟」本網站，再用廠務室 Google 帳號登入後操作。Google Drive 若無法授權，報修工單與 LINE 仍會正常嘗試送出，附件失敗將另行提示。';
       main.insertBefore(warn,main.firstChild);
     }
   }
