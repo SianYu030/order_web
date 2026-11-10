@@ -22,8 +22,8 @@ function doGet(e) {
   const page = HtmlService.createTemplateFromFile('Bridge');
   const candidate = e && e.parameter ? String(e.parameter.bridgeNonce || '') : '';
   page.bridgeNonce = /^[a-f0-9-]{36}$/i.test(candidate) ? candidate : ''; 
-  return page.evaluate().setTitle('設備維修附件 Google Drive 接收器')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  // Popup-only login flow: no ALLOWALL iframe clickjacking exception.
+  return page.evaluate().setTitle('設備維修附件授權登入');
 }
 
 function drivePilotHealthcheck(token) {
