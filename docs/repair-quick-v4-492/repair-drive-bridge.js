@@ -12,7 +12,7 @@
   const MAX_PHOTO = 100 * MB;
   const MAX_VIDEO = 500 * MB;
   // Configured receiver deployment, access is still enforced by Google account permissions.
-  const RECEIVER_EXEC = 'https://script.google.com/macros/s/AKfycbxkVCaNQQ_nOq0vbyAQJndc4UHwgPfN2D6RtsRMF1VwZ3B1zvdJ0fRfNKOphoDZdSqhdg/exec';
+  const RECEIVER_EXEC = ''; // Fill ONLY after approved staff receiver V3 deployment
   const SUPPORTED_VIDEO = /\.(mp4|mov|m4v|webm)$/i;
   const SUPPORTED_PHOTO = /\.(jpe?g|png|webp|heic|heif)$/i;
   // Retain only the random tab handshake across reload, never Google credentials.
@@ -67,7 +67,7 @@
     if(verified)return Promise.resolve(true);
     if(verifyPromise)return verifyPromise;
     verifyPromise=rpc('health',[],45000).then(result=>{
-      if(!result || !result.ok || result.receiverVersion!=='2.3' || result.testOnly!==false)
+      if(!result || !result.ok || result.receiverVersion!=='3.0' || result.testOnly!==false)
         throw new Error('Google 接收器版本或權限不符；照片及影片尚未上傳');
       verified=true;
       connectionStatus('✅ Google Drive 已連線。本頁附件可直接送出；NAS 備份尚待核對。',true);
@@ -80,6 +80,7 @@
     return verifyPromise;
   }
   function connectReceiver() {
+    if(!endpoint){connectionStatus('員工接收器 V3 尚未部署；請勿以照片／影片已上傳為成功。');return;}
     if(isEmbeddedBrowser_()){
       connectionStatus('目前是 App 內建瀏覽器，無法確認 Google Drive 附件登入。工單與 LINE 仍會獨立處理；照片備份需改用 Safari 驗證。');
       popup=null;
@@ -114,12 +115,12 @@
     headline.style.cssText='font-weight:800;margin-bottom:6px;color:#264a67';
     wrap.appendChild(headline);
     const descr=document.createElement('div');
-    descr.textContent='已設定廠務室 Google 接收器。使用授權帳號連線後，附件將先存入雲端，NAS 另行核對。';
+    descr.textContent='全廠員工透過個人識別碼與專屬上傳授權碼登入。檔案由廠務室 Google Drive 儲存，NAS 備份另行核對。';
     descr.style.cssText='font-size:12px;color:#54718a;line-height:1.4;margin-bottom:8px';
     wrap.appendChild(descr);
     const btn=document.createElement('button');
     btn.type='button';
-    btn.textContent='重新驗證 Google Drive（另開分頁）';
+    btn.textContent='員工上傳授權（另開分頁）';
     btn.style.cssText='width:100%;min-height:43px;background:#1d567e;color:white;border:0;border-radius:8px;font-size:14px;font-weight:700;';
     btn.addEventListener('click',connectReceiver);
     wrap.appendChild(btn);
@@ -209,7 +210,7 @@
     }
     try{
       const r=await rpc('health',[],45000);
-      if(!r || !r.ok || r.receiverVersion!=='2.3' || r.testOnly!==false)
+      if(!r || !r.ok || r.receiverVersion!=='3.0' || r.testOnly!==false)
         throw new Error('Google 接收器版本或權限不符。請更新 v2.3 接收器，附件未上傳');
       return r;
     }catch(err){
@@ -330,6 +331,7 @@
   window.repairDrive={enabled:true,preflight,uploadFiles,clearVideo,videoFiles(prefix){return files[prefix]?[files[prefix]]:[];}};
   addConnectionBar('report');
   addConnectionBar('repair');
+  connectionStatus(endpoint?'上傳附件前請先完成員工上傳授權。':'員工接收器 V3 尚未部署，照片／影片尚不能備份。',false,true);
   // The Google Drive state stays unobtrusive during normal report/repair use.
   // Authorization failures are shown only when an attachment upload is attempted.
 
