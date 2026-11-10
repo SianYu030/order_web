@@ -2303,6 +2303,15 @@ el("submitBtn").onclick=async()=>{
   btn.textContent="建立工單中…";
 
   try{
+    // V3 staging: selected photos/videos must pass staff authorization BEFORE MR creation.
+    // No attachment has been stored until the receiver confirms a real Drive file ID.
+    if(reportMediaFiles.length && window.repairDrive?.enabled){
+      btn.textContent="確認員工附件授權…";
+      try{await window.repairDrive.preflight();}
+      catch(uploadErr){
+        throw new Error("附件接收器未就緒，尚未建立 MR 工單："+String(uploadErr?.message||uploadErr));
+      }
+    }
     if(!state.requestId){
       state.requestId="MOB-"+Date.now()+"-"+Math.floor(Math.random()*1000000);
     }
