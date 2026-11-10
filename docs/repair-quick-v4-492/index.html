@@ -705,7 +705,7 @@ html,body{background:#f5f7f8}
           <div class="line-notify-content">
             <div class="line-notify-main">📣 LINE 通知報修</div>
             <div class="line-notify-sub">送出工單後，同步通知機修 LINE 群組。</div>
-            <div class="line-notify-test" id="lineNotifyStatus">勾選時傳送 LINE 文字及報修照片。Google Drive 模式下，照片另暫存於既有 LINE 影像服務以供群組顯示；影片僅歸檔。</div>
+            <div class="line-notify-test" id="lineNotifyStatus">勾選時送出 LINE 文字與照片。影片需先備份至授權 Google Drive，成功後另傳需登入的影片連結；LINE 內直接播放影片尚未支援。</div>
           </div>
         </label>
       </div>
@@ -2283,6 +2283,25 @@ async function sendLineReport_(payload){
   }finally{clearTimeout(timeout);}
 }
 
+// Only creates a follow-up link notification for a video ALREADY verified in Drive.
+// This never recreates an MR or resends the original report/images.
+async function sendLineVideoLink_(payload){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),15000);
+  try{
+    const r=await fetch(PHOTO_API_BASE+"/line-notify-video-link",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload),signal:controller.signal
+    });
+    let data={};try{data=await r.json();}catch(_){}
+    if(!r.ok||!data.ok||data.sent!==true)
+      throw new Error(data.error||("LINE 影片連結未確認 HTTP "+r.status));
+    return data;
+  }catch(err){
+    if(err.name==="AbortError")throw new Error("15 秒未回應，LINE 發送結果不明；請先查群組，勿重新建立工單");
+    throw err;
+  }finally{clearTimeout(timer);}
+}
 function clearRepairPhotoSelection_(){
   repairPhotoFiles=[];
   el("repairPhoto").value="";
@@ -2296,13 +2315,23 @@ el("submitBtn").onclick=async()=>{
   if(!(state.dept&&state.person&&state.machine&&state.stop&&state.level&&issue))return;
 
   const reportPhotos=[...reportPhotoFiles];
-  const reportMediaFiles=window.repairDrive?.enabled?[...reportPhotos,...window.repairDrive.videoFiles("report")]:reportPhotos;
+  const reportVideoFiles=window.repairDrive?.enabled?window.repairDrive.videoFiles("report"):[];
+  const reportMediaFiles=window.repairDrive?.enabled?[...reportPhotos,...reportVideoFiles]:reportPhotos;
   const btn=el("submitBtn");
   const oldText=btn.textContent;
   btn.disabled=true;
   btn.textContent="建立工單中…";
 
   try{
+    // Validate video backup connectivity BEFORE creating an MR: never silently lose
+    // a selected video while reporting "success" for the original work order.
+    if(reportVideoFiles.length){
+      btn.textContent="確認影片備份連線…";
+      try{await window.repairDrive.preflight();}
+      catch(preflightError){
+        throw new Error("影片備份連線未就緒，尚未建立工單："+(preflightError?.message||preflightError));
+      }
+    }
     if(!state.requestId){
       state.requestId="MOB-"+Date.now()+"-"+Math.floor(Math.random()*1000000);
     }
@@ -2384,24 +2413,46 @@ el("submitBtn").onclick=async()=>{
       lineMsg="｜➖ 未發送 LINE";
     }
 
-    let photoMsg="";
+    let photoMsg="",lineVideoMsg="";
     let uploadedReportPhotos=[];
     let driveMediaSaved=false;
     if(reportMediaFiles.length){
-      btn.textContent="上傳報修照片 0/"+reportPhotos.length+"…";
+      btn.textContent="上傳報修附件 0/"+reportMediaFiles.length+"…";
       try{
         uploadedReportPhotos=await (window.repairDrive?.enabled ? window.repairDrive.uploadFiles : uploadPhotoFiles_)(reportMediaFiles,data.orderNo,"報修照片",(i,total)=>{
-          btn.textContent="上傳報修照片 "+i+"/"+total+"…";
+          btn.textContent="上傳報修附件 "+i+"/"+total+"…";
         },data.photoEpoch||"");
         driveMediaSaved=true;
         photoMsg=window.repairDrive?.enabled?("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，NAS 備份待核對"):("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
       }catch(photoErr){
-        photoMsg="｜⚠️ 工單已建立，但報修照片暫存失敗："+photoErr.message;
+        photoMsg="｜⚠️ 工單已建立，但報修附件未完成備份："+photoErr.message;
       }
     }
 
+    if(reportVideoFiles.length&&driveMediaSaved){
+      const savedVideo=uploadedReportPhotos.find(x=>x&&x.category==="報修影片"&&x.driveId);
+      if(!savedVideo){
+        lineVideoMsg="｜⚠️ 未取得已備份影片的 Drive 檔案編號，沒有傳送 LINE 影片通知";
+      }else if(el("lineNotify").checked){
+        btn.textContent="傳送 LINE 影片連結…";
+        try{
+          const videoResult=await sendLineVideoLink_({
+            orderNo:data.orderNo,driveFileId:savedVideo.driveId
+          });
+          lineVideoMsg=videoResult.alreadySent?
+            "｜🎥 LINE 已有此工單影片連結（不重複通知）":
+            "｜🎥 LINE 已收到需授權登入的 Google Drive 影片連結";
+        }catch(videoErr){
+          lineVideoMsg="｜⚠️ 影片已寫入 Google Drive，但 LINE 影片連結未確認："+videoErr.message;
+        }
+      }else{
+        lineVideoMsg="｜🎥 影片已備份，未勾選 LINE 通知";
+      }
+    }else if(reportVideoFiles.length){
+      lineVideoMsg="｜⚠️ 影片尚未確認備份，未發送 LINE 影片通知";
+    }
 
-    el("successText").textContent="✅ 已寫入正式「機修維修單」並完成回讀驗證"+photoMsg+lineMsg+"。";
+    el("successText").textContent="✅ 已寫入正式「機修維修單」並完成回讀驗證"+photoMsg+lineMsg+lineVideoMsg+"。";
     el("success").classList.remove("hidden");
   }catch(err){
     alert("手機報修建立失敗："+err.message);
