@@ -26,8 +26,27 @@ small{display:block;font-size:12px;color:#6d7c72;margin-top:14px;line-height:1.5
 <input id="code" type="password" maxlength="50" autocomplete="off" required placeholder="廠務室核發的個人授權碼">
 <button id="loginBtn" type="submit">授權此瀏覽器上傳附件</button>
 </form>
-<section id="ok" role="status">✅ 已完成授權。<span id="staffBadge"></span>
-請保留此分頁，返回設備維修網站上傳照片或影片。
+<section id="ok" role="status">✅ 已完成員工授權。<span id="staffBadge"></span>
+正常使用時請返回設備維修網站。本頁也能獨立驗證 Google Drive 上傳。
+</section>
+<section id="pilot" hidden>
+<h2 style="margin:20px 0 8px;font-size:18px">檔案上傳驗收</h2>
+<p>只接受已存在的正式 MR 工單。尚未建立工單時，先測試授權即可，請勿用已刪除的 MR2026111001。</p>
+<form id="upload">
+<label for="orderNoInput">MR 工單編號</label>
+<input id="orderNoInput" required pattern="MR20[0-9]{8}" placeholder="MR202611xxxx" maxlength="12" autocomplete="off">
+<label for="mediaKind">附件分類</label>
+<select id="mediaKind" required style="width:100%;padding:13px;border:1px solid #c5d5c9;border-radius:9px;font:inherit">
+<option value="報修照片">報修照片</option>
+<option value="報修影片">報修影片</option>
+<option value="維修照片">維修照片</option>
+<option value="維修影片">維修影片</option>
+</select>
+<label for="mediaInput">選擇照片／影片</label>
+<input id="mediaInput" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,.m4v,.webm" required>
+<button id="uploadBtn" type="submit">上傳並驗證 Google Drive</button>
+</form>
+<div id="uploadResult" role="status" style="margin-top:10px;overflow-wrap:anywhere;white-space:pre-wrap"></div>
 </section>
 <div id="message" role="alert"></div>
 <small>檔案存入公司私人 Google Drive，依 MR 工單分類。此分頁不會將員工授權碼、Google OAuth 憑證傳回原網站，也不會透過第三方檔案服務。</small>
@@ -45,14 +64,14 @@ small{display:block;font-size:12px;color:#6d7c72;margin-top:14px;line-height:1.5
  function errorText(e){return String(e&&e.message||e||"未知錯誤");}
  function notice(msg){$("message").textContent=msg;}
  function setLoggedIn(staff){
-   verified=true;$("login").hidden=true;$("ok").style.display="block";
+   verified=true;$("login").hidden=true;$("ok").style.display="block";$("pilot").hidden=false;
    $("staffBadge").textContent="員工："+staff+"。";
    notice(""); announceReady();
  }
  function unsetLogin(message){
    verified=false;token="";
    try{sessionStorage.removeItem(KEY);}catch(_){}
-   $("login").hidden=false;$("ok").style.display="none";
+   $("login").hidden=false;$("ok").style.display="none";$("pilot").hidden=true;
    if(message)notice(message);
  }
  function run(fn,args){
@@ -84,6 +103,72 @@ small{display:block;font-size:12px;color:#6d7c72;margin-top:14px;line-height:1.5
      setLoggedIn(info.staffId||staffId);
    }catch(err){notice("授權失敗："+errorText(err));}
    finally{$("loginBtn").disabled=false;}
+ });
+ function toBase64(arrayBuffer){
+   const bytes=new Uint8Array(arrayBuffer);
+   let text="";
+   for(let start=0;start<bytes.length;start+=8192)
+     text+=String.fromCharCode(...bytes.subarray(start,start+8192));
+   return btoa(text);
+ }
+ function uploadStatus(message){$("uploadResult").textContent=message;}
+ async function uploadOneFile(file,orderNo,kind){
+   if(!verified||!token)throw Error("員工登入狀態無效，請重新授權");
+   const max=(kind.endsWith("影片")?500:100)*1048576;
+   if(!file.size||file.size>max)throw Error("檔案大小不符合限制，上限 "+Math.round(max/1048576)+" MB");
+   const ext=(file.name.split(".").pop()||"").toLowerCase();
+   const allowed=kind.endsWith("影片")?["mp4","mov","m4v","webm"]:["jpg","jpeg","png","webp","heic","heif"];
+   if(!allowed.includes(ext))throw Error("附件種類與檔名格式不符");
+   const cacheKey="repair_drive_v3_upload_"+orderNo+"_"+kind+"_"+file.name+"_"+file.size+"_"+file.lastModified;
+   let state=null,existing="";
+   try{existing=sessionStorage.getItem(cacheKey)||"";}catch(_){}
+   if(existing){
+     try{state=await run("query",[existing,token]);}
+     catch(_){state=null;}
+   }
+   if(!state){
+     uploadStatus("正在查核 MR 工單並建立受保護上傳工作階段…");
+     state=await run("start",[{orderNo,mediaKind:kind,name:file.name,size:file.size},token]);
+     try{sessionStorage.setItem(cacheKey,state.sessionId);}catch(_){}
+   }
+   const chunkSize=2*1048576;
+   while(!state.complete&&state.offset<file.size){
+     if(!Number.isSafeInteger(state.offset)||state.offset<0||state.offset>file.size)
+       throw Error("Google Drive 回報的分段位置異常");
+     const offset=state.offset;
+     const end=Math.min(offset+chunkSize,file.size);
+     uploadStatus("正在上傳 "+file.name+"："+(100*offset/file.size).toFixed(1)+"%（"+(offset/1048576).toFixed(1)+" / "+(file.size/1048576).toFixed(1)+" MB）");
+     const data=toBase64(await file.slice(offset,end).arrayBuffer());
+     try{
+       state=await run("chunk",[state.sessionId,offset,data,token]);
+     }catch(uploadErr){
+       uploadStatus("上傳暫時中斷，核對 Google Drive 已收到的進度…");
+       try{state=await run("query",[state.sessionId,token]);}
+       catch(err){throw Error("分段失敗："+String(err?.message||err)+"。已保留續傳記錄，同一手機可重新選取同檔案");}
+       if(state.offset===offset)throw Error("分段未成功："+String(uploadErr?.message||uploadErr)+"，請重新選同一檔案續傳");
+     }
+   }
+   if(!state.complete){
+     state=await run("query",[state.sessionId,token]);
+   }
+   if(!state.complete||!state.fileId||state.size!==file.size||!state.md5)
+     throw Error("雲端尚未完成檔案 ID／大小／MD5 的回讀驗證，不能當作成功");
+   try{sessionStorage.removeItem(cacheKey);}catch(_){}
+   return state;
+ }
+ $("upload").addEventListener("submit",async event=>{
+   event.preventDefault();
+   const no=$("orderNoInput").value.trim().toUpperCase();
+   const kind=$("mediaKind").value;
+   const file=$("mediaInput").files?.[0];
+   if(!/^MR20\d{8}$/.test(no)){uploadStatus("MR 格式不符");return;}
+   if(!file){uploadStatus("請選擇檔案");return;}
+   $("uploadBtn").disabled=true;
+   try{
+     const result=await uploadOneFile(file,no,kind);
+     uploadStatus("✅ Google Drive 上傳已驗證完成\nMR："+no+"\n分類："+kind+"\n檔案 ID："+result.fileId+"\n大小："+result.size+" bytes\nMD5："+result.md5+"\nNAS 尚待 PhotoAgent 驗收");
+   }catch(err){uploadStatus("⚠️ "+String(err?.message||err));}
+   finally{$("uploadBtn").disabled=false;}
  });
  window.addEventListener("message",async ev=>{
    if(!NONCE||!verified||ev.origin!==ALLOWED_ORIGIN||ev.source!==window.opener)return;
