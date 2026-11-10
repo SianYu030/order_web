@@ -331,4 +331,16 @@
   window.repairDrive={enabled:true,preflight,uploadFiles,clearVideo,videoFiles(prefix){return files[prefix]?[files[prefix]]:[];}};
   addConnectionBar('report');
   addConnectionBar('repair');
+  // Warn BEFORE the user fills a long report in an unsupported embedded browser.
+  // No external redirects or automatic Google logins on page load.
+  if(isEmbeddedBrowser_()){
+    const main=document.querySelector('.container');
+    if(main){
+      const warn=document.createElement('div');
+      warn.setAttribute('role','alert');
+      warn.style.cssText='background:#fff6e4;border:1px solid #edca88;border-radius:10px;color:#735019;padding:12px;margin:8px 0 12px;font-size:13px;line-height:1.6;';
+      warn.textContent='⚠️ 目前是 App 內建瀏覽器。Google Drive 附件接收器可能無法完成帳號驗證；請先由選單「在 Safari 開啟」本網站，再用廠務室 Google 帳號登入後操作。此頁不會偷偷建立 MR 或發送 LINE。';
+      main.insertBefore(warn,main.firstChild);
+    }
+  }
 })();
