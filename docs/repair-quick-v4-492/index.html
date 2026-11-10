@@ -2338,30 +2338,13 @@ el("submitBtn").onclick=async()=>{
     if(existing>=0)LIVE_ORDERS[existing]=localOrder; else LIVE_ORDERS.push(localOrder);
     saveLiveOrdersCache_();
 
-    let photoMsg="";
-    let uploadedReportPhotos=[];
-    let driveMediaSaved=false;
-    if(reportMediaFiles.length){
-      btn.textContent="上傳報修照片 0/"+reportPhotos.length+"…";
-      try{
-        uploadedReportPhotos=await (window.repairDrive?.enabled ? window.repairDrive.uploadFiles : uploadPhotoFiles_)(reportMediaFiles,data.orderNo,"報修照片",(i,total)=>{
-          btn.textContent="上傳報修照片 "+i+"/"+total+"…";
-        },data.photoEpoch||"");
-        driveMediaSaved=true;
-        photoMsg=window.repairDrive?.enabled?("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，NAS 備份待核對"):("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
-      }catch(photoErr){
-        photoMsg="｜⚠️ 工單已建立，但報修照片暫存失敗："+photoErr.message;
-      }
-    }
-
     let lineMsg="";
     if(el("lineNotify").checked){
-      let linePhotoIds=uploadedReportPhotos.map(x=>x.id).filter(Boolean);
+      let linePhotoIds=[];
       const lineWarnings=[];
       if(window.repairDrive?.enabled && reportPhotos.length){
         linePhotoIds=[];
         // LINE 影像暫存與 Google Drive 原始附件歸檔互不依賴。
-        if(!driveMediaSaved)lineWarnings.push("Google Drive 附件尚未備份成功");
         btn.textContent="準備 LINE 照片…";
         try{
           const prepared=await uploadLinePhotosForDrive_(reportPhotos,data.orderNo,data.photoEpoch||"",(i,total)=>{
@@ -2398,6 +2381,23 @@ el("submitBtn").onclick=async()=>{
     }else{
       lineMsg="｜➖ 未發送 LINE";
     }
+
+    let photoMsg="";
+    let uploadedReportPhotos=[];
+    let driveMediaSaved=false;
+    if(reportMediaFiles.length){
+      btn.textContent="上傳報修照片 0/"+reportPhotos.length+"…";
+      try{
+        uploadedReportPhotos=await (window.repairDrive?.enabled ? window.repairDrive.uploadFiles : uploadPhotoFiles_)(reportMediaFiles,data.orderNo,"報修照片",(i,total)=>{
+          btn.textContent="上傳報修照片 "+i+"/"+total+"…";
+        },data.photoEpoch||"");
+        driveMediaSaved=true;
+        photoMsg=window.repairDrive?.enabled?("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，NAS 備份待核對"):("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
+      }catch(photoErr){
+        photoMsg="｜⚠️ 工單已建立，但報修照片暫存失敗："+photoErr.message;
+      }
+    }
+
 
     el("successText").textContent="✅ 已寫入正式「機修維修單」並完成回讀驗證"+photoMsg+lineMsg+"。";
     el("success").classList.remove("hidden");
