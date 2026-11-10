@@ -40,6 +40,7 @@
   let popup = null;
   const indicators = [];
   const connectButtons = [];
+  const connectionPanels = [];
   function connectionStatus(message, good=false, allowRetry=true) {
     indicators.forEach(node=>{
       node.textContent=message;
@@ -47,7 +48,11 @@
     });
     // Once healthcheck succeeds, keep the normal photo/video UI and hide
     // the redundant connect button for this page session.
-    connectButtons.forEach(btn=>{const show=!!allowRetry&&!good;btn.hidden=!show;btn.style.display=show?'':'none';});
+    const showError=!!allowRetry&&!good;
+    // Keep the connector UI out of normal report/repair forms.
+    // Only surface actionable error details and a retry button on failure.
+    connectionPanels.forEach(panel=>{panel.hidden=!showError;panel.style.display=showError?'':'none';});
+    connectButtons.forEach(btn=>{btn.hidden=!showError;btn.style.display=showError?'':'none';});
   }
   function verifyReceiver() {
     if(verified)return Promise.resolve(true);
@@ -87,7 +92,9 @@
     if(!box)return;
     const wrap=document.createElement('div');
     wrap.className='repair-drive-connect';
-    wrap.style.cssText='margin:8px 0 12px;padding:12px;border:1px solid #bad0e4;border-radius:10px;background:#f7fafc;font-size:13px;';
+    wrap.style.cssText='display:none;margin:8px 0 12px;padding:12px;border:1px solid #bad0e4;border-radius:10px;background:#f7fafc;font-size:13px;';
+    wrap.hidden=true;
+    connectionPanels.push(wrap);
     const headline=document.createElement('div');
     headline.textContent='☁️ Google Drive 附件備份連線';
     headline.style.cssText='font-weight:800;margin-bottom:6px;color:#264a67';
