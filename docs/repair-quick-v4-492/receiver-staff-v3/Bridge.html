@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-Hant"><head>
+<base target="_top"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>設備維修附件授權登入</title>
+<style>
+:root{font-family:system-ui,"Microsoft JhengHei",sans-serif;color:#25352d;background:#eff4ef}
+*{box-sizing:border-box}body{margin:0;padding:18px}
+main{max-width:420px;margin:25px auto;padding:24px;background:#fff;border-radius:16px;box-shadow:0 4px 16px #0001}
+h1{font-size:21px;margin:0 0 7px}p{line-height:1.6;color:#596c60;font-size:14px}
+label{display:block;font-size:14px;font-weight:700;margin:16px 0 6px}
+input{font:inherit;width:100%;padding:13px;border:1px solid #c5d5c9;border-radius:9px}
+button{font:inherit;width:100%;min-height:48px;margin-top:18px;background:#356c49;color:white;border:0;border-radius:10px;font-weight:800;cursor:pointer}
+button:disabled{opacity:.5}
+#message{margin-top:12px;white-space:pre-wrap;font-size:14px;color:#7f4c22}
+#ok{display:none;background:#edf8ee;color:#0b6139;border-radius:10px;padding:15px;line-height:1.7}
+small{display:block;font-size:12px;color:#6d7c72;margin-top:14px;line-height:1.5}
+</style></head><body>
+<main>
+<h1>設備維修附件授權</h1>
+<p>全廠核准員工可使用，無須登入廠務室 Google 帳號。首次使用請輸入廠務室核發的個人上傳授權碼。</p>
+<form id="login">
+<label for="staffId">員工識別碼</label>
+<input id="staffId" maxlength="40" autocomplete="username" required placeholder="請輸入員工識別碼">
+<label for="code">個人上傳授權碼</label>
+<input id="code" type="password" maxlength="50" autocomplete="off" required placeholder="廠務室核發的個人授權碼">
+<button id="loginBtn" type="submit">授權此瀏覽器上傳附件</button>
+</form>
+<section id="ok" role="status">✅ 已完成授權。<span id="staffBadge"></span>
+請保留此分頁，返回設備維修網站上傳照片或影片。
+</section>
+<div id="message" role="alert"></div>
+<small>檔案存入公司私人 Google Drive，依 MR 工單分類。此分頁不會將員工授權碼、Google OAuth 憑證傳回原網站，也不會透過第三方檔案服務。</small>
+</main>
+<script>
+"use strict";
+(function(){
+ const CHANNEL="repair-drive-mr-v1";
+ const NONCE="<?= bridgeNonce ?>";
+ const ALLOWED_ORIGIN="https://sianyu030.github.io";
+ const KEY="repair_drive_staff_v3_session";
+ const $=id=>document.getElementById(id);
+ let token="", verified=false;
+ try{token=sessionStorage.getItem(KEY)||"";}catch(_){}
+ function errorText(e){return String(e&&e.message||e||"未知錯誤");}
+ function notice(msg){$("message").textContent=msg;}
+ function setLoggedIn(staff){
+   verified=true;$("login").hidden=true;$("ok").style.display="block";
+   $("staffBadge").textContent="員工："+staff+"。";
+   notice(""); announceReady();
+ }
+ function unsetLogin(message){
+   verified=false;token="";
+   try{sessionStorage.removeItem(KEY);}catch(_){}
+   $("login").hidden=false;$("ok").style.display="none";
+   if(message)notice(message);
+ }
+ function run(fn,args){
+   return new Promise((resolve,reject)=>{
+     const client=google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+     if(fn==="login")client.drivePilotLogin(...args);
+     else if(fn==="health")client.drivePilotHealthcheck(...args);
+     else if(fn==="start")client.drivePilotStart(...args);
+     else if(fn==="chunk")client.drivePilotUploadChunk(...args);
+     else if(fn==="query")client.drivePilotQuery(...args);
+     else reject(new Error("不支援的附件操作"));
+   });
+ }
+ function announceReady(){
+   if(!verified||!NONCE||!window.opener)return;
+   window.opener.postMessage({channel:CHANNEL,nonce:NONCE,kind:"ready"},ALLOWED_ORIGIN);
+ }
+ $("login").addEventListener("submit",async e=>{
+   e.preventDefault();
+   const staffId=$("staffId").value.trim(),code=$("code").value.trim();
+   if(!staffId||!code)return;
+   $("loginBtn").disabled=true;notice("正在核對員工上傳權限…");
+   try{
+     const info=await run("login",[staffId,code]);
+     if(!info||!info.ok||!info.sessionToken)throw Error("授權回傳資料不完整");
+     token=info.sessionToken;
+     try{sessionStorage.setItem(KEY,token);}catch(_){}
+     $("code").value="";
+     setLoggedIn(info.staffId||staffId);
+   }catch(err){notice("授權失敗："+errorText(err));}
+   finally{$("loginBtn").disabled=false;}
+ });
+ window.addEventListener("message",async ev=>{
+   if(!NONCE||!verified||ev.origin!==ALLOWED_ORIGIN||ev.source!==window.opener)return;
+   const data=ev.data;
+   if(!data||data.channel!==CHANNEL||data.nonce!==NONCE||data.kind!=="call" ||
+      typeof data.id!=="string"||data.id.length>128)return;
+   const id=data.id,action=data.action,args=Array.isArray(data.args)?data.args:[];
+   if(!["health","start","chunk","query"].includes(action))return;
+   try{
+     const result=await run(action,action==="health"?[token]:[...args,token]);
+     ev.source.postMessage({channel:CHANNEL,nonce:NONCE,kind:"result",id,ok:true,result},ev.origin);
+   }catch(err){
+     const message=errorText(err);
+     if(/授權過期|授權已失效|尚未完成上傳授權/.test(message))unsetLogin(message);
+     ev.source.postMessage({channel:CHANNEL,nonce:NONCE,kind:"result",id,ok:false,error:message},ev.origin);
+   }
+ });
+ if(token){
+   run("health",[token]).then(r=>setLoggedIn("已驗證")).catch(()=>unsetLogin("上次授權已過期，請重新登入。"));
+ }
+ setInterval(announceReady,3000);
+ if(!NONCE)notice("請從原本設備維修網站開啟此授權分頁。");
+})();
+</script></body></html>
