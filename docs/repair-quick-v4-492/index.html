@@ -1858,10 +1858,7 @@ el("completeRepairBtn").onclick=async()=>{
   }
 
   if(!confirm("確定設備已維修完成並結案？"))return;
-  if(window.repairDrive?.enabled && (repairPhotoFiles.length || window.repairDrive.videoFiles("repair").length)){
-    try{await window.repairDrive.preflight();}catch(err){alert("附件接收器尚未就緒，結案未送出："+err.message);return;}
-  }
-
+  // 維修結案與附件上傳分離；接收器故障不可阻斷維修單同步。
   const now=new Date();
   if(s.activeStart)closeActive(s,now);
   if(!s.firstStart)s.firstStart=now;
@@ -1944,7 +1941,7 @@ el("saveRepairBtn").onclick=async()=>{
   el("saveRepairMsg").classList.remove("hidden");
 
   try{
-    if(window.repairDrive?.enabled && (repairPhotoFiles.length || window.repairDrive.videoFiles("repair").length))await window.repairDrive.preflight();
+    // 先保留維修紀錄，附件上傳失敗於下方另外警示，不阻擋工單儲存。
     if(SYNC_API_URL && repairState.order?._live){
       el("saveRepairMsg").textContent="⏳ 正在同步至電腦…";
       await syncPost_({
@@ -2187,21 +2184,30 @@ async function preparePhotoForUpload_(file){
 async function uploadPhotoFile_(file,orderNo,photoType,photoEpoch="",preparedOverride=null){
   const prepared=preparedOverride||await preparePhotoForUpload_(file);
   const dataBase64=await blobToBase64_(prepared.blob);
-  const r=await fetch(PHOTO_API_BASE+"/upload",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      orderNo,
-      photoType,
-      fileName:photoEpoch?("gen_"+photoEpoch+"__"+prepared.fileName):prepared.fileName,
-      contentType:prepared.contentType,
-      dataBase64
-    })
-  });
-  let data={};
-  try{data=await r.json();}catch(e){}
-  if(!r.ok || !data.ok)throw new Error(data.error||("照片暫存失敗 HTTP "+r.status));
-  return data;
+  // 不允許受公司網路阻擋的照片服務無限等待，避免延誤 LINE 文字通知。
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),9000);
+  try{
+    const r=await fetch(PHOTO_API_BASE+"/upload",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      signal:controller.signal,
+      body:JSON.stringify({
+        orderNo,
+        photoType,
+        fileName:photoEpoch?("gen_"+photoEpoch+"__"+prepared.fileName):prepared.fileName,
+        contentType:prepared.contentType,
+        dataBase64
+      })
+    });
+    let data={};
+    try{data=await r.json();}catch(e){}
+    if(!r.ok || !data.ok)throw new Error(data.error||("照片暫存失敗 HTTP "+r.status));
+    return data;
+  }catch(err){
+    if(err.name==="AbortError")throw new Error("照片服務 9 秒未回應，已停止等待");
+    throw err;
+  }finally{clearTimeout(timeout);}
 }
 async function uploadPhotoFiles_(files,orderNo,photoType,onProgress,photoEpoch=""){
   const arr=[...(files||[])],uploaded=[];
@@ -2255,15 +2261,24 @@ async function uploadLinePhotosForDrive_(files,orderNo,photoEpoch,onProgress){
   return {ids,warnings};
 }
 async function sendLineReport_(payload){
-  const r=await fetch(PHOTO_API_BASE+"/line-notify-report",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(payload)
-  });
-  let data={};
-  try{data=await r.json();}catch(e){}
-  if(!r.ok || !data.ok)throw new Error(data.error||("LINE 發送失敗 HTTP "+r.status));
-  return data;
+  // TIMEOUT 只表示結果未知，不能自動重送 LINE 以免重複通知。
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),15000);
+  try{
+    const r=await fetch(PHOTO_API_BASE+"/line-notify-report",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      signal:controller.signal,
+      body:JSON.stringify(payload)
+    });
+    let data={};
+    try{data=await r.json();}catch(e){}
+    if(!r.ok || !data.ok)throw new Error(data.error||("LINE 發送失敗 HTTP "+r.status));
+    return data;
+  }catch(err){
+    if(err.name==="AbortError")throw new Error("LINE 15 秒未回應，發送結果未確認，請先查看群組，勿重複送出工單");
+    throw err;
+  }finally{clearTimeout(timeout);}
 }
 
 function clearRepairPhotoSelection_(){
@@ -2290,12 +2305,8 @@ el("submitBtn").onclick=async()=>{
       state.requestId="MOB-"+Date.now()+"-"+Math.floor(Math.random()*1000000);
     }
 
-    if(window.repairDrive?.enabled && reportMediaFiles.length){
-      btn.textContent="確認 Google Drive 附件接收器…";
-      try {await window.repairDrive.preflight();}
-      catch(connErr){throw new Error("尚未建立 MR 工單；Google 附件接收器未連線："+connErr.message);}
-      btn.textContent="建立工單中…";
-    }
+    // 業務關鍵流程：先建立並驗證 MR，照片接收器只影響附件。
+    // 不得因 Google Drive 尚未授權就阻斷報修或 LINE 文字通知。
     const data=await jsonp_("createMobileReportTest",{
       dept:state.dept,
       person:state.person,
@@ -2349,15 +2360,17 @@ el("submitBtn").onclick=async()=>{
       const lineWarnings=[];
       if(window.repairDrive?.enabled && reportPhotos.length){
         linePhotoIds=[];
-        if(driveMediaSaved){
-          btn.textContent="準備 LINE 照片…";
+        // LINE 影像暫存與 Google Drive 原始附件歸檔互不依賴。
+        if(!driveMediaSaved)lineWarnings.push("Google Drive 附件尚未備份成功");
+        btn.textContent="準備 LINE 照片…";
+        try{
           const prepared=await uploadLinePhotosForDrive_(reportPhotos,data.orderNo,data.photoEpoch||"",(i,total)=>{
             btn.textContent="準備 LINE 照片 "+i+"/"+total+"…";
           });
           linePhotoIds=prepared.ids;
           lineWarnings.push(...prepared.warnings);
-        }else{
-          lineWarnings.push("Google Drive 附件未完成，LINE 照片未另外暫存");
+        }catch(linePhotoErr){
+          lineWarnings.push("LINE 照片暫存失敗："+linePhotoErr.message);
         }
       }
       btn.textContent="發送 LINE 通知…";
