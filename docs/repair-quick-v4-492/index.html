@@ -2186,7 +2186,9 @@ async function uploadPhotoFile_(file,orderNo,photoType,photoEpoch="",preparedOve
   const dataBase64=await blobToBase64_(prepared.blob);
   // 不允許受公司網路阻擋的照片服務無限等待，避免延誤 LINE 文字通知。
   const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),9000);
+  // Normal photo upload can be larger; LINE-only thumbnails use shorter timeout.
+  const timeoutMs=preparedOverride?9000:45000;
+  const timeout=setTimeout(()=>controller.abort(),timeoutMs);
   try{
     const r=await fetch(PHOTO_API_BASE+"/upload",{
       method:"POST",
@@ -2205,7 +2207,7 @@ async function uploadPhotoFile_(file,orderNo,photoType,photoEpoch="",preparedOve
     if(!r.ok || !data.ok)throw new Error(data.error||("照片暫存失敗 HTTP "+r.status));
     return data;
   }catch(err){
-    if(err.name==="AbortError")throw new Error("照片服務 9 秒未回應，已停止等待");
+    if(err.name==="AbortError")throw new Error("照片服務 "+(timeoutMs/1000)+" 秒未回應，已停止等待");
     throw err;
   }finally{clearTimeout(timeout);}
 }
