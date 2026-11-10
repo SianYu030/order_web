@@ -41,6 +41,14 @@
   const indicators = [];
   const connectButtons = [];
   const connectionPanels = [];
+  // Restricted Apps Script receivers cannot authorize users within many
+  // embedded webviews. Detect them before opening a broken Google login tab.
+  function isEmbeddedBrowser_(){
+    const ua=(navigator.userAgent||'');
+    if(/(?:Line\/|FBAN\/|FBAV\/|Instagram\/|MicroMessenger\/|ChatGPT\/|KAKAOTALK\/|GSA\/)/i.test(ua))return true;
+    return /iP(?:hone|ad|od)/i.test(ua) && /AppleWebKit/i.test(ua) &&
+      !/(?:Safari\/|CriOS\/|FxiOS\/|EdgiOS\/)/i.test(ua);
+  }
   function connectionStatus(message, good=false, allowRetry=true) {
     indicators.forEach(node=>{
       node.textContent=message;
@@ -52,7 +60,8 @@
     // Keep the connector UI out of normal report/repair forms.
     // Only surface actionable error details and a retry button on failure.
     connectionPanels.forEach(panel=>{panel.hidden=!showError;panel.style.display=showError?'':'none';});
-    connectButtons.forEach(btn=>{btn.hidden=!showError;btn.style.display=showError?'':'none';});
+    const canRetry=showError&&!isEmbeddedBrowser_();
+    connectButtons.forEach(btn=>{btn.hidden=!canRetry;btn.style.display=canRetry?'':'none';});
   }
   function verifyReceiver() {
     if(verified)return Promise.resolve(true);
@@ -71,6 +80,11 @@
     return verifyPromise;
   }
   function connectReceiver() {
+    if(isEmbeddedBrowser_()){
+      connectionStatus('目前是 App 內建瀏覽器，無法確認 Google 登入。請在 Safari 開啟原網站並登入廠務室帳號；尚未建立 MR 工單。');
+      popup=null;
+      return;
+    }
     // A mobile browser requires a user gesture to open the Google login page.
     // The URL is preconfigured; no manual copy/paste or account change is needed.
     const u=new URL(endpoint);
@@ -112,9 +126,13 @@
     btn.hidden=true;btn.style.display='none';
     connectButtons.push(btn);
     const note=document.createElement('div');
-    note.textContent='Google Drive 已設定。照原本流程選附件、按「送出／儲存」時，系統會自動連線。';
+    note.textContent='Google Drive 已設定。只有接收器授權確認成功後才能送出附件；請使用 Safari 及廠務室 Google 帳號。';
     note.style.cssText='margin-top:7px;color:#805024;line-height:1.5;';
     wrap.appendChild(note);indicators.push(note);
+    const help=document.createElement('div');
+    help.style.cssText='margin-top:7px;color:#5c6773;line-height:1.5;font-size:12px';
+    help.textContent='若在 Safari 仍出現「找不到網頁」，須核對 Google 接收器部署的 /exec 網址及存取權。此錯誤不代表 LINE 或 NAS 出問題，請勿重複送出。';
+    wrap.appendChild(help);
     box.parentElement.insertBefore(wrap,box);
   }
   window.addEventListener('message', evt => {
@@ -150,7 +168,12 @@
       const started=Date.now();
       const check=()=>{
         if(remote){resolve();return;}
-        if(Date.now()-started>timeoutMs){reject(new Error('Google 接收器未回應，請確認已登入廠務室 Google 帳號、接收器分頁仍開啟，或公司瀏覽器未封鎖連線'));return;}
+        if(popup && popup.closed){
+          reject(new Error('Google 接收器視窗已關閉，授權未確認。原表單仍保留，請核對廠務室帳號及部署網址。'));return;
+        }
+        if(Date.now()-started>timeoutMs){
+          reject(new Error('Google 接收器未回應，可能是部署 /exec 網址失效、帳號不符或瀏覽器限制。尚未建立 MR 工單。'));return;
+        }
         setTimeout(check,250);
       };
       check();
@@ -171,6 +194,11 @@
   }
   async function preflight() {
     if(!endpoint)throw new Error('Google 接收器未設定，附件尚未上傳');
+    if(!remote && isEmbeddedBrowser_()){
+      const detail='請用 Safari 開啟設備維修網站，並以授權的廠務室 Google 帳號登入後再送出。此 App 內建瀏覽器無法確認接收器授權；尚未建立 MR 工單、沒有發送 LINE。';
+      connectionStatus(detail);
+      throw new Error(detail);
+    }
     // Called synchronously from the existing submit/save user interaction.
     // Open a Google-authenticated receiver tab only when an attachment is sent.
     if(!remote){
