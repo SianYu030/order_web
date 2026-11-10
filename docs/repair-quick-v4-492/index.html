@@ -705,7 +705,7 @@ html,body{background:#f5f7f8}
           <div class="line-notify-content">
             <div class="line-notify-main">📣 LINE 通知報修</div>
             <div class="line-notify-sub">送出工單後，同步通知機修 LINE 群組。</div>
-            <div class="line-notify-test" id="lineNotifyStatus">已接正式 LINE 通知；勾選時送出工單後會發送文字與報修照片。</div>
+            <div class="line-notify-test" id="lineNotifyStatus">勾選時傳送 LINE 文字及報修照片。Google Drive 模式下，照片另暫存於既有 LINE 影像服務以供群組顯示；影片僅歸檔。</div>
           </div>
         </label>
       </div>
@@ -2184,8 +2184,8 @@ async function preparePhotoForUpload_(file){
     return {blob:file,fileName:file.name||"photo.jpg",contentType:file.type||"image/jpeg"};
   }
 }
-async function uploadPhotoFile_(file,orderNo,photoType,photoEpoch=""){
-  const prepared=await preparePhotoForUpload_(file);
+async function uploadPhotoFile_(file,orderNo,photoType,photoEpoch="",preparedOverride=null){
+  const prepared=preparedOverride||await preparePhotoForUpload_(file);
   const dataBase64=await blobToBase64_(prepared.blob);
   const r=await fetch(PHOTO_API_BASE+"/upload",{
     method:"POST",
@@ -2212,6 +2212,48 @@ async function uploadPhotoFiles_(files,orderNo,photoType,onProgress,photoEpoch="
   return uploaded;
 }
 
+
+// LINE Messaging API requires an HTTPS JPEG/PNG original and a preview <=1 MB.
+// The private Drive original is unaffected. This temporary LINE-only JPEG is
+// uploaded only if the user explicitly checked "LINE 通知報修".
+async function prepareLinePhotoForUpload_(file){
+  const img=await loadPhotoImage_(file);
+  const origW=img.naturalWidth||1,origH=img.naturalHeight||1;
+  const canvas=document.createElement("canvas"),ctx=canvas.getContext("2d");
+  if(!ctx)throw new Error("瀏覽器無法產生 LINE 照片");
+  for(const maxDim of [1200,960,720,560]){
+    const scale=Math.min(1,maxDim/Math.max(origW,origH));
+    canvas.width=Math.max(1,Math.round(origW*scale));
+    canvas.height=Math.max(1,Math.round(origH*scale));
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    for(const q of [0.72,0.58,0.42]){
+      const blob=await canvasBlob_(canvas,"image/jpeg",q);
+      if(blob.size>0 && blob.size<=900000){
+        return {blob,fileName:(file.name||"report").replace(/\.[^.]+$/,"")+".jpg",contentType:"image/jpeg"};
+      }
+    }
+  }
+  throw new Error("LINE 照片縮圖仍超過 900 KB");
+}
+async function uploadLinePhotosForDrive_(files,orderNo,photoEpoch,onProgress){
+  const max=12,selected=[...(files||[])].slice(0,max);
+  const ids=[],warnings=[];
+  for(let i=0;i<selected.length;i++){
+    if(onProgress)onProgress(i+1,selected.length);
+    try{
+      const prepared=await prepareLinePhotoForUpload_(selected[i]);
+      const result=await uploadPhotoFile_(selected[i],orderNo,"報修照片",photoEpoch,prepared);
+      if(!result.id)throw new Error("LINE 影像服務未回傳照片 ID");
+      ids.push(result.id);
+    }catch(err){
+      warnings.push("第 "+(i+1)+" 張 LINE 照片失敗："+(err?.message||err));
+      // Stop on a blocked relay rather than spamming repeated network requests.
+      break;
+    }
+  }
+  if(files.length>max)warnings.push("LINE 最多附加 "+max+" 張，其餘照片仍在 Google Drive");
+  return {ids,warnings};
+}
 async function sendLineReport_(payload){
   const r=await fetch(PHOTO_API_BASE+"/line-notify-report",{
     method:"POST",
@@ -2287,12 +2329,14 @@ el("submitBtn").onclick=async()=>{
 
     let photoMsg="";
     let uploadedReportPhotos=[];
+    let driveMediaSaved=false;
     if(reportMediaFiles.length){
       btn.textContent="上傳報修照片 0/"+reportPhotos.length+"…";
       try{
         uploadedReportPhotos=await (window.repairDrive?.enabled ? window.repairDrive.uploadFiles : uploadPhotoFiles_)(reportMediaFiles,data.orderNo,"報修照片",(i,total)=>{
           btn.textContent="上傳報修照片 "+i+"/"+total+"…";
         },data.photoEpoch||"");
+        driveMediaSaved=true;
         photoMsg=window.repairDrive?.enabled?("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，NAS 備份待核對"):("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
       }catch(photoErr){
         photoMsg="｜⚠️ 工單已建立，但報修照片暫存失敗："+photoErr.message;
@@ -2301,6 +2345,21 @@ el("submitBtn").onclick=async()=>{
 
     let lineMsg="";
     if(el("lineNotify").checked){
+      let linePhotoIds=uploadedReportPhotos.map(x=>x.id).filter(Boolean);
+      const lineWarnings=[];
+      if(window.repairDrive?.enabled && reportPhotos.length){
+        linePhotoIds=[];
+        if(driveMediaSaved){
+          btn.textContent="準備 LINE 照片…";
+          const prepared=await uploadLinePhotosForDrive_(reportPhotos,data.orderNo,data.photoEpoch||"",(i,total)=>{
+            btn.textContent="準備 LINE 照片 "+i+"/"+total+"…";
+          });
+          linePhotoIds=prepared.ids;
+          lineWarnings.push(...prepared.warnings);
+        }else{
+          lineWarnings.push("Google Drive 附件未完成，LINE 照片未另外暫存");
+        }
+      }
       btn.textContent="發送 LINE 通知…";
       try{
         const lineData=await sendLineReport_({
@@ -2312,11 +2371,16 @@ el("submitBtn").onclick=async()=>{
           stop:state.stop,
           issue:issue,
           level:state.level,
-          photoIds:window.repairDrive?.enabled?[]:uploadedReportPhotos.map(x=>x.id).filter(Boolean)
+          photoIds:linePhotoIds
         });
-        lineMsg="｜📣 LINE 已發送"+(lineData.imageCount?("＋"+lineData.imageCount+" 張照片"):"");
+        const sentImages=Number(lineData.imageCount||0);
+        lineMsg="｜📣 LINE 文字已送出"+(sentImages?("＋"+sentImages+" 張報修照片"):"");
+        if(linePhotoIds.length>sentImages)lineWarnings.push("LINE 後端未確認全部照片");
+        if(reportPhotos.length && sentImages===0)lineWarnings.push("LINE 沒有附上報修照片");
+        if(lineWarnings.length)lineMsg+="｜⚠️ "+lineWarnings.join("；");
       }catch(lineErr){
         lineMsg="｜⚠️ 工單已建立，但 LINE 通知失敗："+lineErr.message;
+        if(lineWarnings.length)lineMsg+="；"+lineWarnings.join("；");
       }
     }else{
       lineMsg="｜➖ 未發送 LINE";
