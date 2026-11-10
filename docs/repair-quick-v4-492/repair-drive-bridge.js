@@ -67,7 +67,7 @@
     if(verified)return Promise.resolve(true);
     if(verifyPromise)return verifyPromise;
     verifyPromise=rpc('health',[],45000).then(result=>{
-      if(!result || !result.ok || result.receiverVersion!=='2.3' || result.testOnly!==false)
+      if(!result || !result.ok || result.receiverVersion!=='3.1' || result.testOnly!==false)
         throw new Error('Google 接收器版本或權限不符；照片及影片尚未上傳');
       verified=true;
       connectionStatus('✅ Google Drive 已連線。本頁附件可直接送出；NAS 備份尚待核對。',true);
@@ -97,7 +97,7 @@
       connectionStatus('手機阻擋開啟 Google 登入分頁，請允許彈出視窗後再按「連接」。');
       return;
     }
-    connectionStatus('正在連接 Google 接收器，必要時請完成 Google 登入，再返回原網站。',false,false);
+    connectionStatus('正在連接公司附件接收器；已有員工授權會自動連線，否則需驗證一次。',false,false);
     awaitReceiver(60000).then(()=>verifyReceiver())
       .catch(err=>connectionStatus('連線未完成：'+err.message));
   }
@@ -114,12 +114,12 @@
     headline.style.cssText='font-weight:800;margin-bottom:6px;color:#264a67';
     wrap.appendChild(headline);
     const descr=document.createElement('div');
-    descr.textContent='已設定廠務室 Google 接收器。使用授權帳號連線後，附件將先存入雲端，NAS 另行核對。';
+    descr.textContent='附件由廠務室 Google Drive 儲存；已授權員工無須在接收器重填工單與附件。NAS 另行核對。';
     descr.style.cssText='font-size:12px;color:#54718a;line-height:1.4;margin-bottom:8px';
     wrap.appendChild(descr);
     const btn=document.createElement('button');
     btn.type='button';
-    btn.textContent='重新驗證 Google Drive（另開分頁）';
+    btn.textContent='連接附件接收器（另開分頁）';
     btn.style.cssText='width:100%;min-height:43px;background:#1d567e;color:white;border:0;border-radius:8px;font-size:14px;font-weight:700;';
     btn.addEventListener('click',connectReceiver);
     wrap.appendChild(btn);
@@ -195,7 +195,7 @@
   async function preflight() {
     if(!endpoint)throw new Error('Google 接收器未設定，附件尚未上傳');
     if(!remote && isEmbeddedBrowser_()){
-      const detail='請用 Safari 開啟設備維修網站，並以授權的廠務室 Google 帳號登入才能備份附件。此 App 內建瀏覽器無法確認接收器授權；報修工單及 LINE 仍依原流程獨立處理。';
+      const detail='請以 Safari／Chrome 開啟設備維修網站完成附件連線；不需要登入廠務室帳號。此 App 內建瀏覽器不支援安全授權。';
       connectionStatus(detail);
       throw new Error(detail);
     }
@@ -209,8 +209,8 @@
     }
     try{
       const r=await rpc('health',[],45000);
-      if(!r || !r.ok || r.receiverVersion!=='2.3' || r.testOnly!==false)
-        throw new Error('Google 接收器版本或權限不符。請更新 v2.3 接收器，附件未上傳');
+      if(!r || !r.ok || r.receiverVersion!=='3.1' || r.testOnly!==false)
+        throw new Error('Google 接收器版本或權限不符。請確認 v3.1 接收器，附件未上傳');
       return r;
     }catch(err){
       verified=false;remote=null;remoteOrigin='';
