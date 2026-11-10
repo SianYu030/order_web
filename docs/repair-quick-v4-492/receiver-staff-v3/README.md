@@ -3,6 +3,18 @@
 日期：2026-11-10  
 來源：既有 V4.492 `repair-drive-bridge.js` 與舊 Google Apps Script 接收器 v2.1；**未讀取任何正式 Apps Script 專案的最新部署原始碼**。
 
+## 最簡單安裝法（目前使用者的舊 V2.3 畫面）
+
+**不要修改現有「設備報修維修照片影片接收器」專案。** 它目前有 `程式碼.gs`、`Bridge.html`、`RepairDeletionBridge.gs`，其中工單刪除功能必須保留。
+
+在廠務室帳號的 Apps Script 首頁建立**全新的獨立**「設備維修附件_員工接收器V3_測試」專案。前期先貼兩個檔案：
+1. 把 `Code_一份整合貼上.gs` 的完整內容放入新專案預設的 `程式碼.gs`（已整合 Code、StaffAuth、AdminDiagnostics）。
+2. 左側「＋」→「HTML」，命名 `Bridge`，貼入 `Bridge.html` 完整內容。檔案名稱須一致。
+3. 儲存後，在函式選單選 `drivePilotAdminPreflight_` 執行並授權；先檢查執行記錄成功，**先不要部署成人人可用的網站**。此測試唯讀，不建立 MR、不對 LINE 發訊息。
+4. IT 核准前不得開放匿名部署。正式發佈前，建議使用本資料夾的 `appsscript.json` 以限制 OAuth 範圍。
+
+這個快速安裝法僅為初期唯讀預檢，功能驗收與後續上線限制仍以完整程序為準。
+
 ## 本次新增：不依賴原報修網頁的獨立驗收入口（2026-11-10）
 
 加入 `AdminDiagnostics.gs`、`appsscript.json`，以及 `Bridge.html` 的直接上傳測試功能。這一階段不依賴尚未驗證的跨網頁 `window.opener/postMessage` 通訊。管理員可以先完成「員工登入 → 正式 MR 驗證 → Google Drive 分段上傳 → 檔案 ID／大小／MD5 回讀」的單一入口驗收；等成功才處理原網站整合。附加的上傳測試頁不會自動建立 MR，也不發 LINE。
