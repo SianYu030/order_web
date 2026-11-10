@@ -11,35 +11,19 @@
   const CHUNK_BYTES = 2 * MB;
   const MAX_PHOTO = 100 * MB;
   const MAX_VIDEO = 500 * MB;
-  const URL_KEY = 'repair_drive_receiver_exec_v1';
+  // Configured receiver deployment, access is still enforced by Google account permissions.
+  const RECEIVER_EXEC = 'https://script.google.com/macros/s/AKfycbxkVCaNQQ_nOq0vbyAQJndc4UHwgPfN2D6RtsRMF1VwZ3B1zvdJ0fRfNKOphoDZdSqhdg/exec';
   const SUPPORTED_VIDEO = /\.(mp4|mov|m4v|webm)$/i;
   const SUPPORTED_PHOTO = /\.(jpe?g|png|webp|heic|heif)$/i;
   const nonce = crypto.randomUUID();
   const files = {report:null, repair:null};
   const previews = {report:null, repair:null};
   const pending = new Map();
-  let endpoint = '';
+  const endpoint = RECEIVER_EXEC;
   let remote = null, remoteOrigin = '';
   let inFlight = false;
 
   const $ = id => document.getElementById(id);
-  const validateUrl = value => {
-    try {
-      const u = new URL(value);
-      if (u.protocol !== 'https:' || u.hostname !== 'script.google.com' ||
-          !/^\/macros\/s\/[A-Za-z0-9_-]+\/exec\/?$/.test(u.pathname) ||
-          u.username || u.password) return '';
-      return u.origin + u.pathname.replace(/\/$/, '');
-    } catch (_) {return '';}
-  };
-  const fromQuery = qs.get('drive_endpoint');
-  if (fromQuery) {
-    endpoint = validateUrl(fromQuery);
-    if (endpoint) try {localStorage.setItem(URL_KEY, endpoint);} catch (_) {}
-  }
-  if (!endpoint) {
-    try {endpoint = validateUrl(localStorage.getItem(URL_KEY) || '');} catch (_) {}
-  }
   // Apps Script's HTML service can be blocked inside a cross-site hidden iframe.
   // Open the receiver as a first-party tab only after an explicit user tap.
   let popup = null;
@@ -50,19 +34,9 @@
       node.style.color=good?'#08713e':'#805024';
     });
   }
-  function connectReceiver(event) {
-    const area=event.currentTarget.closest('.repair-drive-connect');
-    const input=area&&area.querySelector('input');
-    if(input && input.value.trim()){
-      const v=validateUrl(input.value.trim());
-      if(!v){connectionStatus('接收器網址不正確，請貼上 Google Apps Script /exec 網址。');return;}
-      endpoint=v;
-      try{localStorage.setItem(URL_KEY,endpoint);}catch(_){}
-    }
-    if(!endpoint){
-      connectionStatus('請先貼上接收器 /exec 網址，再按「連接」。');
-      return;
-    }
+  function connectReceiver() {
+    // A mobile browser requires a user gesture to open the Google login page.
+    // The URL is preconfigured; no manual copy/paste or account change is needed.
     const u=new URL(endpoint);
     u.searchParams.set('bridgeNonce',nonce);
     u.searchParams.set('bridgeMode','popup');
@@ -86,16 +60,13 @@
     wrap.className='repair-drive-connect';
     wrap.style.cssText='margin:8px 0 12px;padding:12px;border:1px solid #bad0e4;border-radius:10px;background:#f7fafc;font-size:13px;';
     const headline=document.createElement('div');
-    headline.textContent='☁️ Google Drive 附件連線（只需初次設定）';
-    headline.style.cssText='font-weight:800;margin-bottom:8px;color:#264a67';
+    headline.textContent='☁️ Google Drive 附件備份連線';
+    headline.style.cssText='font-weight:800;margin-bottom:6px;color:#264a67';
     wrap.appendChild(headline);
-    const input=document.createElement('input');
-    input.type='url';
-    input.autocomplete='off';
-    input.placeholder='首次設定：貼上接收器 /exec 網址';
-    input.value=endpoint||'';
-    input.style.cssText='width:100%;box-sizing:border-box;font-size:14px;padding:9px;border:1px solid #bed0df;border-radius:7px;margin-bottom:7px;';
-    wrap.appendChild(input);
+    const descr=document.createElement('div');
+    descr.textContent='已設定廠務室 Google 接收器。使用授權帳號連線後，附件將先存入雲端，NAS 另行核對。';
+    descr.style.cssText='font-size:12px;color:#54718a;line-height:1.4;margin-bottom:8px';
+    wrap.appendChild(descr);
     const btn=document.createElement('button');
     btn.type='button';
     btn.textContent='連接 Google Drive';
@@ -103,7 +74,7 @@
     btn.addEventListener('click',connectReceiver);
     wrap.appendChild(btn);
     const note=document.createElement('div');
-    note.textContent='尚未連線。只支援已授權的廠務室帳號；尚未確認 NAS 備份。';
+    note.textContent='尚未連線：請按上方按鈕授權；不影響目前報修資料。';
     note.style.cssText='margin-top:7px;color:#805024;line-height:1.5;';
     wrap.appendChild(note);indicators.push(note);
     box.parentElement.insertBefore(wrap,box);
@@ -129,7 +100,7 @@
     else p.reject(new Error(data.error || 'Google Drive 接收器拒絕要求'));
   });
   function awaitReceiver(timeoutMs=15000) {
-    if (!endpoint) return Promise.reject(new Error('尚未設定 Google Drive 接收器 /exec；附件未上傳，工單尚未送出'));
+    if (!endpoint) return Promise.reject(new Error('接收器設定遺失，附件未上傳，工單尚未送出'));
     if (remote) return Promise.resolve();
     return new Promise((resolve,reject) => {
       const started=Date.now();
@@ -156,7 +127,7 @@
   }
   async function preflight() {
     if(!endpoint || !remote){
-      throw new Error('請先在原報修／維修畫面按「連接 Google Drive」，確認連線成功後再送出工單。沒有上傳任何附件');
+      throw new Error('請先按「連接 Google Drive」，確認顯示已連線再送出。附件尚未上傳');
     }
     const r=await rpc('health',[],45000);
     if(!r || !r.ok || r.receiverVersion!=='2.3' || r.testOnly!==false)
