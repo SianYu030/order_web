@@ -379,10 +379,10 @@
     if (issueCard && photoActions) {
       const panel=document.createElement('div');
       panel.id='repairDriveV33TestPanel';
-      panel.style.cssText='background:#f6fbff;border:1px solid #b5cfe0;border-radius:12px;padding:11px;margin:10px 0;line-height:1.5';
+      panel.style.cssText='padding:5px 0;margin:7px 0 10px;font-size:12px;line-height:1.5;color:#566b7b';
       const title=document.createElement('div');
-      title.textContent='☁️ 附件接收連線（V3.3 測試）';
-      title.style.cssText='font-weight:800;color:#183e5b;margin-bottom:6px';
+      title.textContent='☁️ Google Drive 附件備份';
+      title.style.cssText='font-weight:650;color:#36556d';
       const button=document.createElement('button');
       button.type='button';
       button.id='driveV33ConnectBtn';
@@ -393,10 +393,10 @@
       button.addEventListener('click',connectReceiver);
       const status=document.createElement('div');
       status.id='driveV33Status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
-      status.style.cssText='font-size:12px;margin-top:8px;color:#805024';
+      status.style.cssText='font-size:12px;margin-top:3px;color:#805024';
       status.textContent=endpoint
-        ? '選擇部門時會自動連線 Google Drive，不需要另外按連接。'
-        : '接收器 /dev 網址無效，未啟用附件連線。';
+        ? '開啟報修流程後會自動連線，無須額外操作。'
+        : '接收器網址無效，目前無法歸檔附件。';
       panel.append(title,button,status);
       photoActions.insertAdjacentElement('beforebegin',panel);
     }
