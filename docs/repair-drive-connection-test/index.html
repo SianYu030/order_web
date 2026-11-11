@@ -28,7 +28,7 @@
 <main>
 <h1>Google Drive V3.3 接收器連線測試</h1>
 <p class="notice">這裡只測接收器的跨視窗通訊和 Google Drive 唯讀健康檢查，<strong>不建立 MR 工單、不上傳檔案、不發送 LINE</strong>。</p>
-<p>已取消員工識別碼及附件授權碼。測試網址會由專用連結自動帶入，只需要按一次連接。請使用具專案編輯權限的廠務室 Google 帳號。</p>
+<p>已取消員工識別碼及附件授權碼。測試網址會由專用連結自動帶入，只需按一次連接。成功後 Google 測試視窗會自動關閉；連線沒有回覆時，原頁會顯示錯誤原因。請使用具有專案編輯權限的廠務室 Google 帳號。</p>
 <form id="configForm">
 <label id="devUrlLabel" for="devUrl">Google Apps Script 測試網址（結尾必須是 /dev）</label>
 <input id="devUrl" type="url" placeholder="https://script.google.com/macros/s/…/dev" required autocomplete="off" spellcheck="false">
@@ -37,9 +37,9 @@
 </div>
 </form>
 <div id="status" role="status" aria-live="polite">尚未開始連線測試。</div>
-<div id="steps">測試網址會由專用連結自動帶入，連接後自動執行健康檢查。</div>
+<div id="steps">測試網址已自動帶入，按一次即可連接並自動檢查 Google Drive。</div>
 <p class="muted">這個頁面不會修改原本的正式報修網站，也不會將 /dev 測試網址寫入公開原始碼。連線成功不代表照片、影片或 NAS 備份已完成。</p>
 </main>
-<script src="./repair-drive-test.js?v=20261111-v33-oneclick" defer></script>
+<script src="./repair-drive-test.js?v=20261111-v33-popup" defer></script>
 </body>
 </html>

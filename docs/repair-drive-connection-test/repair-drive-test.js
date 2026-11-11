@@ -16,6 +16,7 @@
   const configured = String(qs.get('receiver_dev') || '');
   let nonce = '', popup = null, remote = null, remoteOrigin = '';
   let verified = false, startedHealth = false, pending = null, generation = 0;
+  let handshakeTimer = null;
 
   function show(message, state='pending') {
     status.textContent = message;
@@ -32,6 +33,7 @@
     } catch (_) { return false; }
   }
   function stopPending() {
+    if (handshakeTimer !== null) { clearTimeout(handshakeTimer); handshakeTimer = null; }
     if (pending) {
       clearTimeout(pending.timer);
       pending.reject(new Error('連線已重新開始'));
@@ -87,7 +89,10 @@
       button.disabled = false;
       button.textContent = '重新檢查';
       show('✅ V3.3 接收器連線成功，Google Drive 唯讀檢查通過。', 'success');
-      steps.textContent = '照片、影片與 NAS 尚未測試。沒有建立 MR、上傳附件或發送 LINE。';
+      steps.textContent = 'Drive 唯讀驗證已通過，照片、影片及 NAS 尚未測試。Google 視窗將自動關閉。';
+      // Close only the exact popup created by this diagnostic page.
+      try { if (popup && !popup.closed) popup.close(); } catch (_) {}
+      try { window.focus(); } catch (_) {}
     } catch (error) {
       if (localGeneration !== generation) return;
       verified = false;
@@ -116,7 +121,7 @@
     url.searchParams.set('bridgeMode', 'popup');
     remote = null; remoteOrigin = ''; verified = false; startedHealth = false;
     // Opening a new window requires a direct user click on most browsers.
-    try { popup = window.open(url.toString(), 'repairDriveV33Dev'); }
+    try { popup = window.open(url.toString(), 'repairDriveV33Dev', 'popup=yes,width=560,height=650,scrollbars=yes,resizable=yes'); }
     catch (_) { popup = null; }
     if (!popup) {
       show('瀏覽器阻擋 Google 視窗。請允許此測試站開啟彈出視窗後，再按一次連接。');
@@ -124,7 +129,16 @@
     }
     button.disabled = true;
     show('正在等待 Google 接收器回應，檢查會自動進行…');
-    steps.textContent = '保持 Google 視窗開啟，回到此頁即可查看結果。';
+    steps.textContent = 'Google 視窗開啟後會自動回傳結果；成功時測試視窗會自動關閉。';
+    const localGeneration = generation;
+    handshakeTimer = setTimeout(() => {
+      handshakeTimer = null;
+      if (localGeneration !== generation || startedHealth) return;
+      button.disabled = false;
+      button.textContent = '重新連接測試';
+      show('⚠️ Google 接收器已開啟，但沒有回傳連線確認。尚未通過驗證。');
+      steps.textContent = '請留意 Google 視窗是否顯示「找不到連線視窗」或需要登入。不要重複建立 MR 工單。';
+    }, 18000);
   });
   window.addEventListener('message', event => {
     const data = event.data;
@@ -132,6 +146,7 @@
         data.channel !== CHANNEL || data.nonce !== nonce) return;
     if (data.kind === 'ready') {
       if (startedHealth) return;
+      if (handshakeTimer !== null) { clearTimeout(handshakeTimer); handshakeTimer = null; }
       remote = event.source;
       remoteOrigin = event.origin;
       startedHealth = true;
