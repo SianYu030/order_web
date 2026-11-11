@@ -12,7 +12,17 @@
   const MAX_PHOTO = 100 * MB;
   const MAX_VIDEO = 500 * MB;
   // Configured receiver deployment, access is still enforced by Google account permissions.
-  const RECEIVER_EXEC = 'https://script.google.com/macros/s/AKfycbxkVCaNQQ_nOq0vbyAQJndc4UHwgPfN2D6RtsRMF1VwZ3B1zvdJ0fRfNKOphoDZdSqhdg/exec';
+  // Staging safety: /dev is limited to Apps Script project editors.
+  // Use a Google Apps Script /dev URL only in diagnostic mode, and never
+  // redirect the production site to an unverified endpoint.
+  const LEGACY_EXEC = 'https://script.google.com/macros/s/AKfycbxkVCaNQQ_nOq0vbyAQJndc4UHwgPfN2D6RtsRMF1VwZ3B1zvdJ0fRfNKOphoDZdSqhdg/exec';
+  function testReceiverUrl_(){
+    if(qs.get('drive_test')!=='1')return LEGACY_EXEC;
+    const value=String(qs.get('receiver_dev')||'');
+    if(value.length>350 || !/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/dev$/.test(value))return '';
+    return value;
+  }
+  const RECEIVER_EXEC = testReceiverUrl_();
   const SUPPORTED_VIDEO = /\.(mp4|mov|m4v|webm)$/i;
   const SUPPORTED_PHOTO = /\.(jpe?g|png|webp|heic|heif)$/i;
   // Retain only the random tab handshake across reload, never Google credentials.
@@ -80,8 +90,9 @@
     return verifyPromise;
   }
   function connectReceiver() {
+    if(!endpoint){connectionStatus('尚未指定 Google /dev 測試網址；目前不會開啟舊正式接收器。');return;}
     if(isEmbeddedBrowser_()){
-      connectionStatus('目前是 App 內建瀏覽器，無法確認 Google Drive 附件登入。工單與 LINE 仍會獨立處理；照片備份需改用 Safari 驗證。');
+      connectionStatus('目前是 App 內建瀏覽器，無法完成員工授權；請以 Chrome 或 Safari 開啟，不要繞過公司資安限制。');
       popup=null;
       return;
     }
@@ -203,7 +214,7 @@
     // MR and LINE proceed independently; missing Drive connection is a reported
     // attachment failure, never a report-submission failure or silent success.
     if(!remote){
-      const detail='Google Drive 接收器目前未連線，照片／影片尚未備份。工單與 LINE 會另外處理；請核對接收器 /exec 部署與帳號後再連線。';
+      const detail='Google Drive 尚未連線，請先使用測試頁的「連接附件接收器」完成員工授權。請勿為測試連線重新建立 MR。';
       connectionStatus(detail);
       throw new Error(detail);
     }
@@ -327,10 +338,44 @@
   ['resetBtn','successHomeBtn','againBtn'].forEach(id=>{
     const b=$(id);if(b)b.addEventListener('click',()=>clearVideo('report'));
   });
-  window.repairDrive={enabled:true,preflight,uploadFiles,clearVideo,videoFiles(prefix){return files[prefix]?[files[prefix]]:[];}};
+  window.repairDrive={enabled:true,preflight,uploadFiles,clearVideo,
+    connectReceiver, isConnected(){return verified&&!!remote;},
+    videoFiles(prefix){return files[prefix]?[files[prefix]]:[];}
+  };
   addConnectionBar('report');
   addConnectionBar('repair');
-  // The Google Drive state stays unobtrusive during normal report/repair use.
-  // Authorization failures are shown only when an attachment upload is attempted.
+  // In explicit diagnostics, display a connection action without submitting an MR.
+  // The normal production interface does not show this additional workflow.
+  if(qs.get('drive_test')==='1'){
+    connectionStatus(endpoint?
+      '測試模式：先連線 Google /dev，完成員工授權，再進行唯讀 health 檢查。不會建立 MR 或發送 LINE。':
+      '測試模式未設定有效 /dev 網址，附件尚未連線。',false,true);
+    const panel=document.createElement('div');
+    panel.id='repairDriveDiagnostics';
+    panel.style.cssText='max-width:850px;margin:12px auto;padding:14px;border:1px solid #b6cde2;border-radius:12px;background:#f4f9ff;font-size:14px';
+    panel.innerHTML='<strong>🔒 Google Drive 附件連線測試</strong><p>僅測授權與唯讀連線，不建立工單、不上傳附件、不發 LINE。</p>';
+    const connect=document.createElement('button');
+    connect.type='button';connect.textContent='連接附件接收器';
+    connect.style.cssText='padding:10px 14px;min-height:42px;margin-right:8px;border-radius:7px;border:0;background:#255f8d;color:white;font-weight:700';
+    connect.disabled=!endpoint;
+    connect.onclick=connectReceiver;
+    const verify=document.createElement('button');
+    verify.type='button';verify.textContent='確認授權與 Drive 連線';
+    verify.style.cssText='padding:10px 14px;min-height:42px;border-radius:7px;border:1px solid #255f8d;background:white;color:#255f8d;font-weight:700';
+    const detail=document.createElement('p');
+    detail.setAttribute('role','status');
+    detail.textContent=endpoint?'尚未驗證。請先按「連接附件接收器」。':'缺少有效 Google /dev 測試網址。';
+    verify.onclick=async()=>{
+      verify.disabled=true;detail.textContent='正在查驗…';
+      try{
+        const info=await preflight();
+        detail.textContent='✅ 員工授權與接收器 '+info.receiverVersion+' 已驗證；NAS 與附件實際上傳尚未測試。';
+      }catch(err){detail.textContent='⚠️ 未通過：'+String(err?.message||err);}
+      finally{verify.disabled=false;}
+    };
+    panel.append(connect,verify,detail);
+    (document.querySelector('main')||document.body).prepend(panel);
+  }
+  // Keep the existing report/repair screen unchanged in non-diagnostic mode.
 
 })();
