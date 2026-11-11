@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-Hant"><head><base target="_top"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}body{font:15px/1.65 system-ui,-apple-system,"Noto Sans TC",sans-serif;background:#f3f7fa;color:#28465b;margin:0;padding:22px}
+main{max-width:530px;margin:34px auto;border:1px solid #d3e1ed;border-radius:15px;background:#fff;padding:25px}
+h1{font-size:20px;margin:0 0 14px}
+#status{padding:14px;border-radius:10px;border:1px solid #c5d8e8;background:#f4f9fd}
+small{display:block;color:#6a7c8b;margin-top:15px}
+</style></head><body><main>
+<h1>設備維修附件接收</h1>
+<div id="status" role="status">正在確認 Google Drive 接收器…</div>
+<small>照片與影片只在原本設備維修網站選擇並送出，這裡不用登入員工識別碼或重新填寫工單。</small>
+</main>
+<script>
+(function(){
+ 'use strict';
+ const CHANNEL='repair-drive-mr-v1';
+ const SITE='https://sianyu030.github.io';
+ const NONCE=<?!= JSON.stringify(bridgeNonce) ?>;
+ const MODE=<?!= JSON.stringify(bridgeMode) ?>;
+ const status=document.getElementById('status');
+ const actions={health:'drivePilotHealthcheck',start:'drivePilotStart',chunk:'drivePilotUploadChunk',query:'drivePilotQuery'};
+ let receiver=null,active=0;
+ try{
+   receiver=MODE==='popup'?(window.top.opener||window.opener||null):null;
+ }catch(_){receiver=null;}
+ if(!NONCE||!receiver||receiver===window){
+   status.textContent='接收器已開啟。請回原本設備維修網站操作，不需要另外填寫資料。';
+   return;
+ }
+ function send(kind,extra){
+   try{receiver.postMessage(Object.assign({channel:CHANNEL,kind,nonce:NONCE},extra||{}),SITE);}
+   catch(_){status.textContent='接收器回傳連線失敗，請從原網站重新連線。';}
+ }
+ window.addEventListener('message',function(ev){
+   if(ev.origin!==SITE||ev.source!==receiver)return;
+   const data=ev.data;
+   if(!data||data.channel!==CHANNEL||data.nonce!==NONCE||data.kind!=='call')return;
+   if(typeof data.id!=='string'||!/^[0-9a-f-]{36}$/i.test(data.id))return;
+   const fn=actions[data.action];
+   if(!fn||!Array.isArray(data.args)||data.args.length>3){send('result',{id:data.id,ok:false,error:'操作或參數無效'});return;}
+   if(active>=2){send('result',{id:data.id,ok:false,error:'傳輸繁忙，請稍後再試'});return;}
+   if(!window.google?.script?.run){send('result',{id:data.id,ok:false,error:'Google Script 服務尚未載入'});return;}
+   active++;
+   const runner=google.script.run.withSuccessHandler(result=>{
+     active--;send('result',{id:data.id,ok:true,result});
+   }).withFailureHandler(error=>{
+     active--;send('result',{id:data.id,ok:false,error:String(error?.message||error)});
+   });
+   runner[fn](...data.args);
+ });
+ status.textContent='已連線至 Google Drive 附件接收器，請回原本報修網站上傳附件。';
+ send('ready',{});
+ setInterval(()=>send('ready',{}),3000);
+})();
+</script></body></html>
