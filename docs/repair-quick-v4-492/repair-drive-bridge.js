@@ -123,7 +123,7 @@
     verified=false;autoVerifyAttempted=false;verifyPromise=null;
     try {popup=window.open(u.toString(),'repairGoogleDriveReceiver','popup=yes,width=560,height=650,resizable=yes,scrollbars=yes');} catch (_) {popup=null;}
     if(!popup){
-      connectionStatus('手機阻擋開啟 Google 登入分頁，請允許彈出視窗後再按「連接」。');
+      connectionStatus('瀏覽器阻擋 Google 接收視窗；允許彈出視窗後，使用拍照區的「重新連接 Google Drive」重試。');
       return;
     }
     // On Chrome, attempt to return focus to the form. The receiver remains open
@@ -243,7 +243,7 @@
     // attachment failure, never a report-submission failure or silent success.
     if(!remote){
       const detail=TEST_MODE
-        ? 'V3.3 接收器尚未連線，請先使用頁面頂部的「連接 Google Drive」；沒有成功時不要把附件視為已上傳。'
+        ? 'V3.3 接收器自動連線尚未成功；請查看拍照區的提示，附件目前沒有上傳到 Drive。'
         : 'Google Drive 接收器目前未連線，照片／影片尚未備份。工單與 LINE 會另外處理；請核對接收器 /exec 部署與帳號後再連線。';
       connectionStatus(detail);
       throw new Error(detail);
