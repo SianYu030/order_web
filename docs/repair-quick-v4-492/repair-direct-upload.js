@@ -8,8 +8,15 @@
   'use strict';
   const qs=new URLSearchParams(location.search);
   if(qs.get('drive_direct_test')!=='1')return;
-  const endpoint=String(qs.get('receiver_exec')||'');
+  // Only accept the audited company's deployment ID. Do NOT trust an URL
+  // parameter from a forwarded link, or files could be sent to another script.
+  // The fixed /exec is filled in only after deployment and IT approval.
+  const endpoint='V4_APPROVED_EXEC_NOT_CONFIGURED';
   const VALID=/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint);
+  if(!VALID) {
+    window.repairDirectV4={configured:false,reason:'V4 獨立附件接收器尚未部署；正式報修流程仍維持原狀'};
+    return;
+  }
   const MB=1048576, CHUNK=2*MB, MAX_PHOTO=100*MB, MAX_VIDEO=500*MB;
   const VIDEO=/\.(mp4|mov|m4v|webm)$/i, PHOTO=/\.(jpg|jpeg|png|webp|heic|heif)$/i;
   const files={report:null,repair:null},preview={report:null,repair:null};
