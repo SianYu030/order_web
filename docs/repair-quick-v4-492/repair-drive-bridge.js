@@ -5,6 +5,9 @@
 (() => {
   'use strict';
   const qs = new URLSearchParams(location.search);
+  // V4 trial uses a separate POST/JSONP media adapter. Never let two upload
+  // backends register window.repairDrive simultaneously.
+  if (qs.get('drive_direct_test') === '1') return;
   if (qs.get('drive_upload') !== '1') return;
   const CHANNEL = 'repair-drive-mr-v1';
   const MB = 1048576;
