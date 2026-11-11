@@ -12,7 +12,14 @@
   const MAX_PHOTO = 100 * MB;
   const MAX_VIDEO = 500 * MB;
   // Configured receiver deployment, access is still enforced by Google account permissions.
-  const RECEIVER_EXEC = 'https://script.google.com/macros/s/AKfycbxkVCaNQQ_nOq0vbyAQJndc4UHwgPfN2D6RtsRMF1VwZ3B1zvdJ0fRfNKOphoDZdSqhdg/exec';
+  // Keep the old deployment for everyone else; V3.3 is explicitly opt-in.
+  const TEST_MODE = qs.get('drive_v33_test') === '1';
+  const TEST_DEV = String(qs.get('receiver_dev') || '');
+  const VALID_DEV = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/dev$/.test(TEST_DEV);
+  const RECEIVER_EXEC = TEST_MODE
+    ? (VALID_DEV ? TEST_DEV : '')
+    : 'https://script.google.com/macros/s/AKfycbxkVCaNQQ_nOq0vbyAQJndc4UHwgPfN2D6RtsRMF1VwZ3B1zvdJ0fRfNKOphoDZdSqhdg/exec';
+  const EXPECTED_RECEIVER_VERSION = TEST_MODE ? '3.3' : '2.3';
   const SUPPORTED_VIDEO = /\.(mp4|mov|m4v|webm)$/i;
   const SUPPORTED_PHOTO = /\.(jpe?g|png|webp|heic|heif)$/i;
   // Retain only the random tab handshake across reload, never Google credentials.
@@ -50,6 +57,13 @@
       !/(?:Safari\/|CriOS\/|FxiOS\/|EdgiOS\/)/i.test(ua);
   }
   function connectionStatus(message, good=false, allowRetry=true) {
+    if (TEST_MODE) {
+      const testOutput = $('driveV33Status');
+      if (testOutput) {
+        testOutput.textContent = message;
+        testOutput.style.color = good ? '#08713e' : '#805024';
+      }
+    }
     indicators.forEach(node=>{
       node.textContent=message;
       node.style.color=good?'#08713e':'#805024';
@@ -67,10 +81,11 @@
     if(verified)return Promise.resolve(true);
     if(verifyPromise)return verifyPromise;
     verifyPromise=rpc('health',[],45000).then(result=>{
-      if(!result || !result.ok || result.receiverVersion!=='2.3' || result.testOnly!==false)
+      if(!result || !result.ok || result.receiverVersion!==EXPECTED_RECEIVER_VERSION || result.testOnly!==false)
         throw new Error('Google 接收器版本或權限不符；照片及影片尚未上傳');
       verified=true;
-      connectionStatus('✅ Google Drive 已連線。本頁附件可直接送出；NAS 備份尚待核對。',true);
+      connectionStatus('✅ V'+EXPECTED_RECEIVER_VERSION+' Google Drive 已連線；照片與影片實際上傳尚未驗收。',true);
+      if (TEST_MODE) { try { if(popup && !popup.closed)popup.close(); } catch(_){} }
       return true;
     }).catch(err=>{
       verified=false;
@@ -80,8 +95,12 @@
     return verifyPromise;
   }
   function connectReceiver() {
+    if (!endpoint) {
+      connectionStatus('V3.3 測試模式沒有有效的 Google /dev 網址，未啟動連線。');
+      return;
+    }
     if(isEmbeddedBrowser_()){
-      connectionStatus('目前是 App 內建瀏覽器，無法確認 Google Drive 附件登入。工單與 LINE 仍會獨立處理；照片備份需改用 Safari 驗證。');
+      connectionStatus('內建瀏覽器不支援此接收器視窗；請使用 Chrome 或 Safari 測試。');
       popup=null;
       return;
     }
@@ -92,12 +111,12 @@
     u.searchParams.set('bridgeMode','popup');
     remote=null; remoteOrigin='';
     verified=false;autoVerifyAttempted=false;verifyPromise=null;
-    try {popup=window.open(u.toString(),'repairGoogleDriveReceiver');} catch (_) {popup=null;}
+    try {popup=window.open(u.toString(),'repairGoogleDriveReceiver','popup=yes,width=560,height=650,resizable=yes,scrollbars=yes');} catch (_) {popup=null;}
     if(!popup){
       connectionStatus('手機阻擋開啟 Google 登入分頁，請允許彈出視窗後再按「連接」。');
       return;
     }
-    connectionStatus('正在連接 Google 接收器，必要時請完成 Google 登入，再返回原網站。',false,false);
+    connectionStatus('正在從設備維修中心連接 Google Drive；收到回覆後將自動檢查。',false,false);
     awaitReceiver(60000).then(()=>verifyReceiver())
       .catch(err=>connectionStatus('連線未完成：'+err.message));
   }
@@ -203,14 +222,16 @@
     // MR and LINE proceed independently; missing Drive connection is a reported
     // attachment failure, never a report-submission failure or silent success.
     if(!remote){
-      const detail='Google Drive 接收器目前未連線，照片／影片尚未備份。工單與 LINE 會另外處理；請核對接收器 /exec 部署與帳號後再連線。';
+      const detail=TEST_MODE
+        ? 'V3.3 接收器尚未連線，請先使用頁面頂部的「連接 Google Drive」；沒有成功時不要把附件視為已上傳。'
+        : 'Google Drive 接收器目前未連線，照片／影片尚未備份。工單與 LINE 會另外處理；請核對接收器 /exec 部署與帳號後再連線。';
       connectionStatus(detail);
       throw new Error(detail);
     }
     try{
       const r=await rpc('health',[],45000);
-      if(!r || !r.ok || r.receiverVersion!=='2.3' || r.testOnly!==false)
-        throw new Error('Google 接收器版本或權限不符。請更新 v2.3 接收器，附件未上傳');
+      if(!r || !r.ok || r.receiverVersion!==EXPECTED_RECEIVER_VERSION || r.testOnly!==false)
+        throw new Error('Google 接收器版本或權限不符。預期 V'+EXPECTED_RECEIVER_VERSION+'，附件未上傳');
       return r;
     }catch(err){
       verified=false;remote=null;remoteOrigin='';
@@ -330,6 +351,38 @@
   window.repairDrive={enabled:true,preflight,uploadFiles,clearVideo,videoFiles(prefix){return files[prefix]?[files[prefix]]:[];}};
   addConnectionBar('report');
   addConnectionBar('repair');
+  if (TEST_MODE) {
+    // The diagnostic controls live inside the ORIGINAL equipment repair center.
+    // No separate Google Drive form; no MR or LINE actions from this button.
+    const main = document.querySelector('main.container');
+    const notice = main && main.querySelector('.notice');
+    if (main && notice) {
+      const panel = document.createElement('section');
+      panel.id = 'repairDriveV33TestPanel';
+      panel.style.cssText='background:#f6fbff;border:1px solid #9cbfd9;border-radius:12px;padding:12px;margin:8px 0 14px;line-height:1.5';
+      const title=document.createElement('div');
+      title.textContent='☁️ 原報修系統｜V3.3 附件連線測試';
+      title.style.cssText='font-weight:800;margin-bottom:7px;color:#183e5b';
+      const caution=document.createElement('p');
+      caution.textContent='只按連線不會建立 MR 或發 LINE；原「送出報修工單」仍會寫入正式工單及依勾選發 LINE，請勿為了測連線而送出。';
+      caution.style.cssText='font-size:12px;color:#75500f;margin:4px 0 10px';
+      const button=document.createElement('button');
+      button.type='button';
+      button.id='driveV33ConnectBtn';
+      button.textContent='連接 Google Drive V3.3';
+      button.style.cssText='border:0;border-radius:9px;background:#23608a;color:white;padding:11px 14px;font-size:14px;min-height:43px;font-weight:800';
+      button.disabled = !endpoint;
+      button.addEventListener('click',connectReceiver);
+      const status=document.createElement('div');
+      status.id='driveV33Status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+      status.style.cssText='font-size:13px;margin-top:9px;color:#805024;overflow-wrap:anywhere';
+      status.textContent=endpoint
+        ? '待連線。先測 V3.3 接收器，不需要另外填寫員工授權碼。'
+        : '缺少有效 Google Apps Script /dev 測試網址；連線功能未啟動。';
+      panel.append(title,caution,button,status);
+      notice.insertAdjacentElement('afterend',panel);
+    }
+  }
   // The Google Drive state stays unobtrusive during normal report/repair use.
   // Authorization failures are shown only when an attachment upload is attempted.
 
