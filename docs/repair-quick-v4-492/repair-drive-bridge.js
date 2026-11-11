@@ -39,6 +39,9 @@
   const endpoint = RECEIVER_EXEC;
   let remote = null, remoteOrigin = '';
   let inFlight = false;
+  // Test-only: one connection attempt piggybacks on an ordinary report action.
+  // No extra click on a separate Google Drive connect button is needed.
+  let autoConnectAttempted=false;
   let verified=false, verifyPromise=null, autoVerifyAttempted=false;
 
   const $ = id => document.getElementById(id);
@@ -62,6 +65,12 @@
       if (testOutput) {
         testOutput.textContent = message;
         testOutput.style.color = good ? '#08713e' : '#805024';
+      }
+      const retry=$('driveV33ConnectBtn');
+      if(retry){
+        const needsRetry=!good&&allowRetry;
+        retry.hidden=!needsRetry;
+        retry.style.display=needsRetry?'':'none';
       }
     }
     indicators.forEach(node=>{
@@ -114,10 +123,13 @@
     verified=false;autoVerifyAttempted=false;verifyPromise=null;
     try {popup=window.open(u.toString(),'repairGoogleDriveReceiver','popup=yes,width=560,height=650,resizable=yes,scrollbars=yes');} catch (_) {popup=null;}
     if(!popup){
-      connectionStatus('手機阻擋開啟 Google 登入分頁，請允許彈出視窗後再按「連接」。');
+      connectionStatus('瀏覽器阻擋 Google 接收視窗；允許彈出視窗後，使用拍照區的「重新連接 Google Drive」重試。');
       return;
     }
-    connectionStatus('正在從設備維修中心連接 Google Drive；收到回覆後將自動檢查。',false,false);
+    // On Chrome, attempt to return focus to the form. The receiver remains open
+    // for subsequent file upload RPC; browser focus behavior cannot be guaranteed.
+    try { if(TEST_MODE)window.focus(); }catch(_){}
+    connectionStatus('正在自動連接 Google Drive；請保持接收視窗開啟。',false,false);
     awaitReceiver(60000).then(()=>verifyReceiver())
       .catch(err=>connectionStatus('連線未完成：'+err.message));
   }
@@ -231,7 +243,7 @@
     // attachment failure, never a report-submission failure or silent success.
     if(!remote){
       const detail=TEST_MODE
-        ? 'V3.3 接收器尚未連線，請先使用頁面頂部的「連接 Google Drive」；沒有成功時不要把附件視為已上傳。'
+        ? 'V3.3 接收器自動連線尚未成功；請查看拍照區的提示，附件目前沒有上傳到 Drive。'
         : 'Google Drive 接收器目前未連線，照片／影片尚未備份。工單與 LINE 會另外處理；請核對接收器 /exec 部署與帳號後再連線。';
       connectionStatus(detail);
       throw new Error(detail);
@@ -367,26 +379,52 @@
     if (issueCard && photoActions) {
       const panel=document.createElement('div');
       panel.id='repairDriveV33TestPanel';
-      panel.style.cssText='background:#f6fbff;border:1px solid #b5cfe0;border-radius:12px;padding:11px;margin:10px 0;line-height:1.5';
+      panel.style.cssText='padding:5px 0;margin:7px 0 10px;font-size:12px;line-height:1.5;color:#566b7b';
       const title=document.createElement('div');
-      title.textContent='☁️ 附件接收連線（V3.3 測試）';
-      title.style.cssText='font-weight:800;color:#183e5b;margin-bottom:6px';
+      title.textContent='☁️ Google Drive 附件備份';
+      title.style.cssText='font-weight:650;color:#36556d';
       const button=document.createElement('button');
       button.type='button';
       button.id='driveV33ConnectBtn';
-      button.textContent='連接 Google Drive';
-      button.style.cssText='border:0;border-radius:9px;background:#23608a;color:white;padding:10px 13px;min-height:43px;font-size:14px;font-weight:800';
+      button.textContent='重新連接 Google Drive';
+      button.style.cssText='display:none;border:0;border-radius:9px;background:#23608a;color:white;padding:10px 13px;min-height:43px;font-size:14px;font-weight:800';
+      button.hidden=true;
       button.disabled=!endpoint;
       button.addEventListener('click',connectReceiver);
       const status=document.createElement('div');
       status.id='driveV33Status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
-      status.style.cssText='font-size:12px;margin-top:8px;color:#805024';
+      status.style.cssText='font-size:12px;margin-top:3px;color:#805024';
       status.textContent=endpoint
-        ? '測試時請先連接；連線成功後保持 Google 接收視窗開啟，附件才能繼續上傳。'
-        : '接收器 /dev 網址無效，未啟用附件連線。';
+        ? '開啟報修流程後會自動連線，無須額外操作。'
+        : '接收器網址無效，目前無法歸檔附件。';
       panel.append(title,button,status);
       photoActions.insertAdjacentElement('beforebegin',panel);
     }
+    // A click/tap on an ORIGINAL report control is already user-initiated.
+    // Run window.open synchronously during this gesture to honor popup rules.
+    // Do not connect on page load, do not create MR, do not send LINE.
+    const launchOnFirstFormGesture=(event)=>{
+      if(autoConnectAttempted||!endpoint||remote)return;
+      if(!event.isTrusted)return;
+      const target=event.target;
+      if(!target||typeof target.closest!=='function')return;
+      const targetInReport=target.closest(
+        '#deptGrid button, #personGrid button, #areaGrid button, #machineGrid button,'+
+        ' #photo, #photoLibrary, #reportVideoFile'
+      );
+      if(!targetInReport)return;
+      autoConnectAttempted=true;
+      document.removeEventListener('click',launchOnFirstFormGesture,true);
+      connectReceiver();
+    };
+    document.addEventListener('click',launchOnFirstFormGesture,true);
+    // When an employee returns from the Google window, reflect a closed
+    // receiver immediately instead of displaying an out-of-date success.
+    window.addEventListener('focus',()=>{
+      if(!popup||!popup.closed||!verified)return;
+      verified=false;remote=null;remoteOrigin='';
+      connectionStatus('Google Drive 接收視窗已關閉，附件尚不能上傳；需重新連接。');
+    });
   }
   // The Google Drive state stays unobtrusive during normal report/repair use.
   // Authorization failures are shown only when an attachment upload is attempted.
