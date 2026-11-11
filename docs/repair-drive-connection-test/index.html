@@ -3,55 +3,44 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>設備維修附件｜Google Drive 連線驗收</title>
+<meta name="referrer" content="no-referrer">
+<title>設備維修附件｜V3.3 連線測試</title>
 <style>
   *{box-sizing:border-box}
   body{font-family:system-ui,-apple-system,"Noto Sans TC",sans-serif;background:#f5f8fc;color:#203b51;margin:0;padding:18px;line-height:1.6}
-  main{max-width:770px;margin:22px auto;padding:24px;border:1px solid #ceddea;border-radius:16px;background:white}
-  h1{font-size:22px;margin:0 0 10px}p{margin:8px 0 14px}
+  main{max-width:640px;margin:30px auto;padding:24px;border:1px solid #ceddea;border-radius:16px;background:white}
+  h1{font-size:21px;margin:0 0 10px}
+  p{margin:12px 0}
   label{font-weight:700;display:block;margin:18px 0 8px}
   input{width:100%;padding:13px;border:1px solid #a9c6dc;border-radius:9px;font-size:15px}
-  button{min-height:44px;padding:10px 18px;border:0;border-radius:9px;background:#27608d;color:white;font-weight:750;cursor:pointer}
-  #configError{color:#ab2929;font-size:14px}
-  .notice{padding:12px;border:1px solid #f3d49f;background:#fffaec;border-radius:9px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  button{min-height:44px;padding:10px 18px;border:0;border-radius:9px;background:#27608d;color:white;font-weight:700;cursor:pointer}
+  button.secondary{background:#fff;color:#27608d;border:1px solid #27608d}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .notice{padding:12px;border:1px solid #e7d39d;background:#fffaf0;border-radius:9px}
   .muted{color:#526678;font-size:13px}
+  #status{border:1px solid #c6d9e8;background:#f3f9fd;border-radius:9px;padding:13px;margin-top:18px;overflow-wrap:anywhere}
+  #status[data-state="success"]{background:#ecf7ed;border-color:#a8d5b2;color:#125e35}
+  #steps{color:#526678;font-size:13px;margin-top:10px;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
 <main>
-<h1>Google Drive 接收器連線驗收</h1>
-<p class="notice">本頁僅供廠務室授權管理員測試 V3.1／V3.2 接收器。只會做員工登入和唯讀連線檢查，<strong>不會建立 MR 工單、發送 LINE 或上傳檔案</strong>。</p>
-<form id="setup">
-<label for="devUrl">Google Apps Script 測試網址（需為 /dev）</label>
-<input id="devUrl" type="url" placeholder="https://script.google.com/macros/s/.../dev" required autocomplete="off" spellcheck="false">
-<p class="muted">請由廠務室 Apps Script 編輯器的「部署 → 測試部署作業」複製，勿使用既有 /exec。開啟後需要使用具專案編輯權限的 Google 帳號。</p>
-<button type="submit">開始接收器連線測試</button>
-<p id="configError" role="alert"></p>
+<h1>Google Drive V3.3 接收器連線測試</h1>
+<p class="notice">這裡只測接收器的跨視窗通訊和 Google Drive 唯讀健康檢查，<strong>不建立 MR 工單、不上傳檔案、不發送 LINE</strong>。</p>
+<p>已取消額外的員工識別碼和附件授權碼。測試時請使用具備 Apps Script 專案編輯權限的廠務室 Google 帳號。</p>
+<form id="configForm">
+<label for="devUrl">Google Apps Script 測試網址（結尾必須是 /dev）</label>
+<input id="devUrl" type="url" placeholder="https://script.google.com/macros/s/…/dev" required autocomplete="off" spellcheck="false">
+<div class="actions">
+<button id="connectBtn" type="submit">連接 V3.3 接收器</button>
+<button id="verifyBtn" type="button" class="secondary" disabled>確認 Drive 唯讀連線</button>
+</div>
 </form>
-<p class="muted" id="testHelp" hidden>測試頁會顯示「連接附件接收器」及「確認授權與 Drive 連線」。連線成功只代表授權檢查通過，不代表 Google Drive 已儲存照片、影片或 NAS 已備份。</p>
+<div id="status" role="status" aria-live="polite">尚未開始連線測試。</div>
+<div id="steps">貼入測試網址後先連接，再確認健康檢查。</div>
+<p class="muted">這個頁面不會修改你原本的正式報修網站，也不會把 /dev 網址存進正式程式碼。連線成功不代表照片、影片或 NAS 備份已完成。</p>
 </main>
-<script>
-(function(){
-  'use strict';
-  const q=new URLSearchParams(location.search);
-  const form=document.getElementById('setup'),input=document.getElementById('devUrl'),error=document.getElementById('configError');
-  const re=/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/dev$/;
-  const value=q.get('receiver_dev')||'';
-  if(re.test(value)&&q.get('drive_upload')==='1'&&q.get('drive_test')==='1'){
-    form.hidden=true;document.getElementById('testHelp').hidden=false;return;
-  }
-  form.addEventListener('submit',e=>{
-    e.preventDefault();
-    const dev=input.value.trim();
-    if(!re.test(dev)){error.textContent='網址必須是從 Apps Script 測試部署取得的 https://script.google.com/macros/s/…/dev';return;}
-    const u=new URL(location.href);
-    u.searchParams.set('drive_upload','1');
-    u.searchParams.set('drive_test','1');
-    u.searchParams.set('receiver_dev',dev);
-    location.assign(u.toString());
-  });
-})();
-</script>
-<script src="./repair-drive-test.js?v=1" defer></script>
+<script src="./repair-drive-test.js?v=20261111-v33" defer></script>
 </body>
 </html>
