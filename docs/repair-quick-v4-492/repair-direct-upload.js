@@ -15,6 +15,17 @@
   const VALID=/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint);
   if(!VALID) {
     window.repairDirectV4={configured:false,reason:'V4 獨立附件接收器尚未部署；正式報修流程仍維持原狀'};
+    // The explicit V4 test link must NEVER accidentally create a real MR or
+    // send LINE when its receiver has not been provisioned yet.
+    document.addEventListener('click',(event)=>{
+      const button=event.target && typeof event.target.closest==='function'
+        ? event.target.closest('#submitBtn,#saveRepairBtn,#completeRepairBtn')
+        : null;
+      if(!button)return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      alert('V4 免登入附件接收器尚未完成部署。本測試入口已阻止正式建立／修改工單。請使用一般報修網址處理真正報修。');
+    },true);
     return;
   }
   const MB=1048576, CHUNK=2*MB, MAX_PHOTO=100*MB, MAX_VIDEO=500*MB;
