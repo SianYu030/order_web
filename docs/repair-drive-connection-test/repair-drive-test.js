@@ -1,110 +1,150 @@
 /**
- * Read-only Google Apps Script V3.3 receiver handshake test.
- * No MR creation, no LINE, no file transfer, no staff credential form.
- * Only allowed RPC action: drivePilotHealthcheck (health).
+ * V3.3 Apps Script /dev connection diagnostic.
+ * One user click opens Google popup, then handshake + healthcheck run automatically.
+ * The /dev URL is passed by a private link query parameter, not published in source.
+ * No MR, file uploads, LINE, NAS, or staff credential collection.
  */
 (() => {
   'use strict';
-  const CHANNEL='repair-drive-mr-v1';
-  const EXPECT_VERSION='3.3';
-  const id=(s)=>document.getElementById(s);
-  const form=id('configForm'), input=id('devUrl'), connect=id('connectBtn'),
-        verify=id('verifyBtn'), detail=id('status'), steps=id('steps');
-  const DEV=/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/dev$/;
-  let popup=null,nonce='',remote=null,remoteOrigin='',counter=0, pending=null, ready=false;
+  const CHANNEL = 'repair-drive-mr-v1';
+  const VERSION = '3.3';
+  const DEV = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/dev$/;
+  const $ = id => document.getElementById(id);
+  const form = $('configForm'), input = $('devUrl'), inputLabel = $('devUrlLabel');
+  const button = $('connectBtn'), status = $('status'), steps = $('steps');
+  const qs = new URLSearchParams(location.search);
+  const configured = String(qs.get('receiver_dev') || '');
+  let nonce = '', popup = null, remote = null, remoteOrigin = '';
+  let verified = false, startedHealth = false, pending = null, generation = 0;
 
-  function message(text,good=false){
-    detail.textContent=text;
-    detail.dataset.state=good?'success':'pending';
+  function show(message, state='pending') {
+    status.textContent = message;
+    status.dataset.state = state;
   }
-  function originAllowed(origin){
+  function originAllowed(origin) {
     try {
-      const u=new URL(origin);
-      if(u.protocol!=='https:')return false;
-      return u.hostname==='script.google.com' ||
-             u.hostname==='script.googleusercontent.com' ||
-             /^[a-z0-9-]+-script\.googleusercontent\.com$/.test(u.hostname);
-    }catch(_){return false;}
+      const u = new URL(origin);
+      return u.protocol === 'https:' && (
+        u.hostname === 'script.google.com' ||
+        u.hostname === 'script.googleusercontent.com' ||
+        /^[a-z0-9-]+-script\.googleusercontent\.com$/.test(u.hostname)
+      );
+    } catch (_) { return false; }
   }
-  function reset(){
-    ready=false;remote=null;remoteOrigin='';pending=null;
-    verify.disabled=true;
-    steps.textContent='尚未確認跨網頁通訊。';
+  function stopPending() {
+    if (pending) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error('連線已重新開始'));
+      pending = null;
+    }
   }
-  form.addEventListener('submit',(e)=>{
-    e.preventDefault();
-    const url=input.value.trim();
-    if(!DEV.test(url)){
-      message('請貼上 Apps Script「測試部署作業」取得的 /dev 網址，不能使用 /exec。');
-      return;
+  if (DEV.test(configured)) {
+    input.value = configured;
+    input.hidden = true;
+    inputLabel.hidden = true;
+    steps.textContent = '測試網址已自動設定。按一次「開始連線測試」即可自動完成檢查。';
+    show('已準備好 V3.3 接收器網址，不用複製或貼上。', 'ready');
+  } else {
+    steps.textContent = '此連結未附測試網址，請使用已建立的專用測試連結，或輸入 Apps Script /dev 網址。';
+    show('尚未指定接收器測試網址。', 'pending');
+  }
+
+  function healthcheck() {
+    if (!remote || !remoteOrigin) {
+      return Promise.reject(new Error('還沒收到 Google 接收器的連線回應'));
     }
-    if(!window.crypto?.randomUUID){
-      message('瀏覽器缺少安全隨機識別碼功能，請改用較新的 Chrome 或 Safari。');
-      return;
-    }
-    reset();
-    nonce=crypto.randomUUID();
-    const u=new URL(url);
-    u.searchParams.set('bridgeNonce',nonce);
-    u.searchParams.set('bridgeMode','popup');
-    // Open only from user click, preserving window.opener needed by Bridge.
-    try {popup=window.open(u.toString(),'repairDriveDevV33');}
-    catch(_){popup=null;}
-    if(!popup){message('瀏覽器阻擋彈出視窗。請允許測試站開啟新視窗後再按一次。');return;}
-    message('已開啟接收器測試視窗。請保持視窗開啟，正在等待 Google Apps Script 回應…');
-    steps.textContent='等待接收器發送 ready 訊息，不會建立 MR 工單或上傳附件。';
-  });
-  window.addEventListener('message',(ev)=>{
-    const data=ev.data;
-    if(!nonce||!originAllowed(ev.origin)||!data||data.channel!==CHANNEL||data.nonce!==nonce)return;
-    if(data.kind==='ready'){
-      remote=ev.source;
-      remoteOrigin=ev.origin;
-      if(!ready){
-        ready=true;
-        verify.disabled=false;
-        steps.textContent='✅ 跨視窗 ready 訊息已收到，接收器基本通訊成功。';
-        message('接收器已回應。請按「確認 Drive 唯讀連線」。');
+    if (pending) return Promise.reject(new Error('已有健康檢查正在執行'));
+    const id = crypto.randomUUID();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        if (pending && pending.id === id) pending = null;
+        reject(new Error('45 秒內未收到接收器回覆，請檢查 Google 登入及彈出視窗。'));
+      }, 45000);
+      pending = { id, resolve, reject, timer };
+      try {
+        remote.postMessage({
+          channel: CHANNEL, kind: 'call', nonce,
+          id, action: 'health', args: []
+        }, remoteOrigin);
+      } catch (error) {
+        clearTimeout(timer);
+        pending = null;
+        reject(error);
       }
-      return;
-    }
-    if(data.kind==='result'&&pending&&data.id===pending.id&&ev.source===remote){
-      const task=pending;pending=null;
-      clearTimeout(task.timer);
-      task.resolve(data);
-    }
-  });
-  function health(){
-    if(!ready||!remote||!remoteOrigin)
-      return Promise.reject(new Error('尚未收到接收器 ready 訊息，請先開啟連線測試。'));
-    if(pending)return Promise.reject(new Error('已有檢查正在執行'));
-    return new Promise((resolve,reject)=>{
-      const uuid=crypto.randomUUID();
-      const timer=setTimeout(()=>{
-        if(pending?.id===uuid)pending=null;
-        reject(new Error('45 秒內沒有收到回覆。請查看 Google 接收器視窗與瀏覽器彈出視窗設定。'));
-      },45000);
-      pending={id:uuid,resolve,reject,timer};
-      // Explicit allowlist: ONLY non-mutating health call is sent.
-      remote.postMessage({channel:CHANNEL,nonce,kind:'call',id:uuid,action:'health',args:[]},remoteOrigin);
     });
   }
-  verify.addEventListener('click',async()=>{
-    verify.disabled=true;
-    message('正在核對 V3.3 接收器與 Drive 讀取權限…');
-    try{
-      const result=await health();
-      if(!result.ok)throw new Error(String(result.error||'接收器拒絕呼叫'));
-      const info=result.result;
-      if(!info||info.ok!==true||info.receiverVersion!==EXPECT_VERSION)
-        throw new Error('接收器版本不符，預期 V3.3。');
-      if(info.testOnly!==false)
-        throw new Error('接收器回傳測試旗標異常');
-      message('✅ V3.3 接收器唯讀連線成功。Drive 可讀取；尚未測試照片、影片或 NAS。',true);
-      steps.textContent='✅ 已收到 healthcheck 回覆。沒有發送員工授權碼、建立 MR、上傳附件或呼叫 LINE。';
-    }catch(error){
-      message('⚠️ 唯讀連線未通過：'+String(error?.message||error));
-    }finally{verify.disabled=!ready;}
+  async function verifyAutomatically(localGeneration) {
+    show('已連上接收器，正在自動檢查 Google Drive 唯讀權限…');
+    steps.textContent = '正在執行唯一允許的 healthcheck，不會建立工單或傳送附件。';
+    try {
+      const response = await healthcheck();
+      if (localGeneration !== generation) return;
+      if (!response.ok) throw new Error(String(response.error || 'Google 接收器拒絕'));
+      const result = response.result;
+      if (!result || result.ok !== true || result.receiverVersion !== VERSION || result.testOnly !== false)
+        throw new Error('接收器版本或狀態不符；目前只接受 V3.3。');
+      verified = true;
+      button.disabled = false;
+      button.textContent = '重新檢查';
+      show('✅ V3.3 接收器連線成功，Google Drive 唯讀檢查通過。', 'success');
+      steps.textContent = '照片、影片與 NAS 尚未測試。沒有建立 MR、上傳附件或發送 LINE。';
+    } catch (error) {
+      if (localGeneration !== generation) return;
+      verified = false;
+      button.disabled = false;
+      button.textContent = '重新連接測試';
+      show('⚠️ 連線尚未成功：' + String(error?.message || error));
+      steps.textContent = '請保留 Google 接收器視窗，核對登入身分或允許測試站開啟彈出視窗。';
+    }
+  }
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    const receiverDev = input.value.trim();
+    if (!DEV.test(receiverDev)) {
+      show('請使用 Google Apps Script「測試部署作業」提供的 /dev 網址，不能使用 /exec。');
+      return;
+    }
+    if (!crypto?.randomUUID) {
+      show('目前瀏覽器無法建立安全握手識別碼，請改用新版 Chrome 或 Safari。');
+      return;
+    }
+    generation += 1;
+    stopPending();
+    nonce = crypto.randomUUID();
+    const url = new URL(receiverDev);
+    url.searchParams.set('bridgeNonce', nonce);
+    url.searchParams.set('bridgeMode', 'popup');
+    remote = null; remoteOrigin = ''; verified = false; startedHealth = false;
+    // Opening a new window requires a direct user click on most browsers.
+    try { popup = window.open(url.toString(), 'repairDriveV33Dev'); }
+    catch (_) { popup = null; }
+    if (!popup) {
+      show('瀏覽器阻擋 Google 視窗。請允許此測試站開啟彈出視窗後，再按一次連接。');
+      return;
+    }
+    button.disabled = true;
+    show('正在等待 Google 接收器回應，檢查會自動進行…');
+    steps.textContent = '保持 Google 視窗開啟，回到此頁即可查看結果。';
   });
-  message('先貼上 Apps Script /dev 測試網址，再按「連接」。');
+  window.addEventListener('message', event => {
+    const data = event.data;
+    if (!nonce || !originAllowed(event.origin) || !data ||
+        data.channel !== CHANNEL || data.nonce !== nonce) return;
+    if (data.kind === 'ready') {
+      if (startedHealth) return;
+      remote = event.source;
+      remoteOrigin = event.origin;
+      startedHealth = true;
+      const localGeneration = generation;
+      verifyAutomatically(localGeneration);
+      return;
+    }
+    if (data.kind === 'result' && pending && data.id === pending.id &&
+        event.source === remote && event.origin === remoteOrigin) {
+      const current = pending;
+      pending = null;
+      clearTimeout(current.timer);
+      current.resolve(data);
+    }
+  });
 })();

@@ -1,25 +1,26 @@
-# 設備維修附件 V3.3 /dev 唯讀連線測試頁
+# V3.3 Google Drive 附件接收器：一鍵唯讀連線測試
 
-版本：2026-11-11。僅測試接收器跨視窗握手與 Google Drive 健康檢查。
+2026-11-11。已知測試接收器的 /dev 網址，由 ChatGPT 提供專用入口連結傳入參數 `receiver_dev`；**不會把公司 /dev 網址寫入公開 GitHub 原始碼**。
 
-## 測試方法
-1. 使用廠務室 Google 帳號在 Chrome 開啟 https://sianyu030.github.io/order_web/repair-drive-connection-test/ 。
-2. 將 Apps Script「部署 → 測試部署作業」得到的 `/dev` 網址貼入輸入框（不能填原正式 `/exec`）。
-3. 點「連接 V3.3 接收器」，讓它另開 Apps Script 視窗。畫面不需要再輸入員工識別碼、附件授權碼。
-4. 等待本頁出現「接收器已回應」，再按「確認 Drive 唯讀連線」。
-5. 成功應顯示「V3.3 接收器唯讀連線成功」。若逾時或出現權限錯誤，保留兩個視窗的畫面供排查。
+## 使用者操作
+1. 從專用連結開啟 `https://sianyu030.github.io/order_web/repair-drive-connection-test/?receiver_dev=<URL encoded /dev>`。
+2. 頁面自動填入並隱藏 /dev 測試網址，免複製貼上。
+3. **只按一次「開始連線測試」**。瀏覽器另開 Apps Script 測試視窗。由於 Chrome/Safari 的彈出視窗限制，這一步需要使用者實際點擊；不會未經點擊自動開啟。
+4. 接收到具握手 nonce、可信 Google Apps Script 網域的 `ready` 後，頁面自動呼叫 **唯一允許** 的 `health` → `drivePilotHealthcheck`，核對 `receiverVersion:3.3`。
+5. 結果自動顯示在原測試頁。若 Google 登入或視窗被擋，頁面會顯示錯誤並可重新點擊。
 
-## 必須知道
-- 此頁唯一可以送出的後端 RPC 為 `health` → `drivePilotHealthcheck`。
-- **本頁不會建立／刪除 MR 工單、不傳 LINE、不上傳任何照片影片、不操作 NAS。**
-- 此頁不能證明一般員工可以使用，Google Apps Script `/dev` 本身只有具專案編輯權限者可執行。
-- 原本「設備報修維修照片影片接收器」Apps Script 仍包含刪除功能；即使新版 V3.3 無員工登入，**也不能直接把這個舊專案改為「任何人」**，因為有效執行身分及公開 RPC 的安全隔離仍需審核。必須確認公司資安允許的部署方式。
-- 唯讀檢查通過不代表附件已存入 Drive，也不代表 PhotoAgent、NAS、LINE 已完成驗收。
-- 獨立測試頁更新不修改正式 `docs/repair-quick-v4-492/`、Apps Script、LINE 或 NAS。
+## 安全與範圍
+- 不建立／刪除 MR 工單，不傳任何 LINE，不上傳圖片／影片，不操作 NAS，也沒有員工附件授權碼表單。
+- 測試網址透過頁面查詢參數傳入，僅允許 `https://script.google.com/macros/s/<id>/dev`；不支援正式 `/exec`。
+- 此 `/dev` 測試只能由 Apps Script 專案編輯者使用，**不能代表全廠員工可使用**。
+- 真實跨視窗與 Google Drive 連線仍需管理員使用 Chrome 實際驗證，不可把離線模擬視為端到端通過。
+- 不修改 `docs/repair-quick-v4-492/` 正式報修網站，不修改現有 Apps Script 部署、LINE、NAS。
+- 同 Apps Script 專案仍存在工單刪除管理函式；不能僅依「V3.3 免員工登入」就將原專案開放匿名全員使用。須先完整審核 RPC 及部署風險。
 
-## 檢查項目
-- 禁用任何非 `/dev` 網址。
-- 使用密碼學隨機 UUID 作為一次握手識別碼。
-- 僅接受 `script.google.com`、`script.googleusercontent.com` 或 Google Apps Script 指定的 `*-script.googleusercontent.com` 傳入的訊息，且必須匹配握手識別碼。
-- UI 只傳送 `health` 讀取操作，不允許附件 `start`／`chunk`／`query`，不提供 MR 表單。
-- `receiverVersion` 必須是 `3.3`。
+## 技術
+- 頁面來源 `receiver_dev` 由瀏覽器 `URLSearchParams` 讀取，且只接受 Google `/dev`。
+- 透過使用者點擊同步 `window.open`，帶入一次性 `crypto.randomUUID()` nonce。
+- 僅處理合法 Google Apps Script 網域且 nonce 完全相符的 `ready` 與 `result`。
+- 收到 `ready` 後自動執行一次 health，避免重複 heartbeats。
+- 45 秒未收到結果視為失敗並提示，可重新開始。
+- 不儲存任何 OAuth 憑證、Google Drive Token 或其他個人授權碼。
