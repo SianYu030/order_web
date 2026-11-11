@@ -84,8 +84,9 @@
       if(!result || !result.ok || result.receiverVersion!==EXPECTED_RECEIVER_VERSION || result.testOnly!==false)
         throw new Error('Google 接收器版本或權限不符；照片及影片尚未上傳');
       verified=true;
-      connectionStatus('✅ V'+EXPECTED_RECEIVER_VERSION+' Google Drive 已連線；照片與影片實際上傳尚未驗收。',true);
-      if (TEST_MODE) { try { if(popup && !popup.closed)popup.close(); } catch(_){} }
+      // Keep the actual Apps Script RPC window alive: start/chunk/query for photos
+      // and videos run through this very same window after MR creation.
+      connectionStatus('✅ V'+EXPECTED_RECEIVER_VERSION+' Google Drive 已連線。附件傳輸期間請保持 Google 接收視窗開啟；照片與影片尚未實測。',true);
       return true;
     }).catch(err=>{
       verified=false;
@@ -182,6 +183,13 @@
   });
   function awaitReceiver(timeoutMs=15000) {
     if (!endpoint) return Promise.reject(new Error('Google Drive 接收器設定遺失，附件未上傳；工單與 LINE 狀態請看主畫面'));
+    // A successful healthcheck is not an upload session. The original popup
+    // must remain open until all subsequent start/chunk/query RPCs complete.
+    // If the user closed it, explicitly report the failure instead of timing out.
+    if (popup && popup.closed) {
+      remote=null;remoteOrigin='';verified=false;
+      return Promise.reject(new Error('Google 附件接收視窗已關閉；請在附件區重新連線後再上傳。'));
+    }
     if (remote) return Promise.resolve();
     return new Promise((resolve,reject) => {
       const started=Date.now();
@@ -352,35 +360,32 @@
   addConnectionBar('report');
   addConnectionBar('repair');
   if (TEST_MODE) {
-    // The diagnostic controls live inside the ORIGINAL equipment repair center.
-    // No separate Google Drive form; no MR or LINE actions from this button.
-    const main = document.querySelector('main.container');
-    const notice = main && main.querySelector('.notice');
-    if (main && notice) {
-      const panel = document.createElement('section');
-      panel.id = 'repairDriveV33TestPanel';
-      panel.style.cssText='background:#f6fbff;border:1px solid #9cbfd9;border-radius:12px;padding:12px;margin:8px 0 14px;line-height:1.5';
+    // Diagnostics are attached to the ORIGINAL photo area, never above the
+    // department selector. Normal report/repair screens stay untouched.
+    const issueCard = $('issueCard');
+    const photoActions=issueCard && issueCard.querySelector('.photo-actions');
+    if (issueCard && photoActions) {
+      const panel=document.createElement('div');
+      panel.id='repairDriveV33TestPanel';
+      panel.style.cssText='background:#f6fbff;border:1px solid #b5cfe0;border-radius:12px;padding:11px;margin:10px 0;line-height:1.5';
       const title=document.createElement('div');
-      title.textContent='☁️ 原報修系統｜V3.3 附件連線測試';
-      title.style.cssText='font-weight:800;margin-bottom:7px;color:#183e5b';
-      const caution=document.createElement('p');
-      caution.textContent='只按連線不會建立 MR 或發 LINE；原「送出報修工單」仍會寫入正式工單及依勾選發 LINE，請勿為了測連線而送出。';
-      caution.style.cssText='font-size:12px;color:#75500f;margin:4px 0 10px';
+      title.textContent='☁️ 附件接收連線（V3.3 測試）';
+      title.style.cssText='font-weight:800;color:#183e5b;margin-bottom:6px';
       const button=document.createElement('button');
       button.type='button';
       button.id='driveV33ConnectBtn';
-      button.textContent='連接 Google Drive V3.3';
-      button.style.cssText='border:0;border-radius:9px;background:#23608a;color:white;padding:11px 14px;font-size:14px;min-height:43px;font-weight:800';
-      button.disabled = !endpoint;
+      button.textContent='連接 Google Drive';
+      button.style.cssText='border:0;border-radius:9px;background:#23608a;color:white;padding:10px 13px;min-height:43px;font-size:14px;font-weight:800';
+      button.disabled=!endpoint;
       button.addEventListener('click',connectReceiver);
       const status=document.createElement('div');
       status.id='driveV33Status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
-      status.style.cssText='font-size:13px;margin-top:9px;color:#805024;overflow-wrap:anywhere';
+      status.style.cssText='font-size:12px;margin-top:8px;color:#805024';
       status.textContent=endpoint
-        ? '待連線。先測 V3.3 接收器，不需要另外填寫員工授權碼。'
-        : '缺少有效 Google Apps Script /dev 測試網址；連線功能未啟動。';
-      panel.append(title,caution,button,status);
-      notice.insertAdjacentElement('afterend',panel);
+        ? '測試時請先連接；連線成功後保持 Google 接收視窗開啟，附件才能繼續上傳。'
+        : '接收器 /dev 網址無效，未啟用附件連線。';
+      panel.append(title,button,status);
+      photoActions.insertAdjacentElement('beforebegin',panel);
     }
   }
   // The Google Drive state stays unobtrusive during normal report/repair use.
