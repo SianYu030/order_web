@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.0.2">
+  <link rel="stylesheet" href="./style.css?v=1.0.3">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.0.2" defer></script>
+  <script src="./app.js?v=1.0.3" defer></script>
 </head>
 <body>
 <div class="app">
@@ -38,7 +38,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，完成後顯示於原始月表。</p></div>
-        <span class="version">V1.0.2</span>
+        <span class="version">V1.0.3</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -93,6 +93,7 @@
           <div class="preview-row"><span>員工</span><strong id="summaryWho">請選擇員工</strong></div>
           <div class="preview-row"><span>內容</span><strong id="summaryKind">加班 3 小時</strong></div>
           <div class="preview-row"><span>對應位置</span><strong id="summaryCell">CE · 待確認列號</strong></div>
+          <div class="preview-row"><span>主管知會</span><strong>正式連線登記後列入待知悉清單</strong></div>
           <div class="preview-row"><span>便當規則</span><strong id="summaryLunch">一般日滿 3 小時</strong></div>
           <p class="helper small">便當由原試算表公式判定，網站不覆寫便當儲存格。</p>
         </section>
@@ -132,7 +133,8 @@
         <h3>來源試算表</h3>
         <div class="settings-meta"><span>原始文件</span><strong>2026-加班及請假時數登記表</strong></div>
         <a class="link" target="_blank" rel="noopener noreferrer" href="https://docs.google.com/spreadsheets/d/1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM/edit#gid=426152451">開啟原始 Google 試算表 ↗</a>
-        <p class="helper">只修改所選員工與日期的加班時數及同格註解。不調整公式、原有欄位與便當資料。</p>
+        <p class="helper">正式同步成功後會在「業務假日或臨時加班登記」建立待主管知悉紀錄。這是站內／試算表清單，不會自動發送 LINE、Email，也不代表主管已讀。</p>
+        <a class="link" target="_blank" rel="noopener noreferrer" href="https://docs.google.com/spreadsheets/d/1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM/edit#gid=1695366034">開啟主管待知悉清單 ↗</a>
       </section>
       <section class="panel">
         <h3>展示資料</h3>
@@ -142,7 +144,7 @@
     </section>
   </main>
 
-  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.0.2</footer>
+  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.0.3</footer>
 </div>
 
 <dialog id="confirmDialog">

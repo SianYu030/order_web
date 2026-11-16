@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.0.2 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.0.3 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -7,6 +7,9 @@
   var SPREADSHEET_ID = "1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM";
   var BASE = "https://sheets.googleapis.com/v4/spreadsheets/" + SPREADSHEET_ID;
   var MASTER = "系統櫃人員主檔（新版）";
+  var REGISTER_SHEET = "業務假日或臨時加班登記";
+  var REGISTER_SHEET_ID = 1399193095;
+  var SUPERVISOR_SHEET_ID = 1695366034;
   var CLIENT_KEY = "overtime:oauth-client-id:v1";
   var DEMO_KEY = "overtime:demo-records:v1";
   var COMMENT_TAG = "\n\n［加班登記網站］";
@@ -363,6 +366,82 @@
       }
     };
   }
+
+  // 主管知會中繼點：本次月表寫入成功且註解已驗證後，更新同一份文件內的業務登記紀錄。
+  // 此清單是「知悉」不是「核准」，不會延遲原月表的加班登記，也不自動送 LINE 或 Email。
+  function supervisorRecordId(entry) {
+    return "BUS-" + entry.date.replace(/-/g, "") + "-" + entry.department + "-" + entry.id;
+  }
+  function sheetsDateNumber(p) {
+    return (Date.UTC(p.y, p.m - 1, p.d) - Date.UTC(1899, 11, 30)) / 86400000;
+  }
+  function taiwanDateTimeNumber() {
+    var dt = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Taipei", hour12: false,
+      year: "numeric", month: "numeric", day: "numeric",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+    }).formatToParts(new Date());
+    var v = {};
+    dt.forEach(function (p) { v[p.type] = Number(p.value); });
+    return (Date.UTC(v.year, v.month - 1, v.day, v.hour % 24, v.minute, v.second) -
+      Date.UTC(1899, 11, 30)) / 86400000;
+  }
+  function cellValue(value) {
+    return { userEnteredValue: typeof value === "number" ? { numberValue: value } : { stringValue: String(value) } };
+  }
+  function buildSupervisorRecord(entry, ctx, previous, now) {
+    var existing = previous || [];
+    var originalCreated = existing[12] ? existing[12] : now;
+    return [
+      supervisorRecordId(entry), sheetsDateNumber(entry.p), entry.p.y, entry.p.m,
+      entry.department, entry.id, entry.person.name, entry.hours, entry.reason,
+      "已同步", ctx.sheetName, ctx.range, originalCreated, now, "GitHub 網站",
+      "待主管知悉", "", ""
+    ];
+  }
+  async function syncSupervisorInbox(entry, ctx) {
+    var meta = state.metadata && state.metadata.find(function (s) {
+      return s.properties && s.properties.sheetId === REGISTER_SHEET_ID &&
+        s.properties.title === REGISTER_SHEET;
+    });
+    if (!meta) throw Error("缺少業務登記中繼分頁，無法讓主管查看。");
+    if (!state.metadata.some(function (s) {
+      return s.properties && s.properties.sheetId === SUPERVISOR_SHEET_ID;
+    })) throw Error("缺少主管待知悉清單，無法完成知會紀錄。");
+
+    var all = await getValues(REGISTER_SHEET, "A2:R1500", true);
+    var id = supervisorRecordId(entry);
+    var matches = [];
+    all.forEach(function (row, i) { if (String(row[0] || "") === id) matches.push({ row: row, index: i + 1 }); });
+    if (matches.length > 1) throw Error("主管中繼資料發生重複登記ID，已停止寫入，請管理員檢查。");
+    var found = matches[0], old = found ? found.row : [];
+    var unchanged = !!found &&
+      Number(old[7]) === entry.hours &&
+      String(old[8] || "") === entry.reason &&
+      String(old[10] || "") === ctx.sheetName &&
+      String(old[11] || "") === ctx.range;
+    if (unchanged) return "unchanged";
+    var now = taiwanDateTimeNumber();
+    var data = buildSupervisorRecord(entry, ctx, old, now);
+    var rows = [{ values: data.map(cellValue) }];
+    var request = found ?
+      { updateCells: {
+          start: { sheetId: REGISTER_SHEET_ID, rowIndex: found.index, columnIndex: 0 },
+          rows: rows, fields: "userEnteredValue"
+        } } :
+      { appendCells: { sheetId: REGISTER_SHEET_ID, rows: rows, fields: "userEnteredValue" } };
+    await api(BASE + ":batchUpdate", "POST", { requests: [request] });
+    var verify = await getValues(REGISTER_SHEET, "A2:R1500", true);
+    var checked = verify.filter(function (r) { return String(r[0] || "") === id; });
+    if (checked.length !== 1 ||
+      Number(checked[0][7]) !== entry.hours ||
+      String(checked[0][8] || "") !== entry.reason ||
+      String(checked[0][15] || "") !== "待主管知悉") {
+      throw Error("主管中繼紀錄寫入後讀回不一致，請勿重複登記。");
+    }
+    return "pending";
+  }
+
   function confirmAction(text) {
     return new Promise(function (resolve) {
       var dlg = $("confirmDialog");
@@ -424,9 +503,18 @@
         });
         if (!foundNote) throw Error("加班時數已寫入，但註解尚未讀回驗證，請到原試算表確認。");
       }
+      // 原月表已成功同步。主管中繼紀錄採另一筆獨立寫入，失敗須明確回報部分成功。
+      var inboxResult;
+      try {
+        inboxResult = await syncSupervisorInbox(entry, ctx);
+      } catch (inboxError) {
+        throw Error("原月表加班時數與註解已寫入，但主管中繼清單未確認成功：" +
+          inboxError.message + "。請開啟工作表核對，不要重複送出。");
+      }
       message("正式同步成功：" + dateString(entry.p) + " " + entry.person.name + " " +
-        entry.kind + " " + formatHours(entry.hours) + "，時數" +
-        (needsComment ? "及註解" : "") + "已讀回核對。", "success");
+        entry.kind + " " + formatHours(entry.hours) +
+        "；主管待知悉清單" + (inboxResult === "unchanged" ? "保留原狀態。" : "已新增待知悉紀錄。") +
+        "需由主管開啟清單查看，尚未自動發送訊息。", "success");
       state.editKey = "";
     } catch (e) {
       message(e.message + (hasGoogle() ? " 原始資料未被本網站刪除；若訊息提到部分寫入，請先核對表格。" : ""), "error");
