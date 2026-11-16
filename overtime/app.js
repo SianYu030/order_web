@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.0.3 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.0 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -9,12 +9,16 @@
   var MASTER = "系統櫃人員主檔（新版）";
   var REGISTER_SHEET = "業務假日或臨時加班登記";
   var REGISTER_SHEET_ID = 1399193095;
-  var SUPERVISOR_SHEET_ID = 1695366034;
+  var MONTH_VIEW_ID = 2131065558;
+  // 正式主管帳號尚未經使用者指定。空清單代表核准功能鎖定。
+  // 前端白名單只能防一般誤操作，正式上線必須使用可驗證權限的後端處理核准。
+  var APPROVER_EMAILS = [];
+  var approvalId = new URLSearchParams(window.location.search).get("approve") || "";
   var CLIENT_KEY = "overtime:oauth-client-id:v1";
   var DEMO_KEY = "overtime:demo-records:v1";
   var COMMENT_TAG = "\n\n［加班登記網站］";
   var DEPT_SUFFIX = { "E3": "E3", "E4": "E4", "W8": "w8", "W8整修": "w8整修股", "E5": "E5機修課" };
-  var DEPT_LABEL = { "E3": "E3 門板", "E4": "E4 櫃體", "W8": "W8", "W8整修": "W8 整修股", "E5": "E5／機修課／業務／內勤" };
+  var DEPT_LABEL = { "E3": "E3 門板", "E4": "E4 櫃體", "W8": "W8", "W8整修": "W8 整修股", "E5": "E5 業務" };
   var KINDS = { "加班": 1 }; // 原月表每日五欄，固定使用第 2 欄「加班」；不修改支援或班別
   var WEEKDAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
   var state = {
@@ -35,7 +39,7 @@
     $("submitBtn").disabled = isBusy;
     $("connectBtn").disabled = isBusy;
     $("refreshHistory").disabled = isBusy;
-    $("submitBtn").textContent = isBusy ? "處理中，請勿重複送出…" : (state.token ? "確認並同步試算表" : "儲存展示登記");
+    $("submitBtn").textContent = isBusy ? "處理中，請勿重複送出…" : (state.token ? "送出加班申請（待核准）" : "儲存展示申請");
   }
   function hasGoogle() { return !!state.token; }
   function pad(n) { return String(n).padStart(2, "0"); }
@@ -81,12 +85,12 @@
       { id: "D002", name: "示範員工 B", company: "展示", unit: "E4", detail: "展示用" },
       { id: "D003", name: "示範員工 C", company: "展示", unit: "W8", detail: "展示用" },
       { id: "D004", name: "示範員工 D", company: "展示", unit: "W8整修", detail: "展示用" },
-      { id: "D005", name: "示範員工 E", company: "展示", unit: "內勤", detail: "展示用" }
+      { id: "D005", name: "示範業務員", company: "展示", unit: "內勤", detail: "業務" }
     ];
   }
   function belongsToDept(person, dept) {
-    if (dept === "E5") return ["五金備料", "機修課", "內勤"].includes(person.unit);
-    return person.unit === dept;
+    if (dept === "E5") return person.unit === "內勤" && person.detail === "業務";
+    return false;
   }
   function selectOption(select, value, label) {
     var option = document.createElement("option");
@@ -124,8 +128,8 @@
     });
     if (selected.some(function (p) { return p.id === currentId; })) field.value = currentId;
     $("rosterText").textContent = hasGoogle() ?
-      "已讀取 Google 試算表主檔的在職名單，使用完整工號比對。" :
-      "目前為虛構測試名單，不會在公開網站載入真實員工資料。";
+      "已從人員主檔讀取在職業務人員，以完整工號比對。" :
+      "目前為虛構測試名單，正式登入後只讀取業務人員資料。";
     updatePreview();
   }
   function chosenPerson() {
@@ -136,11 +140,11 @@
     $("connectionStatus").textContent = online ? "Google 已連線" : "展示模式";
     $("connectionStatus").className = "pill status-pill" + (online ? " connected" : "");
     $("modeNotice").textContent = online ?
-      "已授權使用 Google 試算表。送出後會直接修改現有月份表格，請再次核對日期、人員與時數。" :
+      "已登入 Google。送出只會建立「待核准」紀錄，不會修改 E5 原月表。" :
       "目前為展示模式，填寫內容只儲存在這台裝置，不會寫入公司試算表。需在「設定」完成 Google OAuth 授權才能正式同步。";
     $("modeNotice").className = online ? "notice" : "notice warning";
     $("submitHint").textContent = online ?
-      "正式同步模式：提交前會確認舊值，寫入後再讀回檢查。" :
+      "送出申請後，先顯示於業務加班月檢視；主管核准前不寫入 E5 月表。" :
       "展示資料只會儲存在本機，不會傳送至 Google。";
     $("settingsState").textContent = online ? "連線有效。資料存取取決於目前 Google 帳號的試算表權限。" : "尚未連接 Google。";
     setBusy(false);
@@ -367,8 +371,7 @@
     };
   }
 
-  // 主管知會中繼點：本次月表寫入成功且註解已驗證後，更新同一份文件內的業務登記紀錄。
-  // 此清單是「知悉」不是「核准」，不會延遲原月表的加班登記，也不自動送 LINE 或 Email。
+  // 申請資料先存入隱藏來源表，原 E5 月表在主管核准前完全不寫。
   function supervisorRecordId(entry) {
     return "BUS-" + entry.date.replace(/-/g, "") + "-" + entry.department + "-" + entry.id;
   }
@@ -376,70 +379,170 @@
     return (Date.UTC(p.y, p.m - 1, p.d) - Date.UTC(1899, 11, 30)) / 86400000;
   }
   function taiwanDateTimeNumber() {
-    var dt = new Intl.DateTimeFormat("en-US", {
-      timeZone: "Asia/Taipei", hour12: false,
-      year: "numeric", month: "numeric", day: "numeric",
-      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+    var parts = new Intl.DateTimeFormat("en-US", { timeZone:"Asia/Taipei",
+      year:"numeric",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false
     }).formatToParts(new Date());
-    var v = {};
-    dt.forEach(function (p) { v[p.type] = Number(p.value); });
-    return (Date.UTC(v.year, v.month - 1, v.day, v.hour % 24, v.minute, v.second) -
-      Date.UTC(1899, 11, 30)) / 86400000;
+    var x = {};
+    parts.forEach(function (a) { x[a.type] = Number(a.value); });
+    return (Date.UTC(x.year,x.month-1,x.day,x.hour%24,x.minute,x.second) - Date.UTC(1899,11,30))/86400000;
   }
-  function cellValue(value) {
-    return { userEnteredValue: typeof value === "number" ? { numberValue: value } : { stringValue: String(value) } };
+  function cellValue(v) {
+    return { userEnteredValue:typeof v==="number" ? {numberValue:v} : {stringValue:String(v)} };
   }
-  function buildSupervisorRecord(entry, ctx, previous, now) {
-    var existing = previous || [];
-    var originalCreated = existing[12] ? existing[12] : now;
-    return [
-      supervisorRecordId(entry), sheetsDateNumber(entry.p), entry.p.y, entry.p.m,
-      entry.department, entry.id, entry.person.name, entry.hours, entry.reason,
-      "已同步", ctx.sheetName, ctx.range, originalCreated, now, "GitHub 網站",
-      "待主管知悉", "", ""
-    ];
+  function buildPendingRecord(entry,ctx,existing,now) {
+    var old=existing||[],created=old[12]||now;
+    return [supervisorRecordId(entry),sheetsDateNumber(entry.p),entry.p.y,entry.p.m,
+      "E5",entry.id,entry.person.name,entry.hours,entry.reason,
+      "待核准",ctx.sheetName,ctx.range,created,now,"GitHub 網站","待核准","",""];
   }
-  async function syncSupervisorInbox(entry, ctx) {
-    var meta = state.metadata && state.metadata.find(function (s) {
-      return s.properties && s.properties.sheetId === REGISTER_SHEET_ID &&
-        s.properties.title === REGISTER_SHEET;
+  async function getPendingById(id) {
+    if (!/^BUS-[0-9]{8}-E5-[A-Za-z0-9]+$/.test(id)) throw Error("申請編號格式不正確。");
+    var records=await getValues(REGISTER_SHEET,"A2:R1500",true);
+    var matches=[];
+    records.forEach(function(r,i){if(String(r[0]||"")===id)matches.push({row:r,rowIndex:i+1});});
+    if(matches.length>1)throw Error("此申請ID有重複資料，已阻止核准。");
+    return matches[0]||null;
+  }
+  async function savePendingRequest(entry,ctx) {
+    if (!state.metadata || !state.metadata.some(function(x) {
+      return x.properties && x.properties.sheetId===REGISTER_SHEET_ID && x.properties.title===REGISTER_SHEET;
+    })) throw Error("找不到業務登記來源分頁。");
+    var id=supervisorRecordId(entry), prior=await getPendingById(id);
+    if(prior && prior.row[15]!=="待核准") throw Error("此申請已不是待核准，禁止自行修改；請聯繫主管。");
+    var now=taiwanDateTimeNumber(),row=buildPendingRecord(entry,ctx,prior&&prior.row,now);
+    var request=prior ? {updateCells:{
+      start:{sheetId:REGISTER_SHEET_ID,rowIndex:prior.rowIndex,columnIndex:0},
+      rows:[{values:row.map(cellValue)}],fields:"userEnteredValue"
+    }} : {appendCells:{sheetId:REGISTER_SHEET_ID,rows:[{values:row.map(cellValue)}],fields:"userEnteredValue"}};
+    await api(BASE+":batchUpdate","POST",{requests:[request]});
+    var check=await getPendingById(id);
+    if(!check || String(check.row[6])!==entry.person.name || Number(check.row[7])!==entry.hours ||
+      String(check.row[8])!==entry.reason || String(check.row[15])!=="待核准")
+      throw Error("申請紀錄寫入後驗證失敗，請勿重複送出。");
+    return prior?"updated":"created";
+  }
+  async function googleIdentity() {
+    var response=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{
+      headers:{Authorization:"Bearer "+state.token},cache:"no-store"
     });
-    if (!meta) throw Error("缺少業務登記中繼分頁，無法讓主管查看。");
-    if (!state.metadata.some(function (s) {
-      return s.properties && s.properties.sheetId === SUPERVISOR_SHEET_ID;
-    })) throw Error("缺少主管待知悉清單，無法完成知會紀錄。");
-
-    var all = await getValues(REGISTER_SHEET, "A2:R1500", true);
-    var id = supervisorRecordId(entry);
-    var matches = [];
-    all.forEach(function (row, i) { if (String(row[0] || "") === id) matches.push({ row: row, index: i + 1 }); });
-    if (matches.length > 1) throw Error("主管中繼資料發生重複登記ID，已停止寫入，請管理員檢查。");
-    var found = matches[0], old = found ? found.row : [];
-    var unchanged = !!found &&
-      Number(old[7]) === entry.hours &&
-      String(old[8] || "") === entry.reason &&
-      String(old[10] || "") === ctx.sheetName &&
-      String(old[11] || "") === ctx.range;
-    if (unchanged) return "unchanged";
-    var now = taiwanDateTimeNumber();
-    var data = buildSupervisorRecord(entry, ctx, old, now);
-    var rows = [{ values: data.map(cellValue) }];
-    var request = found ?
-      { updateCells: {
-          start: { sheetId: REGISTER_SHEET_ID, rowIndex: found.index, columnIndex: 0 },
-          rows: rows, fields: "userEnteredValue"
-        } } :
-      { appendCells: { sheetId: REGISTER_SHEET_ID, rows: rows, fields: "userEnteredValue" } };
-    await api(BASE + ":batchUpdate", "POST", { requests: [request] });
-    var verify = await getValues(REGISTER_SHEET, "A2:R1500", true);
-    var checked = verify.filter(function (r) { return String(r[0] || "") === id; });
-    if (checked.length !== 1 ||
-      Number(checked[0][7]) !== entry.hours ||
-      String(checked[0][8] || "") !== entry.reason ||
-      String(checked[0][15] || "") !== "待主管知悉") {
-      throw Error("主管中繼紀錄寫入後讀回不一致，請勿重複登記。");
+    if(!response.ok)throw Error("無法驗證 Google 登入身分，請重新登入。");
+    var data=await response.json();
+    if(!data.email || data.email_verified!==true)throw Error("Google 帳號信箱尚未驗證。");
+    return data.email.toLowerCase();
+  }
+  function fillApprovalSummary(r) {
+    var p=serialToDate(r[1]);
+    if(!p)throw Error("來源申請日期無法辨識。");
+    $("approvalDate").textContent=dateString(p);
+    $("approvalEmployee").textContent=String(r[6]||"")+"（"+String(r[5]||"")+"）";
+    $("approvalHours").textContent=formatHours(r[7]);
+    $("approvalReason").textContent=String(r[8]||"");
+    $("approvalStatus").textContent=String(r[15]||"未知");
+  }
+  async function loadApprovalRequest() {
+    switchView("approval");
+    $("approveBtn").disabled=true;
+    if(!hasGoogle()){
+      $("approvalState").textContent="請先到「設定」使用 Google 帳號登入，才能檢視主管核准申請。";
+      return;
     }
-    return "pending";
+    try {
+      var found=await getPendingById(approvalId);
+      if(!found)throw Error("查無此筆申請，請重新開啟工作表的核准連結。");
+      fillApprovalSummary(found.row);
+      if(found.row[15]!=="待核准"){
+        $("approvalState").textContent="這筆申請目前為「"+found.row[15]+"」，不可重複核准。";return;
+      }
+      if(APPROVER_EMAILS.length===0){
+        $("approvalState").textContent="主管授權尚未設定。已完成待核准檢視，正式核准仍鎖定，避免一般員工擅自寫入 E5 月表。";return;
+      }
+      var email=await googleIdentity();
+      if(!APPROVER_EMAILS.includes(email))throw Error("目前登入帳號不是授權主管。");
+      $("approvalState").textContent="授權主管："+email+"。請確認日期、工號、時數及原因後核准。";
+      $("approveBtn").disabled=false;
+    } catch(e){$("approvalState").textContent="無法核准："+e.message;}
+  }
+  async function locateApprovedCell(row) {
+    var p=serialToDate(row[1]),id=String(row[5]||"");
+    if(!p || p.y!==Number(row[2]) || p.m!==Number(row[3]))
+      throw Error("申請日期／年份／月份不一致。");
+    if(String(row[4])!=="E5")throw Error("申請不是 E5 業務。");
+    var person=state.roster.find(function(x){
+      return x.id===id && x.name===String(row[6]) && x.detail==="業務" && x.unit==="內勤";
+    });
+    if(!person)throw Error("原始人員主檔中的業務工號／姓名不一致。");
+    var shName=p.m+"月份E5機修課";
+    var sheet=(state.metadata||[]).find(function(x){return x.properties&&x.properties.title===shName;});
+    if(!sheet || sheet.properties.hidden)throw Error("對應 E5 月表不存在或已封存。");
+    var days=await getValues(shName,"G1:"+a1Col(colIndex(p.d,"加班"))+"1",true);
+    var serial=days[0]||[];
+    if(!matchesDate(serial[0],{y:p.y,m:p.m,d:1})||
+       !matchesDate(serial[5*(p.d-1)],p))
+      throw Error("月表的真正日期與申請不同，已阻止誤寫。");
+    var rows=await getValues(shName,"C8:D180",false);
+    var found=[];
+    rows.forEach(function(x,i){if(String(x[0]||"")===id && String(x[1]||"")===person.name)found.push(i+8);});
+    if(found.length!==1)throw Error("月表中的工號／姓名比對不是唯一。");
+    var column=colIndex(p.d,"加班"),range=a1Col(column)+found[0];
+    return {sheetId:sheet.properties.sheetId,sheetName:shName,row:found[0],rowIndex:found[0]-1,col:column,range:range};
+  }
+  async function approvePending() {
+    if(state.busy || !approvalId || !hasGoogle())return;
+    setBusy(true);
+    $("approveBtn").disabled=true;
+    try{
+      if(!APPROVER_EMAILS.length)throw Error("沒有設定授權主管帳號，核准功能維持鎖定。");
+      var email=await googleIdentity();
+      if(!APPROVER_EMAILS.includes(email))throw Error("目前登入者不是授權主管。");
+      var item=await getPendingById(approvalId);
+      if(!item || String(item.row[15])!=="待核准")throw Error("這筆申請已經核准或不存在，請勿重複送出。");
+      var row=item.row,ctx=await locateApprovedCell(row);
+      var hours=Number(row[7]),reason=String(row[8]||"").trim();
+      if(!(hours>=0.5&&hours<=24&&Math.round(hours*2)===hours*2)||!reason)
+        throw Error("申請時數或原因不完整。");
+      var before=await getValues(ctx.sheetName,ctx.range,true);
+      var previous=before[0]&&before[0][0];
+      if(previous!=="" && previous!==undefined && previous!==null && Number(previous)!==0)
+        throw Error("原 E5 月表「"+ctx.range+"」已有 "+previous+" 小時，為防覆蓋已停止核准。");
+      var comments=await getCommentsAt(ctx);
+      if(comments.some(function(x){return x.headPost&&isOurComment(x.headPost.content);}))
+        throw Error("此格已經有網站建立的註解，請人工核對避免重複。");
+      var okay=await confirmAction("主管核准後將正式寫入：\n"+ctx.sheetName+"!"+ctx.range+
+        "\n姓名："+row[6]+"\n工號："+row[5]+"\n時數："+hours+" 小時\n原因："+reason+
+        "\n是否確認？");
+      if(!okay)return;
+      // 再讀回待核准，避免重複點擊或在確認畫面期間已被他人處理。
+      var check=await getPendingById(approvalId);
+      if(!check || check.row[15]!=="待核准" ||
+        Number(check.row[7])!==hours || String(check.row[8])!==reason)
+        throw Error("申請內容在確認期間已變更，請重新開啟核准頁面。");
+      var answer=await api(BASE+":batchUpdate","POST",{requests:[
+        updateCellRequest(ctx,ctx.col,hours),
+        {insertComment:{content:commentContent(reason),coordinate:{sheetId:ctx.sheetId,rowIndex:ctx.rowIndex,columnIndex:ctx.col}}}
+      ]});
+      var actual=await getValues(ctx.sheetName,ctx.range,true);
+      if(Number(actual[0]&&actual[0][0])!==hours)throw Error("E5 月表寫入未通過核對。");
+      if(answer.commentUpdateState && answer.commentUpdateState!=="ALL_SAVED")
+        throw Error("E5 時數可能已寫入，但註解 API 回報 "+answer.commentUpdateState+"；請人工核對。");
+      var fresh=await getCommentsAt(ctx);
+      if(!fresh.some(function(c){return c.headPost&&c.headPost.content===commentContent(reason);}))
+        throw Error("E5 時數已寫入，但尚未驗證註解成功；不得標記為已核准。");
+      var now=taiwanDateTimeNumber(),index=check.rowIndex;
+      await api(BASE+":batchUpdate","POST",{requests:[
+        {updateCells:{start:{sheetId:REGISTER_SHEET_ID,rowIndex:index,columnIndex:9},
+          rows:[{values:["已同步",ctx.sheetName,ctx.range].map(cellValue)}],fields:"userEnteredValue"}},
+        {updateCells:{start:{sheetId:REGISTER_SHEET_ID,rowIndex:index,columnIndex:15},
+          rows:[{values:["已核准",email,now].map(cellValue)}],fields:"userEnteredValue"}}
+      ]});
+      var final=await getPendingById(approvalId);
+      if(!final||final.row[15]!=="已核准")throw Error("時數與註解已完成，但核准狀態尚未核對。");
+      fillApprovalSummary(final.row);
+      $("approvalState").textContent="核准完成：已確認寫入 "+ctx.sheetName+"!"+ctx.range+" 並建立加班註解。";
+      message("主管核准完成，E5 月表時數及註解已讀回核對。","success");
+    }catch(e){
+      $("approvalState").textContent="核准未完成："+e.message+
+        "。若已出現部分寫入，請先查核 E5 月表，禁止直接重複核准。";
+    }finally{setBusy(false);$("approveBtn").disabled=true;}
   }
 
   function confirmAction(text) {
@@ -467,54 +570,19 @@
           "\n" + entry.kind + " " + formatHours(entry.hours) + "\n原因：" + (entry.reason || "未填"));
         if (!yes) return;
         saveDemoRecord(entry);
-        message("展示紀錄已儲存在本機。這不是正式加班登記，也未寫入 Google。", "success");
+        message("展示申請已儲存在本機，不會寫入月檢視或 E5 月表。", "success");
         state.editKey = "";
         return;
       }
-      var ctx = await ensureMonth(entry);
-      var oldRows = await getValues(ctx.sheetName, ctx.range, true);
-      var oldValue = oldRows[0] && oldRows[0][0];
-      var existingComments = await getCommentsAt(ctx);
-      var current = findOurComment(existingComments);
-      var oldReason = current ? reasonFromComment(current.post.content) : "";
-      var conflict = oldValue !== undefined && oldValue !== "" ? "\n注意：原格已填 " + oldValue + " 小時，本次會更新該格。" : "";
-      var yesOnline = await confirmAction(
-        "將寫入正式 Google 試算表：\n" + dateString(entry.p) + " · " + entry.person.name +
-        "\n" + entry.kind + " " + formatHours(entry.hours) +
-        "\n原因：" + (entry.reason || "未填") +
-        "\n位置：" + ctx.sheetName + "!" + ctx.range +
-        (oldReason ? "\n原網站備註：" + oldReason : "") + conflict
-      );
-      if (!yesOnline) return;
-      // 班別不由此網站管理；僅更新選定員工與日期的加班時數。
-      var requests = [updateCellRequest(ctx, ctx.col, entry.hours)];
-      var needsComment = !!entry.reason || !!current;
-      if (needsComment) requests.push(commentRequest(entry.reason, existingComments, ctx));
-      var resp = await api(BASE + ":batchUpdate", "POST", { requests: requests });
-      var resultValues = await getValues(ctx.sheetName, ctx.range, true);
-      var actualHours = numberOrNull(resultValues[0] && resultValues[0][0]);
-      if (actualHours !== entry.hours) throw Error("Google 已回應，但讀回時數不同。請先開啟試算表確認，不要重複送出。");
-      if (needsComment) {
-        if (resp.commentUpdateState === "ALL_FAILED_UNKNOWN_REASON") throw Error("加班時數已寫入，但 Google 回報註解儲存失敗，請勿直接重複送出。");
-        var freshComments = await getCommentsAt(ctx);
-        var foundNote = freshComments.some(function (c) {
-          if (c.headPost && c.headPost.content === commentContent(entry.reason)) return true;
-          return (c.replies || []).some(function (r) { return r.content === commentContent(entry.reason); });
-        });
-        if (!foundNote) throw Error("加班時數已寫入，但註解尚未讀回驗證，請到原試算表確認。");
-      }
-      // 原月表已成功同步。主管中繼紀錄採另一筆獨立寫入，失敗須明確回報部分成功。
-      var inboxResult;
-      try {
-        inboxResult = await syncSupervisorInbox(entry, ctx);
-      } catch (inboxError) {
-        throw Error("原月表加班時數與註解已寫入，但主管中繼清單未確認成功：" +
-          inboxError.message + "。請開啟工作表核對，不要重複送出。");
-      }
-      message("正式同步成功：" + dateString(entry.p) + " " + entry.person.name + " " +
-        entry.kind + " " + formatHours(entry.hours) +
-        "；主管待知悉清單" + (inboxResult === "unchanged" ? "保留原狀態。" : "已新增待知悉紀錄。") +
-        "需由主管開啟清單查看，尚未自動發送訊息。", "success");
+      // 正式申請只能建立待核准資料；這裡不可寫入 E5 月表或註解。
+      var ctx=await ensureMonth(entry);
+      var yesOnline=await confirmAction("送出加班申請：\n"+
+        dateString(entry.p)+" · "+entry.person.name+"\n"+formatHours(entry.hours)+
+        "\n原因："+entry.reason+"\n主管核准前，不會寫入 E5 月表。");
+      if(!yesOnline)return;
+      var outcome=await savePendingRequest(entry,ctx);
+      message("申請已"+(outcome==="created"?"建立":"更新")+"，狀態「待核准」。"+
+        "主管可在業務加班月檢視查看，尚未寫入 E5 月表。","success");
       state.editKey = "";
     } catch (e) {
       message(e.message + (hasGoogle() ? " 原始資料未被本網站刪除；若訊息提到部分寫入，請先核對表格。" : ""), "error");
@@ -540,11 +608,12 @@
       var heading = document.createElement("strong");
       heading.textContent = entry.date.replace(/-/g, "/") + "  " + entry.kind + " " + formatHours(entry.hours);
       var detail = document.createElement("small");
-      detail.textContent = entry.reason ? entry.reason : (online ? "註解點編輯後讀取" : "未填備註");
+      detail.textContent = (entry.status ? "【"+entry.status+"】 " : "")+(entry.reason||"未填原因");
       left.append(heading, detail);
       var btn = document.createElement("button");
       btn.type = "button";
-      btn.textContent = "編輯";
+      btn.textContent = entry.status==="已核准"?"已核准":"編輯";
+      btn.disabled = entry.status==="已核准";
       btn.addEventListener("click", function () { editFromHistory(entry, online); });
       card.append(left, btn);
       list.appendChild(card);
@@ -566,23 +635,15 @@
     }
     $("historyList").textContent = "正在讀取 Google 試算表紀錄…";
     try {
-      await ensureReadMonth();
-      var row = state.month.employeeRows.get(person.id);
-      if (!row) throw Error("月份表找不到此員工工號。");
-      var days = new Date(p.y, p.m, 0).getDate();
-      var raw = await getValues(state.month.sheetName, "G" + row + ":" + a1Col(6 + days * 5 - 1) + row, false);
-      var cells = raw[0] || [], records2 = [];
-      for (var d = 1; d <= days; d++) {
-        var offset = (d - 1) * 5;
-        var hours = numberOrNull(cells[offset + KINDS["加班"]]);
-        if (hours !== null && hours > 0) {
-          records2.push({
-            p: { y: p.y, m: p.m, d: d }, date: String(p.y) + "-" + pad(p.m) + "-" + pad(d),
-            id: person.id, department: $("department").value, kind: "加班", hours: hours, reason: ""
-          });
-        }
-      }
-      records2.sort(function (a, b) { return b.date.localeCompare(a.date); });
+      var all=await getValues(REGISTER_SHEET,"A2:R1500",true);
+      var records2=all.filter(function(r){
+        var d=serialToDate(r[1]);
+        return r[5]===person.id && d && d.y===p.y && d.m===p.m;
+      }).map(function(r){
+        var date=serialToDate(r[1]);
+        return {p:date,date:isoString(date),id:person.id,department:"E5",
+          kind:"加班",hours:Number(r[7]),reason:String(r[8]||""),status:String(r[15]||"待核准")};
+      }).sort(function(a,b){return b.date.localeCompare(a.date);});
       renderHistoryItems(records2, true);
     } catch (e) { $("historyList").textContent = "查詢失敗：" + e.message; }
   }
@@ -591,17 +652,11 @@
     if (!state.month) throw Error("沒有可查詢的月份表。");
   }
   async function editFromHistory(entry, online) {
+    if (online && entry.status!=="待核准") { message("此筆已完成核准，無法直接修改。","warning"); return; }
     $("day").value = String(Number(entry.date.slice(-2)));
     $("hours").value = String(entry.hours);
     $("reason").value = entry.reason || "";
-    if (online) {
-      try {
-        await ensureReadMonth();
-        var ctx = makeCellContext({ p: dateParts(), id: entry.id, kind: entry.kind });
-        var comments = await getCommentsAt(ctx), found = findOurComment(comments);
-        $("reason").value = found ? reasonFromComment(found.post.content) : "";
-      } catch (e) { message("註解讀取失敗：" + e.message, "warning"); }
-    }
+    // 待核准申請的原因直接來自申請來源表，不讀取 E5 月表註解。
     state.editKey = entry.date + "|" + entry.kind + "|" + entry.id;
     updatePreview();
     switchView("entry");
@@ -620,7 +675,7 @@
     localStorage.setItem(CLIENT_KEY, clientId);
     clearMessage();
     state.tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: clientId, scope: "https://www.googleapis.com/auth/spreadsheets",
+      client_id: clientId, scope: "openid email https://www.googleapis.com/auth/spreadsheets",
       callback: async function (response) {
         if (!response || !response.access_token) {
           message("Google 登入失敗：" + (response && response.error || "未取得授權"), "error");
@@ -632,7 +687,7 @@
         try {
           await loadConnectionData();
           switchView("entry");
-          if (state.month) message("Google 試算表已連線，月份及工號定位成功。", "success");
+          if (state.month) message("Google 已連線，業務申請只會進入待核准清單。", "success");
           else message("Google 已授權，但目前所選月份或廠別尚未完成對應；此狀態無法寫入。請檢查日期後再試。", "warning");
         } catch (e) {
           // 尚未成功讀到名冊前，不應讓畫面看起來可以正式寫入。
@@ -696,5 +751,12 @@
     updateMode();
     updatePreview();
   }
+  // 來源表的「主管核准」連結導向這個審核頁。
+  var originalInit=init;
+  init=function(){
+    originalInit();
+    $("approveBtn").addEventListener("click",approvePending);
+    if(approvalId)loadApprovalRequest();
+  };
   document.addEventListener("DOMContentLoaded", init);
 })();
