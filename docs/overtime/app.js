@@ -1,4 +1,4 @@
-/* 加班／請假登記 V1.0.0 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.0.1 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -12,7 +12,7 @@
   var COMMENT_TAG = "\n\n［加班登記網站］";
   var DEPT_SUFFIX = { "E3": "E3", "E4": "E4", "W8": "w8", "W8整修": "w8整修股", "E5": "E5機修課" };
   var DEPT_LABEL = { "E3": "E3 門板", "E4": "E4 櫃體", "W8": "W8", "W8整修": "W8 整修股", "E5": "E5／機修課／業務／內勤" };
-  var KINDS = { "請假": 0, "加班": 1, "支援": 2 };
+  var KINDS = { "加班": 1, "支援": 2 }; // 索引沿用原月表：G=請假、H=加班、I=支援
   var WEEKDAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
   var state = {
     token: null, tokenClient: null, metadata: null, roster: [],
@@ -144,6 +144,7 @@
     populateEmployees();
   }
   function setKind(kind) {
+    if (!Object.prototype.hasOwnProperty.call(KINDS, kind)) return;
     state.kind = kind;
     document.querySelectorAll("[data-kind]").forEach(function (btn) {
       var active = btn.dataset.kind === kind;
@@ -151,7 +152,7 @@
       btn.setAttribute("aria-pressed", active ? "true" : "false");
     });
     $("hoursLabel").textContent = kind + "時數";
-    $("reasonRequired").classList.toggle("hidden", kind === "請假");
+
     updatePreview();
   }
   function getDayType(p) {
@@ -162,7 +163,7 @@
     return dayOfWeek(p) === 0 || dayOfWeek(p) === 6 ? "假日（預估）" : "一般（預估）";
   }
   function getLunchPreview(p, n) {
-    if (state.kind === "請假") return "不適用";
+
     if ($("shift").value === "中") return "中班，原表自動判定";
     var type = getDayType(p);
     var holiday = type.indexOf("假日") === 0;
@@ -209,10 +210,11 @@
   function validateEntry() {
     var p = dateParts(), person = chosenPerson();
     var hours = numberOrNull($("hours").value), reason = $("reason").value.trim();
+    if (!Object.prototype.hasOwnProperty.call(KINDS, state.kind)) throw Error("目前僅開放加班與支援登記。");
     if (!p.y || !p.m || !p.d || p.d > new Date(p.y, p.m, 0).getDate()) throw Error("請選擇正確登記日期。");
     if (!person) throw Error("請先選擇正確的員工。");
     if (hours === null || hours < 0.5 || hours > 24 || Math.round(hours * 2) !== hours * 2) throw Error("時數須為 0.5 至 24 小時，且以半小時為單位。");
-    if (!reason && state.kind !== "請假") throw Error("加班或支援登記必須填寫原因／備註。");
+    if (!reason) throw Error("加班或支援登記必須填寫原因／備註。");
     if (reason.length > 1600) throw Error("原因文字過長，請控制在 1600 字內。");
     return {
       p: p, date: isoString(p), department: $("department").value, person: person, id: person.id,
@@ -495,7 +497,7 @@
       var raw = await getValues(state.month.sheetName, "G" + row + ":" + a1Col(6 + days * 5 - 1) + row, false);
       var cells = raw[0] || [], records2 = [];
       for (var d = 1; d <= days; d++) {
-        for (var kind of ["加班", "支援", "請假"]) {
+        for (var kind of ["加班", "支援"]) {
           var offset = (d - 1) * 5;
           var hours = numberOrNull(cells[offset + KINDS[kind]]);
           if (hours !== null && hours > 0) {
