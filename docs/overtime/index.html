@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f6f8fc">
-  <meta name="description" content="系統櫃廠加班、請假及支援登記。與既有 Google 試算表連結，保留原統計公式及註解。">
+  <meta name="description" content="系統櫃廠業務假日或臨時加班、支援登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.0.0">
+  <link rel="stylesheet" href="./style.css?v=1.0.1">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.0.0" defer></script>
+  <script src="./app.js?v=1.0.1" defer></script>
 </head>
 <body>
 <div class="app">
@@ -38,7 +38,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，完成後顯示於原始月表。</p></div>
-        <span class="version">V1.0.0</span>
+        <span class="version">V1.0.1</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -74,7 +74,6 @@
           <div class="segmented" role="group" aria-label="登記類型">
             <button type="button" class="segment selected" data-kind="加班" aria-pressed="true">加班</button>
             <button type="button" class="segment" data-kind="支援" aria-pressed="false">支援</button>
-            <button type="button" class="segment" data-kind="請假" aria-pressed="false">請假</button>
           </div>
           <div class="two-col">
             <label class="field"><span><span id="hoursLabel">加班時數</span> <em>*</em></span>
@@ -152,7 +151,7 @@
     </section>
   </main>
 
-  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.0.0</footer>
+  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.0.1</footer>
 </div>
 
 <dialog id="confirmDialog">
