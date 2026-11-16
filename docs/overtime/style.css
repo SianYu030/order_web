@@ -74,3 +74,30 @@ dialog::backdrop{background:#1a29365e}dialog h3{margin:0 0 12px;font-size:19px}
 #approveBtn{margin-top:18px}
 #approvalReason{white-space:pre-wrap;text-align:right;max-width:67%;overflow-wrap:anywhere}
 #approvalState{margin-top:8px}
+
+
+/* 主管批次核准：手機上用清楚可勾選卡片，不增加表格的橫向捲動。 */
+.tabs{flex-wrap:wrap}
+.tab{flex:1 1 21%}
+.batch-topline,.batch-all{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.batch-topline{margin-bottom:14px}
+.batch-all{padding:11px 12px;margin:8px 0;border-radius:10px;background:#f3f7fd;font-weight:750}
+.batch-all input,.batch-card input{width:20px;height:20px;accent-color:var(--blue);flex:none}
+#batchSelectedCount{font-size:12px;color:var(--muted);margin-left:auto}
+.batch-list{display:flex;flex-direction:column;gap:10px}
+.batch-card{display:flex;align-items:flex-start;gap:11px;background:#fff;border:1px solid #dae5f0;border-radius:12px;padding:13px;cursor:pointer}
+.batch-card.is-selected{border-color:#78a6f1;background:#f5f9ff}
+.batch-card:has(input:focus-visible){outline:3px solid #b5cafa}
+.batch-info{flex:1;min-width:0}
+.batch-info strong{display:block;font-size:15px;line-height:1.5}
+.batch-info small{display:block;font-size:13px;color:#637188;line-height:1.6;margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere}
+.batch-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.batch-actions button{width:100%;font-size:14px;min-height:50px;line-height:1.3}
+.danger-btn{width:100%;border:1px solid #e2aaaa;border-radius:12px;min-height:50px;padding:12px 15px;background:#fff1ef;color:#a92e2b;font-weight:850}
+.danger-btn:hover{background:#ffe7e3}
+#rejectBtn{margin-top:9px}
+@media(max-width:420px){
+  .tabs{gap:4px}.tab{flex:1 1 45%;min-height:41px}
+  .batch-actions{grid-template-columns:1fr}
+  .batch-all{flex-wrap:wrap}
+}
