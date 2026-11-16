@@ -473,25 +473,22 @@
   async function loadApprovalRequest() {
     switchView("approval");
     $("approveBtn").disabled=true;
+    $("rejectBtn").disabled=true;
     if(!hasGoogle()){
-      $("approvalState").textContent="請先到「設定」使用 Google 帳號登入，才能檢視主管核准申請。";
-      return;
+      $("approvalState").textContent="請先使用授權的主管 Google 帳號登入。";return;
     }
-    try {
-      var found=await getPendingById(approvalId);
-      if(!found)throw Error("查無此筆申請，請重新開啟工作表的核准連結。");
-      fillApprovalSummary(found.row);
-      if(found.row[15]!=="待核准"){
-        $("approvalState").textContent="這筆申請目前為「"+found.row[15]+"」，不可重複核准。";return;
+    try{
+      var actor=await requireApprover();
+      var item=await getPendingById(approvalId);
+      if(!item)throw Error("找不到這筆申請。");
+      fillApprovalSummary(item.row);
+      if(item.row[15]!=="待核准"){
+        $("approvalState").textContent="目前狀態「"+item.row[15]+"」，不能再次核准或駁回。";
+        return;
       }
-      if(APPROVER_EMAILS.length===0){
-        $("approvalState").textContent="主管授權尚未設定。已完成待核准檢視，正式核准仍鎖定，避免一般員工擅自寫入 對應月表。";return;
-      }
-      var email=await googleIdentity();
-      if(!APPROVER_EMAILS.includes(email))throw Error("目前登入帳號不是授權主管。");
-      $("approvalState").textContent="授權主管："+email+"。請確認日期、工號、時數及原因後核准。";
-      $("approveBtn").disabled=false;
-    } catch(e){$("approvalState").textContent="無法核准："+e.message;}
+      $("approvalState").textContent="已驗證主管 "+actor+"，請核對申請內容。";
+      $("approveBtn").disabled=false;$("rejectBtn").disabled=false;
+    }catch(e){$("approvalState").textContent=e.message;}
   }
   async function locateApprovedCell(row) {
     var p=serialToDate(row[1]),id=String(row[5]||"");
@@ -518,63 +515,115 @@
     var column=colIndex(p.d,"加班"),range=a1Col(column)+found[0];
     return {sheetId:sheet.properties.sheetId,sheetName:shName,row:found[0],rowIndex:found[0]-1,col:column,range:range};
   }
+
+  // 主管帳號目前未設定，保留拒絕寫入的安全鎖。
+  async function requireApprover() {
+    if(!hasGoogle())throw Error("請先以主管 Google 帳號連線。");
+    if(APPROVER_EMAILS.length===0)throw Error("主管身分驗證尚未完成，正式核准及駁回暫時鎖定。");
+    var actor=await googleIdentity();
+    if(!APPROVER_EMAILS.includes(actor))throw Error("這個 Google 帳號不在主管核准清單。");
+    return actor;
+  }
+  // 每一筆核准都重新確認日期、人員、目標儲存格與申請狀態。
+  async function approveById(id,actor) {
+    if(!APPROVER_EMAILS.includes(actor))throw Error("主管帳號沒有核准權限。");
+    var item=await getPendingById(id);
+    if(!item||item.row[15]!=="待核准")throw Error("這筆申請已核准、駁回或不存在。");
+    var row=item.row,ctx=await locateApprovedCell(row),hours=Number(row[7]),reason=String(row[8]||"").trim();
+    if(!(hours>=0.5&&hours<=24&&Math.round(hours*2)===hours*2) ||
+       !reason || reason.length>1600)throw Error("申請時數或原因不符合規則。");
+    var old=await getValues(ctx.sheetName,ctx.range,true);
+    var value=old[0]&&old[0][0];
+    if(value!==""&&value!==undefined&&value!==null&&Number(value)!==0)
+      throw Error("原月表 "+ctx.sheetName+"!"+ctx.range+" 已有 "+value+"，禁止覆蓋。");
+    var exactUrl=BASE+"?ranges="+encodeURIComponent(sheetQuote(ctx.sheetName)+"!"+ctx.range)+
+      "&includeGridData=true&fields=sheets(data(rowData(values(userEnteredValue))))";
+    var full=await api(exactUrl);
+    var uv=full.sheets?.[0]?.data?.[0]?.rowData?.[0]?.values?.[0]?.userEnteredValue;
+    if(uv&&(uv.formulaValue||(uv.stringValue!==undefined&&uv.stringValue!=="")||
+       (uv.numberValue!==undefined&&Number(uv.numberValue)!==0)))
+      throw Error("原月表目標儲存格有公式或資料，不允許覆蓋。");
+    var earlier=await getCommentsAt(ctx);
+    if(earlier.some(function(c){return c.headPost&&isOurComment(c.headPost.content);}))
+      throw Error("原月表已有本站建立的註解，請人工核對以免重複。");
+    var again=await getPendingById(id);
+    if(!again||again.row[15]!=="待核准"||Number(again.row[7])!==hours||
+       String(again.row[8])!==reason||String(again.row[5])!==String(row[5])||
+       String(again.row[4])!==String(row[4]))
+      throw Error("申請內容已變更，請重新讀取後核准。");
+    var answer=await api(BASE+":batchUpdate","POST",{requests:[
+      updateCellRequest(ctx,ctx.col,hours),
+      {insertComment:{content:commentContent(reason),coordinate:{
+        sheetId:ctx.sheetId,rowIndex:ctx.rowIndex,columnIndex:ctx.col}}}
+    ]});
+    var actual=await getValues(ctx.sheetName,ctx.range,true);
+    if(Number(actual[0]&&actual[0][0])!==hours)
+      throw Error("時數寫入後讀回不一致，請人工查核。");
+    if(answer.commentUpdateState&&answer.commentUpdateState!=="ALL_SAVED")
+      throw Error("工時可能已寫入，但註解寫入失敗："+answer.commentUpdateState+"。");
+    var comments=await getCommentsAt(ctx);
+    if(!comments.some(function(c){return c.headPost&&c.headPost.content===commentContent(reason);}))
+      throw Error("工時已寫入，但註解未通過驗證，禁止標記已核准。");
+    var now=taiwanDateTimeNumber();
+    await api(BASE+":batchUpdate","POST",{requests:[
+      {updateCells:{start:{sheetId:REGISTER_SHEET_ID,rowIndex:again.rowIndex,columnIndex:9},
+        rows:[{values:["已同步",ctx.sheetName,ctx.range].map(cellValue)}],fields:"userEnteredValue"}},
+      {updateCells:{start:{sheetId:REGISTER_SHEET_ID,rowIndex:again.rowIndex,columnIndex:15},
+        rows:[{values:["已核准",actor,now].map(cellValue)}],fields:"userEnteredValue"}}
+    ]});
+    var verified=await getPendingById(id);
+    if(!verified||verified.row[15]!=="已核准"||String(verified.row[16])!==actor)
+      throw Error("月表已處理，但核准狀態未驗證成功，請人工查核。");
+    return ctx;
+  }
+  // 駁回不刪除原始資料，不更動 E4/E5 月表；
+  // 狀態改成已駁回，月檢視公式與待審清單都會排除它。
+  async function rejectById(id,actor) {
+    if(!APPROVER_EMAILS.includes(actor))throw Error("主管帳號沒有駁回權限。");
+    var item=await getPendingById(id);
+    if(!item||item.row[15]!=="待核准")throw Error("已處理申請不可駁回。");
+    await api(BASE+":batchUpdate","POST",{requests:[
+      {updateCells:{start:{sheetId:REGISTER_SHEET_ID,rowIndex:item.rowIndex,columnIndex:9},
+        rows:[{values:[cellValue("不需同步")]}],fields:"userEnteredValue"}},
+      {updateCells:{start:{sheetId:REGISTER_SHEET_ID,rowIndex:item.rowIndex,columnIndex:15},
+        rows:[{values:["已駁回",actor,taiwanDateTimeNumber()].map(cellValue)}],fields:"userEnteredValue"}}
+    ]});
+    var after=await getPendingById(id);
+    if(!after||after.row[15]!=="已駁回"||String(after.row[16])!==actor)
+      throw Error("駁回寫入後未通過讀回核對。");
+    return true;
+  }
   async function approvePending() {
-    if(state.busy || !approvalId || !hasGoogle())return;
-    setBusy(true);
-    $("approveBtn").disabled=true;
+    if(state.busy||!approvalId)return;
     try{
-      if(!APPROVER_EMAILS.length)throw Error("沒有設定授權主管帳號，核准功能維持鎖定。");
-      var email=await googleIdentity();
-      if(!APPROVER_EMAILS.includes(email))throw Error("目前登入者不是授權主管。");
-      var item=await getPendingById(approvalId);
-      if(!item || String(item.row[15])!=="待核准")throw Error("這筆申請已經核准或不存在，請勿重複送出。");
-      var row=item.row,ctx=await locateApprovedCell(row);
-      var hours=Number(row[7]),reason=String(row[8]||"").trim();
-      if(!(hours>=0.5&&hours<=24&&Math.round(hours*2)===hours*2)||!reason)
-        throw Error("申請時數或原因不完整。");
-      var before=await getValues(ctx.sheetName,ctx.range,true);
-      var previous=before[0]&&before[0][0];
-      if(previous!=="" && previous!==undefined && previous!==null && Number(previous)!==0)
-        throw Error("原 對應月表「"+ctx.range+"」已有 "+previous+" 小時，為防覆蓋已停止核准。");
-      var comments=await getCommentsAt(ctx);
-      if(comments.some(function(x){return x.headPost&&isOurComment(x.headPost.content);}))
-        throw Error("此格已經有網站建立的註解，請人工核對避免重複。");
-      var okay=await confirmAction("主管核准後將正式寫入：\n"+ctx.sheetName+"!"+ctx.range+
-        "\n姓名："+row[6]+"\n工號："+row[5]+"\n時數："+hours+" 小時\n原因："+reason+
-        "\n是否確認？");
-      if(!okay)return;
-      // 再讀回待核准，避免重複點擊或在確認畫面期間已被他人處理。
-      var check=await getPendingById(approvalId);
-      if(!check || check.row[15]!=="待核准" ||
-        Number(check.row[7])!==hours || String(check.row[8])!==reason)
-        throw Error("申請內容在確認期間已變更，請重新開啟核准頁面。");
-      var answer=await api(BASE+":batchUpdate","POST",{requests:[
-        updateCellRequest(ctx,ctx.col,hours),
-        {insertComment:{content:commentContent(reason),coordinate:{sheetId:ctx.sheetId,rowIndex:ctx.rowIndex,columnIndex:ctx.col}}}
-      ]});
-      var actual=await getValues(ctx.sheetName,ctx.range,true);
-      if(Number(actual[0]&&actual[0][0])!==hours)throw Error("對應月表寫入未通過核對。");
-      if(answer.commentUpdateState && answer.commentUpdateState!=="ALL_SAVED")
-        throw Error("原月表時數可能已寫入，但註解 API 回報 "+answer.commentUpdateState+"；請人工核對。");
-      var fresh=await getCommentsAt(ctx);
-      if(!fresh.some(function(c){return c.headPost&&c.headPost.content===commentContent(reason);}))
-        throw Error("原月表時數已寫入，但尚未驗證註解成功；不得標記為已核准。");
-      var now=taiwanDateTimeNumber(),index=check.rowIndex;
-      await api(BASE+":batchUpdate","POST",{requests:[
-        {updateCells:{start:{sheetId:REGISTER_SHEET_ID,rowIndex:index,columnIndex:9},
-          rows:[{values:["已同步",ctx.sheetName,ctx.range].map(cellValue)}],fields:"userEnteredValue"}},
-        {updateCells:{start:{sheetId:REGISTER_SHEET_ID,rowIndex:index,columnIndex:15},
-          rows:[{values:["已核准",email,now].map(cellValue)}],fields:"userEnteredValue"}}
-      ]});
-      var final=await getPendingById(approvalId);
-      if(!final||final.row[15]!=="已核准")throw Error("時數與註解已完成，但核准狀態尚未核對。");
-      fillApprovalSummary(final.row);
-      $("approvalState").textContent="核准完成：已確認寫入 "+ctx.sheetName+"!"+ctx.range+" 並建立加班註解。";
-      message("主管核准完成，對應月表時數及註解已讀回核對。","success");
-    }catch(e){
-      $("approvalState").textContent="核准未完成："+e.message+
-        "。若已出現部分寫入，請先查核 對應月表，禁止直接重複核准。";
-    }finally{setBusy(false);$("approveBtn").disabled=true;}
+      var actor=await requireApprover(),item=await getPendingById(approvalId);
+      if(!item||item.row[15]!=="待核准")throw Error("申請已處理或不存在。");
+      var row=item.row,day=serialToDate(row[1]);
+      if(!await confirmAction("主管確認核准？\n"+(day?dateString(day):"日期待核對")+
+        " · "+row[4]+" · "+row[6]+"\n"+row[7]+" 小時\n原因："+row[8]))return;
+      setBusy(true);$("approveBtn").disabled=true;$("rejectBtn").disabled=true;
+      var ctx=await approveById(approvalId,actor);
+      var fresh=await getPendingById(approvalId);
+      fillApprovalSummary(fresh.row);
+      $("approvalState").textContent="核准完成，已確認寫入 "+ctx.sheetName+"!"+ctx.range+" 的加班時數及註解。";
+    }catch(e){$("approvalState").textContent="核准未完成："+e.message+
+      "。遇到部分寫入請先核對原月表，不要直接重複操作。";}
+    finally{setBusy(false);$("approveBtn").disabled=true;$("rejectBtn").disabled=true;}
+  }
+  async function rejectPending() {
+    if(state.busy||!approvalId)return;
+    try{
+      var actor=await requireApprover(),item=await getPendingById(approvalId);
+      if(!item||item.row[15]!=="待核准")throw Error("申請已處理或不存在。");
+      if(!await confirmAction("確定駁回 "+item.row[6]+" 的加班申請？\n"+
+        "紀錄將從待核准清單移除，來源資料保留供稽核。"))return;
+      setBusy(true);$("approveBtn").disabled=true;$("rejectBtn").disabled=true;
+      await rejectById(approvalId,actor);
+      var fresh=await getPendingById(approvalId);
+      fillApprovalSummary(fresh.row);
+      $("approvalState").textContent="已駁回並移出待核准清單，來源紀錄已保留。";
+    }catch(e){$("approvalState").textContent="駁回未完成："+e.message;}
+    finally{setBusy(false);$("approveBtn").disabled=true;$("rejectBtn").disabled=true;}
   }
 
   function confirmAction(text) {
