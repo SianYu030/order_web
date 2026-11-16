@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.1">
+  <link rel="stylesheet" href="./style.css?v=1.1.2">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.1" defer></script>
+  <script src="./app.js?v=1.1.2" defer></script>
 </head>
 <body>
 <div class="app">
@@ -38,7 +38,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.1</span>
+        <span class="version">V1.1.2</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -57,12 +57,13 @@
           <label class="field"><span>所屬單位 <em>*</em></span>
             <select id="department" required>
               <option value="E5">E5 業務</option>
+              <option value="E4">E4 潘詠升</option>
             </select>
           </label>
           <label class="field"><span>員工（工號／姓名）<em>*</em></span>
             <select id="employee" required></select>
           </label>
-          <p class="helper" id="rosterText">展示模式使用虛構測試名單；正式登入才會讀取業務人員資料。</p>
+          <p class="helper" id="rosterText">展示模式可預覽員工姓名；正式登入 Google 後，才會核對工號及在職資料。</p>
         </section>
 
         <section class="panel">
@@ -89,7 +90,7 @@
           <div class="preview-row"><span>員工</span><strong id="summaryWho">請選擇員工</strong></div>
           <div class="preview-row"><span>內容</span><strong id="summaryKind">加班 3 小時</strong></div>
           <div class="preview-row"><span>對應位置</span><strong id="summaryCell">CE · 待確認列號</strong></div>
-          <div class="preview-row"><span>申請狀態</span><strong>待主管核准，不直接寫入 E5 月表</strong></div>
+          <div class="preview-row"><span>申請狀態</span><strong>待主管核准，不直接寫入原月表</strong></div>
           <div class="preview-row"><span>便當規則</span><strong id="summaryLunch">一般日滿 3 小時</strong></div>
           <p class="helper small">便當由原試算表公式判定，網站不覆寫便當儲存格。</p>
         </section>
@@ -111,7 +112,7 @@
     </section>
 
     <section id="view-approval" class="view hidden">
-      <div class="section-heading"><div><h2>主管核准加班</h2><p>核對申請後，才將加班時數與原因寫入 E5 月表。</p></div></div>
+      <div class="section-heading"><div><h2>主管核准加班</h2><p>核對申請後，才將加班時數與原因寫入對應月份表。</p></div></div>
       <div class="notice warning" id="approvalState" role="status">尚未讀取申請。需先使用授權的主管 Google 帳號登入。</div>
       <section class="panel">
         <h3>待核准紀錄</h3>
@@ -120,8 +121,8 @@
         <div class="preview-row"><span>加班時數</span><strong id="approvalHours">未載入</strong></div>
         <div class="preview-row"><span>加班原因</span><strong id="approvalReason">未載入</strong></div>
         <div class="preview-row"><span>目前狀態</span><strong id="approvalStatus">未載入</strong></div>
-        <button class="primary-btn" type="button" id="approveBtn" disabled>主管核准並寫入 E5 月表</button>
-        <p class="helper">此功能必須核對主管帳號與 E5 原月表儲存格。尚未配置核准身分權限時，一律禁止正式核准。</p>
+        <button class="primary-btn" type="button" id="approveBtn" disabled>主管核准並寫入對應月表</button>
+        <p class="helper">此功能必須核對主管帳號與原月表儲存格。尚未配置核准身分權限時，一律禁止正式核准。</p>
       </section>
     </section>
 
@@ -144,7 +145,7 @@
         <h3>來源試算表</h3>
         <div class="settings-meta"><span>原始文件</span><strong>2026-加班及請假時數登記表</strong></div>
         <a class="link" target="_blank" rel="noopener noreferrer" href="https://docs.google.com/spreadsheets/d/1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM/edit#gid=426152451">開啟原始 Google 試算表 ↗</a>
-        <p class="helper">業務申請先寫入待核准清單；經授權主管核准後，才會更新 E5 月表的加班時數與註解。未完成正式授權前不會寫入員工工時。</p>
+        <p class="helper">業務申請先寫入待核准清單；經授權主管核准後，才會更新對應月表的加班時數與註解。未完成正式授權前不會寫入員工工時。</p>
         <a class="link" target="_blank" rel="noopener noreferrer" href="https://docs.google.com/spreadsheets/d/1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM/edit#gid=2131065558">開啟業務加班月檢視 ↗</a>
       </section>
       <section class="panel">
@@ -155,7 +156,7 @@
     </section>
   </main>
 
-  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.1.1</footer>
+  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.1.2</footer>
 </div>
 
 <dialog id="confirmDialog">
