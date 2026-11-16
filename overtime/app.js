@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.4 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.5 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -16,6 +16,7 @@
   var parameters=new URLSearchParams(window.location.search);
   var approvalId=parameters.get("approve")||"";
   var batchMode=parameters.get("review")==="1";
+  var reviewAction=parameters.get("action")==="reject"?"reject":"approve";
   var batchRows=[],selectedIds=new Set(),batchActor="";
   var CLIENT_KEY = "overtime:oauth-client-id:v1";
   var DEMO_KEY = "overtime:demo-records:v1";
@@ -500,7 +501,7 @@
     $("approveBtn").disabled=true;
     $("rejectBtn").disabled=true;
     if(!hasGoogle()){
-      $("approvalState").textContent="請先使用授權的主管 Google 帳號登入。";return;
+      $("approvalState").textContent=(reviewAction==="reject"?"從月檢視選擇了「駁回刪除」。":"從月檢視選擇了「主管核准」。")+"請先以授權主管 Google 帳號登入，登入後才能操作。";return;
     }
     try{
       var actor=await requireApprover();
@@ -511,8 +512,9 @@
         $("approvalState").textContent="目前狀態「"+item.row[15]+"」，不能再次核准或駁回。";
         return;
       }
-      $("approvalState").textContent="已驗證主管 "+actor+"，請核對申請內容。";
+      $("approvalState").textContent="已驗證主管 "+actor+"。"+(reviewAction==="reject"?"本次由月檢視點選「駁回刪除」，請核對後按紅色駁回按鈕；不會直接刪除工時。":"本次由月檢視點選「主管核准」，請核對後按藍色核准按鈕。");
       $("approveBtn").disabled=false;$("rejectBtn").disabled=false;
+      if(reviewAction==="reject")$("rejectBtn").focus({preventScroll:true});
     }catch(e){$("approvalState").textContent=e.message;}
   }
   async function locateApprovedCell(row) {

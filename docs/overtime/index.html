@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.4">
+  <link rel="stylesheet" href="./style.css?v=1.1.5">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.4" defer></script>
+  <script src="./app.js?v=1.1.5" defer></script>
 </head>
 <body>
 <div class="app">
@@ -39,7 +39,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.4</span>
+        <span class="version">V1.1.5</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -139,7 +139,7 @@
     </section>
 
     <section id="view-approval" class="view hidden">
-      <div class="section-heading"><div><h2>主管核准加班</h2><p>核對申請後，才將加班時數與原因寫入對應月份表。</p></div></div>
+      <div class="section-heading"><div><h2>主管核准／駁回</h2><p>核對申請後選擇「核准寫入」或「駁回刪除」。</p></div></div>
       <div class="notice warning" id="approvalState" role="status">尚未讀取申請。需先使用授權的主管 Google 帳號登入。</div>
       <section class="panel">
         <h3>待核准紀錄</h3>
@@ -184,7 +184,7 @@
     </section>
   </main>
 
-  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.1.4</footer>
+  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.1.5</footer>
 </div>
 
 <dialog id="confirmDialog">
