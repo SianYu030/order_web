@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.0 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.1 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -395,29 +395,56 @@
       "E5",entry.id,entry.person.name,entry.hours,entry.reason,
       "待核准",ctx.sheetName,ctx.range,created,now,"GitHub 網站","待核准","",""];
   }
-  async function getPendingById(id) {
+  // 資料位於 A2:R1500 的預先格式化區。精準寫入第一個空白列，不使用
+  // appendCells 往表尾延伸，避免超出月檢視的讀取範圍。
+  var PENDING_LAST_ROW = 1500;
+  function findPendingRecord(records,id) {
     if (!/^BUS-[0-9]{8}-E5-[A-Za-z0-9]+$/.test(id)) throw Error("申請編號格式不正確。");
-    var records=await getValues(REGISTER_SHEET,"A2:R1500",true);
     var matches=[];
-    records.forEach(function(r,i){if(String(r[0]||"")===id)matches.push({row:r,rowIndex:i+1});});
-    if(matches.length>1)throw Error("此申請ID有重複資料，已阻止核准。");
+    records.forEach(function(r,i){
+      if(String(r[0]||"")===id)matches.push({row:r,rowIndex:i+1});
+    });
+    if(matches.length>1)throw Error("此申請ID有重複資料，已阻止操作。");
     return matches[0]||null;
+  }
+  function firstPendingEmptyRow(records) {
+    for(var i=0;i<PENDING_LAST_ROW-1;i++){
+      if(i>=records.length || !records[i].some(function(v){return v!==""&&v!==null&&v!==undefined;}))
+        return i+1;
+    }
+    throw Error("業務申請來源表已滿（1500 列），請管理員先擴充並調整月檢視範圍。");
+  }
+  async function getPendingById(id) {
+    var records=await getValues(REGISTER_SHEET,"A2:R1500",true);
+    return findPendingRecord(records,id);
   }
   async function savePendingRequest(entry,ctx) {
     if (!state.metadata || !state.metadata.some(function(x) {
       return x.properties && x.properties.sheetId===REGISTER_SHEET_ID && x.properties.title===REGISTER_SHEET;
     })) throw Error("找不到業務登記來源分頁。");
-    var id=supervisorRecordId(entry), prior=await getPendingById(id);
+    if(entry.department!=="E5" || !entry.person ||
+      !belongsToDept(entry.person,"E5") || String(entry.person.id)!==String(entry.id))
+      throw Error("只能登記原始名冊中的 E5 業務人員，請重新選擇。");
+    var id=supervisorRecordId(entry);
+    var all=await getValues(REGISTER_SHEET,"A2:R1500",true);
+    var prior=findPendingRecord(all,id);
     if(prior && prior.row[15]!=="待核准") throw Error("此申請已不是待核准，禁止自行修改；請聯繫主管。");
+    if(prior && String(prior.row[6])===entry.person.name &&
+       Number(prior.row[7])===entry.hours && String(prior.row[8])===entry.reason &&
+       String(prior.row[10])===ctx.sheetName && String(prior.row[11])===ctx.range)
+      return "unchanged";
+    var rowIndex=prior?prior.rowIndex:firstPendingEmptyRow(all);
     var now=taiwanDateTimeNumber(),row=buildPendingRecord(entry,ctx,prior&&prior.row,now);
-    var request=prior ? {updateCells:{
-      start:{sheetId:REGISTER_SHEET_ID,rowIndex:prior.rowIndex,columnIndex:0},
+    var request={updateCells:{
+      start:{sheetId:REGISTER_SHEET_ID,rowIndex:rowIndex,columnIndex:0},
       rows:[{values:row.map(cellValue)}],fields:"userEnteredValue"
-    }} : {appendCells:{sheetId:REGISTER_SHEET_ID,rows:[{values:row.map(cellValue)}],fields:"userEnteredValue"}};
+    }};
     await api(BASE+":batchUpdate","POST",{requests:[request]});
     var check=await getPendingById(id);
-    if(!check || String(check.row[6])!==entry.person.name || Number(check.row[7])!==entry.hours ||
-      String(check.row[8])!==entry.reason || String(check.row[15])!=="待核准")
+    if(!check || check.rowIndex!==rowIndex ||
+       String(check.row[5])!==String(entry.id) ||
+       String(check.row[6])!==entry.person.name || Number(check.row[7])!==entry.hours ||
+       String(check.row[8])!==entry.reason || String(check.row[15])!=="待核准")
       throw Error("申請紀錄寫入後驗證失敗，請勿重複送出。");
     return prior?"updated":"created";
   }
@@ -581,8 +608,8 @@
         "\n原因："+entry.reason+"\n主管核准前，不會寫入 E5 月表。");
       if(!yesOnline)return;
       var outcome=await savePendingRequest(entry,ctx);
-      message("申請已"+(outcome==="created"?"建立":"更新")+"，狀態「待核准」。"+
-        "主管可在業務加班月檢視查看，尚未寫入 E5 月表。","success");
+      message((outcome==="created"?"已建立申請":outcome==="updated"?"已更新申請":"申請內容沒有變更")+
+        "，狀態「待核准」。主管可在業務加班月檢視查看，尚未寫入 E5 月表。","success");
       state.editKey = "";
     } catch (e) {
       message(e.message + (hasGoogle() ? " 原始資料未被本網站刪除；若訊息提到部分寫入，請先核對表格。" : ""), "error");
