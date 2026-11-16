@@ -657,7 +657,7 @@
     var n=selectedIds.size, allowed=!!batchActor&&hasGoogle()&&!state.busy;
     $("batchSelectedCount").textContent="已選 "+n+" 筆";
     $("batchApproveBtn").textContent="核准並寫入（"+n+"）";
-    $("batchRejectBtn").textContent="駁回移除（"+n+"）";
+    $("batchRejectBtn").textContent="駁回刪除（"+n+"）";
     $("batchApproveBtn").disabled=!allowed||!n;
     $("batchRejectBtn").disabled=!allowed||!n;
     $("batchSelectAll").disabled=!allowed||!batchRows.length;
@@ -729,7 +729,7 @@
   }
   async function processBatch(action) {
     if(state.busy||!batchActor||!selectedIds.size||!hasGoogle())return;
-    var ids=Array.from(selectedIds),actor,actionName=action==="approve"?"核准寫入":"駁回移除";
+    var ids=Array.from(selectedIds),actor,actionName=action==="approve"?"核准寫入":"駁回刪除";
     try{actor=await requireApprover();}catch(e){$("batchState").textContent=e.message;return;}
     if(actor!==batchActor){$("batchState").textContent="主管登入身分已變更，請重新讀取。";return;}
     var messageText="確認批次"+actionName+" "+ids.length+" 筆？\n"+
