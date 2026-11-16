@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.5 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.6 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -545,15 +545,14 @@
 
   // 主管帳號目前未設定，保留拒絕寫入的安全鎖。
   async function requireApprover() {
-    if(!hasGoogle())throw Error("請先以主管 Google 帳號連線。");
-    if(APPROVER_EMAILS.length===0)throw Error("主管身分驗證尚未完成，正式核准及駁回暫時鎖定。");
-    var actor=await googleIdentity();
-    if(!APPROVER_EMAILS.includes(actor))throw Error("這個 Google 帳號不在主管核准清單。");
-    return actor;
+    if (!window.SupervisorAuth) throw Error("主管登入元件尚未載入。");
+    var username=await window.SupervisorAuth.requireApprover();
+    if (!hasGoogle()) throw Error("主管帳號已登入，但 Google 試算表授權尚未連線；請至「設定」完成 Google 授權後才能核准工時。");
+    return username;
   }
   // 每一筆核准都重新確認日期、人員、目標儲存格與申請狀態。
   async function approveById(id,actor) {
-    if(!APPROVER_EMAILS.includes(actor))throw Error("主管帳號沒有核准權限。");
+    if(!window.SupervisorAuth || (await window.SupervisorAuth.requireApprover())!==actor)throw Error("主管登入驗證失敗。");
     var item=await getPendingById(id);
     if(!item||item.row[15]!=="待核准")throw Error("這筆申請已核准、駁回或不存在。");
     var row=item.row,ctx=await locateApprovedCell(row),hours=Number(row[7]),reason=String(row[8]||"").trim();
@@ -606,7 +605,7 @@
   // 駁回不刪除原始資料，不更動 E4/E5 月表；
   // 狀態改成已駁回，月檢視公式與待審清單都會排除它。
   async function rejectById(id,actor) {
-    if(!APPROVER_EMAILS.includes(actor))throw Error("主管帳號沒有駁回權限。");
+    if(!window.SupervisorAuth || (await window.SupervisorAuth.requireApprover())!==actor)throw Error("主管登入驗證失敗。");
     var item=await getPendingById(id);
     if(!item||item.row[15]!=="待核准")throw Error("已處理申請不可駁回。");
     await api(BASE+":batchUpdate","POST",{requests:[
@@ -701,7 +700,7 @@
     batchActor="";selectedIds.clear();batchRows=[];
     $("batchList").replaceChildren();
     $("batchCount").textContent="待核准 0 筆";
-    $("batchState").textContent="正在檢查主管授權…";
+    $("batchState").textContent="正在檢查主管登入與 Google 試算表授權…";
     updateBatchActions();
     try{
       var actor=await requireApprover();
@@ -961,6 +960,10 @@
     $("hours").addEventListener("input", updatePreview);
     $("entryForm").addEventListener("submit", submitEntry);
     $("refreshHistory").addEventListener("click", refreshHistory);
+    document.addEventListener("supervisor-auth-change",function(){
+      if(approvalId)loadApprovalRequest();
+      else if(!$("view-batch").classList.contains("hidden"))refreshBatchQueue();
+    });
     $("batchRefresh").addEventListener("click",refreshBatchQueue);
     $("batchApproveBtn").addEventListener("click",function(){processBatch("approve");});
     $("batchRejectBtn").addEventListener("click",function(){processBatch("reject");});
