@@ -6,10 +6,10 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.6">
+  <link rel="stylesheet" href="./style.css?v=1.1.7">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.6" defer></script>
-  <script src="./supervisor-auth.js?v=1.1.6" defer></script>
+  <script src="./app.js?v=1.1.7" defer></script>
+  <script src="./supervisor-auth.js?v=1.1.7" defer></script>
 </head>
 <body>
 <div class="app">
@@ -20,15 +20,22 @@
         <h1>業務假日或臨時加班登記</h1>
         <p>系統櫃廠 · 人員工時登記</p>
       </div>
-      <span class="pill status-pill" id="connectionStatus">展示模式</span>
+      <span class="pill status-pill" id="connectionStatus">Google 未連線</span>
     </div>
   </header>
 
   <main class="main">
     <div class="notice warning" id="modeNotice" role="status">
-      目前為展示模式，填寫內容只儲存在這台裝置，不會寫入公司試算表。連結 Google 帳號後才可正式同步。
+      Google 尚未連線：一般登記只會保存在本機，不會送入公司試算表。主管登入與 Google 資料授權是不同步驟。
     </div>
     <div class="notice hidden" id="banner" role="status" aria-live="polite"></div>
+
+    <nav class="tabs" aria-label="網站分頁">
+      <button type="button" class="tab is-active" data-view="entry" aria-selected="true">✎ 登記</button>
+      <button type="button" class="tab" data-view="history" aria-selected="false">▤ 查詢／修改</button>
+      <button type="button" class="tab" data-view="batch" aria-selected="false">☑ 主管批次</button>
+      <button type="button" class="tab" data-view="settings" aria-selected="false">⚙ 設定</button>
+    </nav>
 
     <section id="supervisorAccess" class="panel hidden supervisor-panel" aria-label="主管登入">
       <div class="supervisor-heading">
@@ -83,17 +90,10 @@
       <p class="helper small">主管登入與 Google 試算表連線分開管理；正式工時核准需另完成 Google 存取授權。</p>
     </section>
 
-    <nav class="tabs" aria-label="網站分頁">
-      <button type="button" class="tab is-active" data-view="entry" aria-selected="true">✎ 登記</button>
-      <button type="button" class="tab" data-view="history" aria-selected="false">▤ 查詢／修改</button>
-      <button type="button" class="tab" data-view="batch" aria-selected="false">☑ 主管批次</button>
-      <button type="button" class="tab" data-view="settings" aria-selected="false">⚙ 設定</button>
-    </nav>
-
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.6</span>
+        <span class="version">V1.1.7</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -238,7 +238,7 @@
     </section>
   </main>
 
-  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.1.6</footer>
+  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.1.7</footer>
 </div>
 
 <dialog id="confirmDialog">

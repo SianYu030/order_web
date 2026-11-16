@@ -120,3 +120,15 @@ dialog::backdrop{background:#1a29365e}dialog h3{margin:0 0 12px;font-size:19px}
 .supervisor-panel .admin-title{border-top:1px solid #e3e9f2;padding-top:17px;margin-top:19px}
 .supervisor-panel .pill{background:#e7f0ff;color:#1d4fb0}
 @media(max-width:420px){.supervisor-user-row{gap:6px}.supervisor-user-row button{flex:1 1 33%}}
+
+
+/* 登入前只呈現可操作的主管登入畫面；不顯示空白審核表或展示模式提示。 */
+body.supervisor-auth-gate #view-batch,
+body.supervisor-auth-gate #view-approval,
+body.supervisor-auth-gate #modeNotice{display:none!important}
+body.supervisor-auth-gate #supervisorAccess{max-width:590px;margin:5px auto 22px}
+body.supervisor-auth-gate #supervisorLoginForm .primary-btn{margin-top:8px}
+body.supervisor-auth-gate #supervisorChangePrompt{margin:12px 0 8px}
+@media(max-width:420px){
+  body.supervisor-auth-gate #supervisorAccess{margin:4px 0 14px}
+}
