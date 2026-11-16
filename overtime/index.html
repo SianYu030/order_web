@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.3">
+  <link rel="stylesheet" href="./style.css?v=1.1.4">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.3" defer></script>
+  <script src="./app.js?v=1.1.4" defer></script>
 </head>
 <body>
 <div class="app">
@@ -32,13 +32,14 @@
     <nav class="tabs" aria-label="網站分頁">
       <button type="button" class="tab is-active" data-view="entry" aria-selected="true">✎ 登記</button>
       <button type="button" class="tab" data-view="history" aria-selected="false">▤ 查詢／修改</button>
+      <button type="button" class="tab" data-view="batch" aria-selected="false">☑ 主管批次</button>
       <button type="button" class="tab" data-view="settings" aria-selected="false">⚙ 設定</button>
     </nav>
 
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.3</span>
+        <span class="version">V1.1.4</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -111,6 +112,32 @@
       </section>
     </section>
 
+    <section id="view-batch" class="view hidden">
+      <div class="section-heading"><div><h2>主管批次核准／駁回</h2>
+        <p>勾選多筆待核准申請，核准才寫入對應 E4／E5 月表。</p></div></div>
+      <div class="notice warning" id="batchState" role="status" aria-live="polite">
+        尚未連線主管 Google 帳號。未授權前無法核准或駁回。
+      </div>
+      <section class="panel">
+        <div class="batch-topline">
+          <strong id="batchCount">待核准 0 筆</strong>
+          <button type="button" class="secondary-btn" id="batchRefresh">重新讀取</button>
+        </div>
+        <label class="batch-all"><input id="batchSelectAll" type="checkbox" disabled>
+          <span>全選目前待核准申請</span><span id="batchSelectedCount">已選 0 筆</span>
+        </label>
+        <div id="batchList" class="batch-list" aria-live="polite">
+          <div class="empty">連線並驗證主管身分後顯示待核准清單。</div>
+        </div>
+        <div class="batch-actions">
+          <button type="button" id="batchApproveBtn" class="primary-btn" disabled>核准並寫入（0）</button>
+          <button type="button" id="batchRejectBtn" class="danger-btn" disabled>駁回刪除（0）</button>
+        </div>
+        <p class="helper">每筆依序核對工號、日期、時數及註解；任一筆失敗立即停止。
+          駁回會從待核准清單與月檢視移除，原始登記紀錄仍保留供查核，絕不刪除已核准的 E4／E5 工時。</p>
+      </section>
+    </section>
+
     <section id="view-approval" class="view hidden">
       <div class="section-heading"><div><h2>主管核准加班</h2><p>核對申請後，才將加班時數與原因寫入對應月份表。</p></div></div>
       <div class="notice warning" id="approvalState" role="status">尚未讀取申請。需先使用授權的主管 Google 帳號登入。</div>
@@ -123,6 +150,7 @@
         <div class="preview-row"><span>目前狀態</span><strong id="approvalStatus">未載入</strong></div>
         <button class="primary-btn" type="button" id="approveBtn" disabled>主管核准並寫入對應月表</button>
         <p class="helper">此功能必須核對主管帳號與原月表儲存格。尚未配置核准身分權限時，一律禁止正式核准。</p>
+        <button class="danger-btn" type="button" id="rejectBtn" disabled>駁回並從清單移除</button>
       </section>
     </section>
 
@@ -156,7 +184,7 @@
     </section>
   </main>
 
-  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.1.3</footer>
+  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.1.4</footer>
 </div>
 
 <dialog id="confirmDialog">
