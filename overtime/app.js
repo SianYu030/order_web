@@ -933,6 +933,10 @@
     state.roster = [];
     state.month = null;
     state.monthKey = "";
+    batchActor="";batchRows=[];selectedIds.clear();
+    if($("batchList")) $("batchList").replaceChildren();
+    if($("batchState")) $("batchState").textContent="已登出 Google，主管資料已從畫面清除。";
+    if($("batchCount")) $("batchCount").textContent="待核准 0 筆";
     ++state.loadId;
     if (old && window.google && window.google.accounts && window.google.accounts.oauth2) {
       window.google.accounts.oauth2.revoke(old, function () {});
