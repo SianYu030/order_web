@@ -399,9 +399,9 @@
   function cellValue(v) {
     return { userEnteredValue:typeof v==="number" ? {numberValue:v} : {stringValue:String(v)} };
   }
-  function buildPendingRecord(entry,ctx,existing,now) {
+  function buildPendingRecord(entry,ctx,existing,now,customId) {
     var old=existing||[],created=old[12]||now;
-    return [supervisorRecordId(entry),sheetsDateNumber(entry.p),entry.p.y,entry.p.m,
+    return [customId||supervisorRecordId(entry),sheetsDateNumber(entry.p),entry.p.y,entry.p.m,
       entry.department,entry.id,entry.person.name,entry.hours,entry.reason,
       "待核准",ctx.sheetName,ctx.range,created,now,"GitHub 網站","待核准","",""];
   }
@@ -409,7 +409,7 @@
   // appendCells 往表尾延伸，避免超出月檢視的讀取範圍。
   var PENDING_LAST_ROW = 1500;
   function findPendingRecord(records,id) {
-    if (!/^BUS-[0-9]{8}-(E4|E5)-[A-Za-z0-9]+$/.test(id)) throw Error("申請編號格式不正確。");
+    if (!/^BUS-[0-9]{8}-(E4|E5)-[A-Za-z0-9]+(?:-R[1-9][0-9]*)?$/.test(id)) throw Error("申請編號格式不正確。");
     var matches=[];
     records.forEach(function(r,i){
       if(String(r[0]||"")===id)matches.push({row:r,rowIndex:i+1});
@@ -436,16 +436,34 @@
       !belongsToDept(entry.person,entry.department) || String(entry.person.id)!==String(entry.id) ||
       !state.roster.some(function(p){return p.id===entry.id && p.name===entry.person.name && belongsToDept(p,entry.department);}))
       throw Error("只能登記原始人員主檔核對通過的 E4 潘詠升或 E5 業務人員。");
-    var id=supervisorRecordId(entry);
+    var baseId=supervisorRecordId(entry),id=baseId;
     var all=await getValues(REGISTER_SHEET,"A2:R1500",true);
-    var prior=findPendingRecord(all,id);
-    if(prior && prior.row[15]!=="待核准") throw Error("此申請已不是待核准，禁止自行修改；請聯繫主管。");
+    var prior=null, historical=[],seen=new Set();
+    all.forEach(function(r,index){
+      var recordId=String(r[0]||"");
+      if(recordId===baseId || recordId.startsWith(baseId+"-R")){
+        if(seen.has(recordId))throw Error("同一申請編號重複，已停止操作。");
+        seen.add(recordId);historical.push({row:r,rowIndex:index+1});
+      }
+    });
+    prior=historical.find(function(x){return x.row[15]==="待核准";})||null;
+    if(historical.filter(function(x){return x.row[15]==="待核准";}).length>1)
+      throw Error("同日同員工存在多筆待核准申請，請管理員先核對。");
+    if(prior)id=String(prior.row[0]);
+    else if(historical.length){
+      if(historical.some(function(x){return x.row[15]!=="已駁回";}))
+        throw Error("此日期的申請已核准或正在核對中，禁止重複送出。");
+      // 被主管駁回後可重新提交；舊紀錄保留，新的申請取得新編號。
+      var n=1;
+      while(seen.has(baseId+"-R"+n))n++;
+      id=baseId+"-R"+n;
+    }
     if(prior && String(prior.row[6])===entry.person.name &&
        Number(prior.row[7])===entry.hours && String(prior.row[8])===entry.reason &&
        String(prior.row[10])===ctx.sheetName && String(prior.row[11])===ctx.range)
       return "unchanged";
     var rowIndex=prior?prior.rowIndex:firstPendingEmptyRow(all);
-    var now=taiwanDateTimeNumber(),row=buildPendingRecord(entry,ctx,prior&&prior.row,now);
+    var now=taiwanDateTimeNumber(),row=buildPendingRecord(entry,ctx,prior&&prior.row,now,id);
     var request={updateCells:{
       start:{sheetId:REGISTER_SHEET_ID,rowIndex:rowIndex,columnIndex:0},
       rows:[{values:row.map(cellValue)}],fields:"userEnteredValue"
