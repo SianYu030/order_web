@@ -101,3 +101,22 @@ dialog::backdrop{background:#1a29365e}dialog h3{margin:0 0 12px;font-size:19px}
   .batch-actions{grid-template-columns:1fr}
   .batch-all{flex-wrap:wrap}
 }
+
+
+/* 主管登入、初次改密碼、管理員帳號清單 */
+.supervisor-panel{border:1px solid #bfd0eb;background:#fff}
+.supervisor-panel .field{font-size:14px}
+.supervisor-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.supervisor-heading h3{margin:0 0 18px}
+.supervisor-profile{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
+.supervisor-profile strong{font-size:18px}
+.supervisor-panel #supervisorTogglePasswordBtn{margin:8px 0;width:100%}
+.supervisor-panel #supervisorLoginForm .primary-btn{margin-top:4px}
+.supervisor-form{margin-top:13px;padding-top:14px;border-top:1px solid #e3e9f2}
+.supervisor-users{display:flex;flex-direction:column;gap:8px;margin-bottom:17px}
+.supervisor-user-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;border:1px solid #dfe6f1;border-radius:10px;padding:11px 12px;background:#f8fbff}
+.supervisor-user-row span{flex:1 1 180px;font-weight:700;line-height:1.6}
+.supervisor-user-row button{min-width:75px;font-size:12px;padding:8px 10px}
+.supervisor-panel .admin-title{border-top:1px solid #e3e9f2;padding-top:17px;margin-top:19px}
+.supervisor-panel .pill{background:#e7f0ff;color:#1d4fb0}
+@media(max-width:420px){.supervisor-user-row{gap:6px}.supervisor-user-row button{flex:1 1 33%}}
