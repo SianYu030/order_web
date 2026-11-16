@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.3 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.4 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -13,7 +13,10 @@
   // 正式主管帳號尚未經使用者指定。空清單代表核准功能鎖定。
   // 前端白名單只能防一般誤操作，正式上線必須使用可驗證權限的後端處理核准。
   var APPROVER_EMAILS = [];
-  var approvalId = new URLSearchParams(window.location.search).get("approve") || "";
+  var parameters=new URLSearchParams(window.location.search);
+  var approvalId=parameters.get("approve")||"";
+  var batchMode=parameters.get("review")==="1";
+  var batchRows=[],selectedIds=new Set(),batchActor="";
   var CLIENT_KEY = "overtime:oauth-client-id:v1";
   var DEMO_KEY = "overtime:demo-records:v1";
   var COMMENT_TAG = "\n\n［加班登記網站］";
@@ -39,6 +42,9 @@
     $("submitBtn").disabled = isBusy;
     $("connectBtn").disabled = isBusy;
     $("refreshHistory").disabled = isBusy;
+    if($("batchRefresh")) $("batchRefresh").disabled=isBusy;
+    if($("batchSelectAll")) $("batchSelectAll").disabled=isBusy||!batchActor;
+    if($("batchApproveBtn")) updateBatchActions();
     $("submitBtn").textContent = isBusy ? "處理中，請勿重複送出…" : (state.token ? "送出加班申請（待核准）" : "儲存展示申請");
   }
   function hasGoogle() { return !!state.token; }
@@ -188,6 +194,7 @@
     $("view-" + name).classList.remove("hidden");
     clearMessage();
     if (name === "history") refreshHistory();
+    if (name === "batch") refreshBatchQueue();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function getDemoRecords() {
@@ -626,6 +633,109 @@
     finally{setBusy(false);$("approveBtn").disabled=true;$("rejectBtn").disabled=true;}
   }
 
+
+  function updateBatchActions() {
+    if(!$("batchSelectedCount"))return;
+    var n=selectedIds.size, allowed=!!batchActor&&hasGoogle()&&!state.busy;
+    $("batchSelectedCount").textContent="已選 "+n+" 筆";
+    $("batchApproveBtn").textContent="核准並寫入（"+n+"）";
+    $("batchRejectBtn").textContent="駁回移除（"+n+"）";
+    $("batchApproveBtn").disabled=!allowed||!n;
+    $("batchRejectBtn").disabled=!allowed||!n;
+    $("batchSelectAll").disabled=!allowed||!batchRows.length;
+    $("batchSelectAll").checked=!!batchRows.length&&batchRows.every(function(r){return selectedIds.has(String(r[0]));});
+    $("batchSelectAll").indeterminate=n>0&&n<batchRows.length;
+  }
+  function renderBatchQueue() {
+    var list=$("batchList");list.replaceChildren();
+    $("batchCount").textContent="待核准 "+batchRows.length+" 筆";
+    if(!batchRows.length){
+      var empty=document.createElement("div");empty.className="empty";
+      empty.textContent="目前沒有待主管核准的申請。";
+      list.appendChild(empty);
+    }
+    batchRows.forEach(function(r){
+      var id=String(r[0]||""),date=serialToDate(r[1]);
+      var label=document.createElement("label");
+      label.className="batch-card"+(selectedIds.has(id)?" is-selected":"");
+      var checkbox=document.createElement("input");
+      checkbox.type="checkbox";checkbox.value=id;
+      checkbox.checked=selectedIds.has(id);
+      checkbox.setAttribute("aria-label","選擇 "+String(r[6]||"")+" 的加班申請");
+      var info=document.createElement("span");info.className="batch-info";
+      var title=document.createElement("strong");
+      title.textContent=(date?dateString(date):"日期待核對")+" · "+String(r[4]||"")+" · "+String(r[6]||"");
+      var detail=document.createElement("small");
+      detail.textContent=String(r[7]||"")+" 小時 · "+String(r[8]||"");
+      info.append(title,detail);
+      checkbox.addEventListener("change",function(){
+        if(checkbox.checked)selectedIds.add(id);else selectedIds.delete(id);
+        label.classList.toggle("is-selected",checkbox.checked);
+        updateBatchActions();
+      });
+      label.append(checkbox,info);list.appendChild(label);
+    });
+    updateBatchActions();
+  }
+  async function refreshBatchQueue() {
+    batchActor="";selectedIds.clear();batchRows=[];
+    $("batchList").replaceChildren();
+    $("batchCount").textContent="待核准 0 筆";
+    $("batchState").textContent="正在檢查主管授權…";
+    updateBatchActions();
+    try{
+      var actor=await requireApprover();
+      var all=await getValues(REGISTER_SHEET,"A2:R1500",true);
+      var rows=all.filter(function(r){return r[0]&&r[15]==="待核准";});
+      var unique=new Set();
+      for(var row of rows){
+        var id=String(row[0]||"");
+        if(!/^BUS-[0-9]{8}-(E4|E5)-[A-Za-z0-9]+$/.test(id))
+          throw Error("待核准清單中存在不合法的登記編號，已停止操作。");
+        if(unique.has(id))throw Error("待核准清單存在重複登記編號，已停止操作。");
+        unique.add(id);
+      }
+      rows.sort(function(a,b){return Number(b[1])-Number(a[1]);});
+      batchRows=rows;batchActor=actor;
+      $("batchState").textContent="主管帳號 "+actor+" 已驗證，請勾選需要處理的申請。";
+      renderBatchQueue();
+    }catch(e){
+      $("batchState").textContent=e.message;
+      var info=document.createElement("div");info.className="empty";
+      info.textContent="請先完成主管帳號授權，才能顯示及處理正式申請。";
+      $("batchList").appendChild(info);
+      updateBatchActions();
+    }
+  }
+  async function processBatch(action) {
+    if(state.busy||!batchActor||!selectedIds.size||!hasGoogle())return;
+    var ids=Array.from(selectedIds),actor,actionName=action==="approve"?"核准寫入":"駁回移除";
+    try{actor=await requireApprover();}catch(e){$("batchState").textContent=e.message;return;}
+    if(actor!==batchActor){$("batchState").textContent="主管登入身分已變更，請重新讀取。";return;}
+    var messageText="確認批次"+actionName+" "+ids.length+" 筆？\n"+
+      (action==="approve"?"每筆核對工號、日期與現有時數後才會寫入月表及註解，遇到錯誤立即停止。":
+       "駁回後從月檢視移除，但來源保留查核。已核准的工時不會刪除。");
+    if(!await confirmAction(messageText))return;
+    setBusy(true);updateBatchActions();
+    var done=0,problem="";
+    try{
+      for(var id of ids){
+        try{
+          if(action==="approve")await approveById(id,actor);
+          else if(action==="reject")await rejectById(id,actor);
+          else throw Error("未知操作。");
+          done++;
+          $("batchState").textContent="正在"+actionName+"，已完成 "+done+"／"+ids.length+" 筆";
+        }catch(e){problem=id+"："+e.message;break;}
+      }
+    }finally{setBusy(false);}
+    await refreshBatchQueue();
+    $("batchState").textContent=problem ?
+      "已完成 "+done+"／"+ids.length+" 筆，發生錯誤並停止："+problem+
+      "。請核對原始月表，避免重複寫入。" :
+      "已成功"+actionName+" "+done+" 筆，清單已重新讀取。";
+  }
+
   function confirmAction(text) {
     return new Promise(function (resolve) {
       var dlg = $("confirmDialog");
@@ -719,7 +829,7 @@
       var all=await getValues(REGISTER_SHEET,"A2:R1500",true);
       var records2=all.filter(function(r){
         var d=serialToDate(r[1]);
-        return r[5]===person.id && d && d.y===p.y && d.m===p.m;
+        return r[5]===person.id && r[15]!=="已駁回" && d && d.y===p.y && d.m===p.m;
       }).map(function(r){
         var date=serialToDate(r[1]);
         return {p:date,date:isoString(date),id:person.id,department:String(r[4]||""),
@@ -771,6 +881,8 @@
           await loadConnectionData(previousName);
           if (approvalId) {
             await loadApprovalRequest();
+          } else if(batchMode) {
+            switchView("batch");
           } else {
             switchView("entry");
             if (state.month) message("Google 已連線，業務申請只會進入待核准清單。", "success");
@@ -822,6 +934,15 @@
     $("hours").addEventListener("input", updatePreview);
     $("entryForm").addEventListener("submit", submitEntry);
     $("refreshHistory").addEventListener("click", refreshHistory);
+    $("batchRefresh").addEventListener("click",refreshBatchQueue);
+    $("batchApproveBtn").addEventListener("click",function(){processBatch("approve");});
+    $("batchRejectBtn").addEventListener("click",function(){processBatch("reject");});
+    $("batchSelectAll").addEventListener("change",function(){
+      if(!batchActor)return;
+      selectedIds.clear();
+      if($("batchSelectAll").checked)batchRows.forEach(function(r){selectedIds.add(String(r[0]));});
+      renderBatchQueue();
+    });
     $("connectBtn").addEventListener("click", connectGoogle);
     $("disconnectBtn").addEventListener("click", disconnectGoogle);
     $("clearDemo").addEventListener("click", async function () {
@@ -843,7 +964,9 @@
   init=function(){
     originalInit();
     $("approveBtn").addEventListener("click",approvePending);
+    $("rejectBtn").addEventListener("click",rejectPending);
     if(approvalId)loadApprovalRequest();
+    else if(batchMode)switchView("batch");
   };
   document.addEventListener("DOMContentLoaded", init);
 })();
