@@ -708,7 +708,7 @@
       var unique=new Set();
       for(var row of rows){
         var id=String(row[0]||"");
-        if(!/^BUS-[0-9]{8}-(E4|E5)-[A-Za-z0-9]+$/.test(id))
+        if(!/^BUS-[0-9]{8}-(E4|E5)-[A-Za-z0-9]+(?:-R[1-9][0-9]*)?$/.test(id))
           throw Error("待核准清單中存在不合法的登記編號，已停止操作。");
         if(unique.has(id))throw Error("待核准清單存在重複登記編號，已停止操作。");
         unique.add(id);
@@ -717,12 +717,14 @@
       batchRows=rows;batchActor=actor;
       $("batchState").textContent="主管帳號 "+actor+" 已驗證，請勾選需要處理的申請。";
       renderBatchQueue();
+      return true;
     }catch(e){
       $("batchState").textContent=e.message;
       var info=document.createElement("div");info.className="empty";
       info.textContent="請先完成主管帳號授權，才能顯示及處理正式申請。";
       $("batchList").appendChild(info);
       updateBatchActions();
+      return false;
     }
   }
   async function processBatch(action) {
@@ -747,7 +749,8 @@
         }catch(e){problem=id+"："+e.message;break;}
       }
     }finally{setBusy(false);}
-    await refreshBatchQueue();
+    var reloaded=await refreshBatchQueue();
+    if(!reloaded){$("batchState").textContent="已執行 "+done+"／"+ids.length+" 筆，但清單重新讀取失敗；請至試算表核對結果。";return;}
     $("batchState").textContent=problem ?
       "已完成 "+done+"／"+ids.length+" 筆，發生錯誤並停止："+problem+
       "。請核對原始月表，避免重複寫入。" :
