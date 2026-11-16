@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.2 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.3 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -132,7 +132,7 @@
     if (previous) field.value=previous.id;
     $("rosterText").textContent = hasGoogle() ?
       "已從原始人員主檔讀取在職人員，E5 限業務、E4 限潘詠升，並以完整工號比對。" :
-      "已顯示 E5 業務及 E4 潘詠升的姓名供預覽；正式送出須先完成 Google 登入並重新核對工號。";
+      "已顯示 E5 業務及 E4 的潘詠升供選擇；正式送出須先完成 Google 登入並重新核對工號。";
     updatePreview();
   }
   function chosenPerson() {
