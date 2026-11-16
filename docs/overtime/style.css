@@ -69,3 +69,8 @@ dialog::backdrop{background:#1a29365e}dialog h3{margin:0 0 12px;font-size:19px}
 .dialog-buttons{display:flex;gap:10px;margin-top:20px}.dialog-buttons button{flex:1}
 @media(min-width:700px){.main{padding-top:25px}.panel{padding:25px}.topbar{padding:18px}.brand h1{font-size:23px}}
 @media(max-width:420px){.main{padding:14px 11px 60px}.topbar{padding:13px 11px}.top-inner{gap:9px}.brand-mark{width:38px;height:38px}.brand h1{font-size:18px}.brand p{font-size:11px}.tabs{gap:2px}.tab{font-size:13px;padding:7px 1px}.panel{padding:17px 14px}.section-heading h2{font-size:21px}.date-grid{gap:7px}.date-grid .field select{padding:10px 4px}.two-col{gap:9px}.field select,.field input{font-size:15px}.preview-row{font-size:13px}}
+
+/* 主管核准檢視（保持手機與桌面清楚） */
+#approveBtn{margin-top:18px}
+#approvalReason{white-space:pre-wrap;text-align:right;max-width:67%;overflow-wrap:anywhere}
+#approvalState{margin-top:8px}
