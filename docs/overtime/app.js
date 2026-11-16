@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.6 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.7 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -10,9 +10,6 @@
   var REGISTER_SHEET = "業務假日或臨時加班登記";
   var REGISTER_SHEET_ID = 1399193095;
   var MONTH_VIEW_ID = 2131065558;
-  // 正式主管帳號尚未經使用者指定。空清單代表核准功能鎖定。
-  // 前端白名單只能防一般誤操作，正式上線必須使用可驗證權限的後端處理核准。
-  var APPROVER_EMAILS = [];
   var parameters=new URLSearchParams(window.location.search);
   var approvalId=parameters.get("approve")||"";
   var batchMode=parameters.get("review")==="1";
@@ -147,11 +144,11 @@
   }
   function updateMode() {
     var online = hasGoogle();
-    $("connectionStatus").textContent = online ? "Google 已連線" : "展示模式";
+    $("connectionStatus").textContent = online ? "Google 已連線" : "Google 未連線";
     $("connectionStatus").className = "pill status-pill" + (online ? " connected" : "");
     $("modeNotice").textContent = online ?
       "已登入 Google。送出只會建立「待核准」紀錄，不會修改 對應原月表。" :
-      "目前為展示模式，填寫內容只儲存在這台裝置，不會寫入公司試算表。需在「設定」完成 Google OAuth 授權才能正式同步。";
+      "Google 尚未連線：業務登記僅儲存在本機，不會寫入公司試算表。主管帳號登入不代表已取得 Google 工時寫入權限。";
     $("modeNotice").className = online ? "notice" : "notice warning";
     $("submitHint").textContent = online ?
       "送出申請後，先顯示於業務加班月檢視；主管核准前不寫入 對應月表。" :
