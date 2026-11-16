@@ -35,9 +35,9 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .helper{color:var(--muted);font-weight:450;line-height:1.6;font-size:13px;margin:8px 0 0}
 .helper.small{font-size:12px}
-.segmented{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:17px}
-.segment{padding:12px 9px;border-radius:10px;border:1px solid var(--border);background:#f7f9fc;color:#5b7089;font-weight:800}
-.segment.selected{color:var(--blue);border-color:#9db9f2;background:#eaf1ff}
+
+
+
 .suffix-field{position:relative}.suffix-field input{padding-right:57px}.suffix-field>span{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:#77849b;font-size:13px;font-weight:500}
 .quick-hours{display:flex;gap:8px;flex-wrap:wrap;margin:-3px 0 18px}
 .quick-hours button{border:1px solid #cfdaeb;background:#f8fbff;color:#426182;padding:7px 12px;border-radius:8px;font-size:13px}

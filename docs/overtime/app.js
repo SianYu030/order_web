@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.0.1 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.0.2 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -12,7 +12,7 @@
   var COMMENT_TAG = "\n\n［加班登記網站］";
   var DEPT_SUFFIX = { "E3": "E3", "E4": "E4", "W8": "w8", "W8整修": "w8整修股", "E5": "E5機修課" };
   var DEPT_LABEL = { "E3": "E3 門板", "E4": "E4 櫃體", "W8": "W8", "W8整修": "W8 整修股", "E5": "E5／機修課／業務／內勤" };
-  var KINDS = { "加班": 1, "支援": 2 }; // 索引沿用原月表：G=請假、H=加班、I=支援
+  var KINDS = { "加班": 1 }; // 原月表每日五欄，固定使用第 2 欄「加班」；不修改支援或班別
   var WEEKDAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
   var state = {
     token: null, tokenClient: null, metadata: null, roster: [],
@@ -143,18 +143,6 @@
     setBusy(false);
     populateEmployees();
   }
-  function setKind(kind) {
-    if (!Object.prototype.hasOwnProperty.call(KINDS, kind)) return;
-    state.kind = kind;
-    document.querySelectorAll("[data-kind]").forEach(function (btn) {
-      var active = btn.dataset.kind === kind;
-      btn.classList.toggle("selected", active);
-      btn.setAttribute("aria-pressed", active ? "true" : "false");
-    });
-    $("hoursLabel").textContent = kind + "時數";
-
-    updatePreview();
-  }
   function getDayType(p) {
     if (hasGoogle() && state.month && state.monthKey === contextKey()) {
       var cell = state.month.dayTypes[5 * (p.d - 1) + 4];
@@ -164,7 +152,6 @@
   }
   function getLunchPreview(p, n) {
 
-    if ($("shift").value === "中") return "中班，原表自動判定";
     var type = getDayType(p);
     var holiday = type.indexOf("假日") === 0;
     return n >= (holiday ? 5 : 3) ? "可能符合便當條件" : "未達便當時數門檻";
@@ -175,7 +162,7 @@
     $("weekdayText").textContent = WEEKDAYS[dayOfWeek(p)] + " · " + getDayType(p) + (hasGoogle() ? "（以原表為準）" : "（展示推算）");
     $("summaryWhen").textContent = dateString(p) + " · " + (DEPT_LABEL[$("department").value] || "");
     $("summaryWho").textContent = person ? person.id + " · " + person.name : "請選擇員工";
-    $("summaryKind").textContent = state.kind + " " + (numberOrNull($("hours").value) || 0) + " 小時 · " + ($("shift").value === "中" ? "中班" : "早班");
+    $("summaryKind").textContent = "加班 " + (numberOrNull($("hours").value) || 0) + " 小時";
     var cell = a1Col(colIndex(p.d, state.kind));
     var row = state.month && state.monthKey === contextKey() ? state.month.employeeRows.get($("employee").value) : null;
     $("summaryCell").textContent = cell + (row ? row : " · 待確認列號");
@@ -210,15 +197,15 @@
   function validateEntry() {
     var p = dateParts(), person = chosenPerson();
     var hours = numberOrNull($("hours").value), reason = $("reason").value.trim();
-    if (!Object.prototype.hasOwnProperty.call(KINDS, state.kind)) throw Error("目前僅開放加班與支援登記。");
+    if (state.kind !== "加班") throw Error("此網站只允許加班登記。");
     if (!p.y || !p.m || !p.d || p.d > new Date(p.y, p.m, 0).getDate()) throw Error("請選擇正確登記日期。");
     if (!person) throw Error("請先選擇正確的員工。");
     if (hours === null || hours < 0.5 || hours > 24 || Math.round(hours * 2) !== hours * 2) throw Error("時數須為 0.5 至 24 小時，且以半小時為單位。");
-    if (!reason) throw Error("加班或支援登記必須填寫原因／備註。");
+    if (!reason) throw Error("請填寫加班原因／備註。");
     if (reason.length > 1600) throw Error("原因文字過長，請控制在 1600 字內。");
     return {
       p: p, date: isoString(p), department: $("department").value, person: person, id: person.id,
-      kind: state.kind, hours: hours, shift: $("shift").value, reason: reason
+      kind: "加班", hours: hours, reason: reason
     };
   }
   function makeCellContext(entry) {
@@ -420,7 +407,8 @@
         (oldReason ? "\n原網站備註：" + oldReason : "") + conflict
       );
       if (!yesOnline) return;
-      var requests = [updateCellRequest(ctx, ctx.col, entry.hours), updateCellRequest(ctx, 6 + 5 * (entry.p.d - 1) + 3, entry.shift)];
+      // 班別不由此網站管理；僅更新選定員工與日期的加班時數。
+      var requests = [updateCellRequest(ctx, ctx.col, entry.hours)];
       var needsComment = !!entry.reason || !!current;
       if (needsComment) requests.push(commentRequest(entry.reason, existingComments, ctx));
       var resp = await api(BASE + ":batchUpdate", "POST", { requests: requests });
@@ -464,7 +452,7 @@
       var heading = document.createElement("strong");
       heading.textContent = entry.date.replace(/-/g, "/") + "  " + entry.kind + " " + formatHours(entry.hours);
       var detail = document.createElement("small");
-      detail.textContent = entry.shift + "班" + (entry.reason ? " · " + entry.reason : (online ? " · 註解點編輯後讀取" : ""));
+      detail.textContent = entry.reason ? entry.reason : (online ? "註解點編輯後讀取" : "未填備註");
       left.append(heading, detail);
       var btn = document.createElement("button");
       btn.type = "button";
@@ -483,7 +471,7 @@
     if (!hasGoogle()) {
       var records = getDemoRecords().filter(function (r) {
         return r.id === person.id && r.department === $("department").value &&
-          r.date && r.date.startsWith(String(p.y) + "-" + pad(p.m) + "-");
+          r.kind === "加班" && r.date && r.date.startsWith(String(p.y) + "-" + pad(p.m) + "-");
       }).sort(function (a, b) { return b.date.localeCompare(a.date); });
       renderHistoryItems(records, false);
       return;
@@ -497,16 +485,13 @@
       var raw = await getValues(state.month.sheetName, "G" + row + ":" + a1Col(6 + days * 5 - 1) + row, false);
       var cells = raw[0] || [], records2 = [];
       for (var d = 1; d <= days; d++) {
-        for (var kind of ["加班", "支援"]) {
-          var offset = (d - 1) * 5;
-          var hours = numberOrNull(cells[offset + KINDS[kind]]);
-          if (hours !== null && hours > 0) {
-            records2.push({
-              p: { y: p.y, m: p.m, d: d }, date: String(p.y) + "-" + pad(p.m) + "-" + pad(d),
-              id: person.id, department: $("department").value, kind: kind, hours: hours,
-              shift: cells[offset + 3] === "中" ? "中" : "早", reason: ""
-            });
-          }
+        var offset = (d - 1) * 5;
+        var hours = numberOrNull(cells[offset + KINDS["加班"]]);
+        if (hours !== null && hours > 0) {
+          records2.push({
+            p: { y: p.y, m: p.m, d: d }, date: String(p.y) + "-" + pad(p.m) + "-" + pad(d),
+            id: person.id, department: $("department").value, kind: "加班", hours: hours, reason: ""
+          });
         }
       }
       records2.sort(function (a, b) { return b.date.localeCompare(a.date); });
@@ -519,9 +504,7 @@
   }
   async function editFromHistory(entry, online) {
     $("day").value = String(Number(entry.date.slice(-2)));
-    setKind(entry.kind);
     $("hours").value = String(entry.hours);
-    $("shift").value = entry.shift || "早";
     $("reason").value = entry.reason || "";
     if (online) {
       try {
@@ -598,9 +581,6 @@
     document.querySelectorAll("[data-view]").forEach(function (btn) {
       btn.addEventListener("click", function () { switchView(btn.dataset.view); });
     });
-    document.querySelectorAll("[data-kind]").forEach(function (btn) {
-      btn.addEventListener("click", function () { setKind(btn.dataset.kind); });
-    });
     document.querySelectorAll("[data-hour]").forEach(function (btn) {
       btn.addEventListener("click", function () { $("hours").value = btn.dataset.hour; updatePreview(); });
     });
@@ -610,7 +590,6 @@
     $("department").addEventListener("change", function () { populateEmployees(); loadMonth(); });
     $("employee").addEventListener("change", updatePreview);
     $("hours").addEventListener("input", updatePreview);
-    $("shift").addEventListener("change", updatePreview);
     $("entryForm").addEventListener("submit", submitEntry);
     $("refreshHistory").addEventListener("click", refreshHistory);
     $("connectBtn").addEventListener("click", connectGoogle);
@@ -627,7 +606,6 @@
     $("clientId").value = localStorage.getItem(CLIENT_KEY) || "";
     bindEvents();
     updateMode();
-    setKind("加班");
     updatePreview();
   }
   document.addEventListener("DOMContentLoaded", init);

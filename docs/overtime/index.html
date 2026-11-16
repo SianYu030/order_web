@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f6f8fc">
-  <meta name="description" content="系統櫃廠業務假日或臨時加班、支援登記。與既有 Google 試算表連結，保留原統計公式及註解。">
+  <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.0.1">
+  <link rel="stylesheet" href="./style.css?v=1.0.2">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.0.1" defer></script>
+  <script src="./app.js?v=1.0.2" defer></script>
 </head>
 <body>
 <div class="app">
@@ -38,7 +38,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，完成後顯示於原始月表。</p></div>
-        <span class="version">V1.0.1</span>
+        <span class="version">V1.0.2</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -70,19 +70,10 @@
         </section>
 
         <section class="panel">
-          <h3><span class="step">3</span> 登記項目</h3>
-          <div class="segmented" role="group" aria-label="登記類型">
-            <button type="button" class="segment selected" data-kind="加班" aria-pressed="true">加班</button>
-            <button type="button" class="segment" data-kind="支援" aria-pressed="false">支援</button>
-          </div>
-          <div class="two-col">
-            <label class="field"><span><span id="hoursLabel">加班時數</span> <em>*</em></span>
-              <div class="suffix-field"><input type="number" id="hours" min="0.5" max="24" step="0.5" inputmode="decimal" value="3" required><span>小時</span></div>
-            </label>
-            <label class="field"><span>班別</span>
-              <select id="shift"><option value="早">早班</option><option value="中">中班</option></select>
-            </label>
-          </div>
+          <h3><span class="step">3</span> 加班登記</h3>
+          <label class="field"><span>加班時數 <em>*</em></span>
+            <div class="suffix-field"><input type="number" id="hours" min="0.5" max="24" step="0.5" inputmode="decimal" value="3" required><span>小時</span></div>
+          </label>
           <div class="quick-hours" aria-label="快速設定時數">
             <button type="button" data-hour="1">1 小時</button>
             <button type="button" data-hour="2">2 小時</button>
@@ -141,7 +132,7 @@
         <h3>來源試算表</h3>
         <div class="settings-meta"><span>原始文件</span><strong>2026-加班及請假時數登記表</strong></div>
         <a class="link" target="_blank" rel="noopener noreferrer" href="https://docs.google.com/spreadsheets/d/1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM/edit#gid=426152451">開啟原始 Google 試算表 ↗</a>
-        <p class="helper">只修改所選員工與日期的時數、班別及同格註解。不調整公式、原有欄位與便當資料。</p>
+        <p class="helper">只修改所選員工與日期的加班時數及同格註解。不調整公式、原有欄位與便當資料。</p>
       </section>
       <section class="panel">
         <h3>展示資料</h3>
@@ -151,7 +142,7 @@
     </section>
   </main>
 
-  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.0.1</footer>
+  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.0.2</footer>
 </div>
 
 <dialog id="confirmDialog">
