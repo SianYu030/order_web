@@ -686,9 +686,13 @@
         message("已取得 Google 授權，正在讀取人員主檔與日期…", "");
         try {
           await loadConnectionData();
-          switchView("entry");
-          if (state.month) message("Google 已連線，業務申請只會進入待核准清單。", "success");
-          else message("Google 已授權，但目前所選月份或廠別尚未完成對應；此狀態無法寫入。請檢查日期後再試。", "warning");
+          if (approvalId) {
+            await loadApprovalRequest();
+          } else {
+            switchView("entry");
+            if (state.month) message("Google 已連線，業務申請只會進入待核准清單。", "success");
+            else message("Google 已授權，但目前所選月份尚未建立；請檢查日期。", "warning");
+          }
         } catch (e) {
           // 尚未成功讀到名冊前，不應讓畫面看起來可以正式寫入。
           state.token = null;
