@@ -156,7 +156,7 @@
   }
   function getDayType(p) {
     if (hasGoogle() && state.month && state.monthKey === contextKey()) {
-      var cell = state.month.dayTypes[6 + 5 * (p.d - 1) + 4];
+      var cell = state.month.dayTypes[5 * (p.d - 1) + 4];
       if (cell === "一般" || cell === "假日") return cell;
     }
     return dayOfWeek(p) === 0 || dayOfWeek(p) === 6 ? "假日（預估）" : "一般（預估）";
@@ -378,6 +378,7 @@
     return new Promise(function (resolve) {
       var dlg = $("confirmDialog");
       $("confirmText").textContent = text;
+      dlg.returnValue = "cancel";
       if (typeof dlg.showModal !== "function") { resolve(window.confirm(text)); return; }
       var onClose = function () { dlg.removeEventListener("close", onClose); resolve(dlg.returnValue === "confirm"); };
       dlg.addEventListener("close", onClose);
@@ -557,8 +558,9 @@
         message("已取得 Google 授權，正在讀取人員主檔與日期…", "");
         try {
           await loadConnectionData();
-          message("已連結 Google 試算表，可先選員工並確認對應儲存格。", "success");
           switchView("entry");
+          if (state.month) message("Google 試算表已連線，月份及工號定位成功。", "success");
+          else message("Google 已授權，但目前所選月份或廠別尚未完成對應；此狀態無法寫入。請檢查日期後再試。", "warning");
         } catch (e) {
           // 尚未成功讀到名冊前，不應讓畫面看起來可以正式寫入。
           state.token = null;
