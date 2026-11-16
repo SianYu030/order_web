@@ -29,7 +29,7 @@
     show("supervisorLoginBox",!signed);
     show("supervisorSignedBox",signed);
     show("supervisorRolePill",signed);
-    if(!signed)return;
+    if(!signed){syncPanel();return;}
     $("supervisorSignedName").textContent=user.username+" · "+(user.role==="admin"?"系統管理員":"主管");
     $("supervisorRolePill").textContent=user.role==="admin"?"管理員":"主管";
     show("supervisorChangePrompt",!!user.must_change);
@@ -37,12 +37,14 @@
     show("supervisorTogglePasswordBtn",!user.must_change);
     show("supervisorAdminBox",user.role==="admin"&&!user.must_change);
     if(user.must_change)msg("初次登入必須先修改密碼，完成後才會開放主管功能。");
-    else msg("登入成功。主管核准仍需 Google 試算表授權。");
+    else msg("已登入主管系統。正式核准仍須完成 Google 試算表授權。");
+    syncPanel();
   }
   function syncPanel(){
     const batch=$("view-batch"),approval=$("view-approval");
     const visible=Boolean(batch&&!batch.classList.contains("hidden") || approval&&!approval.classList.contains("hidden"));
     show("supervisorAccess",visible);
+    document.body.classList.toggle("supervisor-auth-gate",visible && (!user || user.must_change));
   }
   function changed(){
     document.dispatchEvent(new CustomEvent("supervisor-auth-change",{detail:{user}}));
