@@ -131,7 +131,7 @@
       (hasGoogle() && preferredName ? selected.find(function(p){return p.name===preferredName;}) : null);
     if (previous) field.value=previous.id;
     $("rosterText").textContent = hasGoogle() ?
-      "已從人員主檔讀取在職業務人員，以完整工號比對。" :
+      "已從原始人員主檔讀取在職人員，E5 限業務、E4 限潘詠升，並以完整工號比對。" :
       "已顯示 E5 業務及 E4 潘詠升的姓名供預覽；正式送出須先完成 Google 登入並重新核對工號。";
     updatePreview();
   }
@@ -555,10 +555,10 @@
       var actual=await getValues(ctx.sheetName,ctx.range,true);
       if(Number(actual[0]&&actual[0][0])!==hours)throw Error("對應月表寫入未通過核對。");
       if(answer.commentUpdateState && answer.commentUpdateState!=="ALL_SAVED")
-        throw Error("E5 時數可能已寫入，但註解 API 回報 "+answer.commentUpdateState+"；請人工核對。");
+        throw Error("原月表時數可能已寫入，但註解 API 回報 "+answer.commentUpdateState+"；請人工核對。");
       var fresh=await getCommentsAt(ctx);
       if(!fresh.some(function(c){return c.headPost&&c.headPost.content===commentContent(reason);}))
-        throw Error("E5 時數已寫入，但尚未驗證註解成功；不得標記為已核准。");
+        throw Error("原月表時數已寫入，但尚未驗證註解成功；不得標記為已核准。");
       var now=taiwanDateTimeNumber(),index=check.rowIndex;
       await api(BASE+":batchUpdate","POST",{requests:[
         {updateCells:{start:{sheetId:REGISTER_SHEET_ID,rowIndex:index,columnIndex:9},
