@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f6f8fc">
+  <meta name="description" content="系統櫃廠加班、請假及支援登記。與既有 Google 試算表連結，保留原統計公式及註解。">
+  <title>加班／請假登記｜系統櫃廠</title>
+  <link rel="stylesheet" href="./style.css?v=1.0.0">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="./app.js?v=1.0.0" defer></script>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="top-inner">
+      <div class="brand-mark" aria-hidden="true">▤</div>
+      <div class="brand">
+        <h1>加班／請假登記</h1>
+        <p>系統櫃廠 · 人員工時登記</p>
+      </div>
+      <span class="pill status-pill" id="connectionStatus">展示模式</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="notice warning" id="modeNotice" role="status">
+      目前為展示模式，填寫內容只儲存在這台裝置，不會寫入公司試算表。連結 Google 帳號後才可正式同步。
+    </div>
+    <div class="notice hidden" id="banner" role="status" aria-live="polite"></div>
+
+    <nav class="tabs" aria-label="網站分頁">
+      <button type="button" class="tab is-active" data-view="entry" aria-selected="true">✎ 登記</button>
+      <button type="button" class="tab" data-view="history" aria-selected="false">▤ 查詢／修改</button>
+      <button type="button" class="tab" data-view="settings" aria-selected="false">⚙ 設定</button>
+    </nav>
+
+    <section id="view-entry" class="view">
+      <div class="section-heading">
+        <div><h2>新增登記</h2><p>選擇日期、人員及時數，完成後顯示於原始月表。</p></div>
+        <span class="version">V1.0.0</span>
+      </div>
+
+      <form id="entryForm" novalidate>
+        <section class="panel">
+          <h3><span class="step">1</span> 登記日期</h3>
+          <div class="date-grid">
+            <label class="field"><span>年份</span><select id="year" required aria-label="年份"></select></label>
+            <label class="field"><span>月份</span><select id="month" required aria-label="月份"></select></label>
+            <label class="field"><span>日期</span><select id="day" required aria-label="日期"></select></label>
+          </div>
+          <p class="helper" id="weekdayText">請選擇日期</p>
+        </section>
+
+        <section class="panel">
+          <h3><span class="step">2</span> 所屬單位與員工</h3>
+          <label class="field"><span>所屬單位 <em>*</em></span>
+            <select id="department" required>
+              <option value="E3">E3 門板</option>
+              <option value="E4">E4 櫃體</option>
+              <option value="W8">W8</option>
+              <option value="W8整修">W8 整修股</option>
+              <option value="E5">E5／機修課／業務／內勤</option>
+            </select>
+          </label>
+          <label class="field"><span>員工（工號／姓名）<em>*</em></span>
+            <select id="employee" required></select>
+          </label>
+          <p class="helper" id="rosterText">展示模式使用虛構員工；正式連線時會讀取在職名冊。</p>
+        </section>
+
+        <section class="panel">
+          <h3><span class="step">3</span> 登記項目</h3>
+          <div class="segmented" role="group" aria-label="登記類型">
+            <button type="button" class="segment selected" data-kind="加班" aria-pressed="true">加班</button>
+            <button type="button" class="segment" data-kind="支援" aria-pressed="false">支援</button>
+            <button type="button" class="segment" data-kind="請假" aria-pressed="false">請假</button>
+          </div>
+          <div class="two-col">
+            <label class="field"><span><span id="hoursLabel">加班時數</span> <em>*</em></span>
+              <div class="suffix-field"><input type="number" id="hours" min="0.5" max="24" step="0.5" inputmode="decimal" value="3" required><span>小時</span></div>
+            </label>
+            <label class="field"><span>班別</span>
+              <select id="shift"><option value="早">早班</option><option value="中">中班</option></select>
+            </label>
+          </div>
+          <div class="quick-hours" aria-label="快速設定時數">
+            <button type="button" data-hour="1">1 小時</button>
+            <button type="button" data-hour="2">2 小時</button>
+            <button type="button" data-hour="3">3 小時</button>
+            <button type="button" data-hour="4">4 小時</button>
+            <button type="button" data-hour="8">8 小時</button>
+          </div>
+          <label class="field reason-field"><span>加班原因／備註 <em id="reasonRequired">*</em></span>
+            <textarea id="reason" rows="3" maxlength="1600" placeholder="例如：文書加班、臨時訂單、客戶需求、趕工"></textarea>
+          </label>
+          <p class="helper">正式同步時，原因會寫入對應「時數」儲存格的 Google 試算表註解，不新增額外欄位。</p>
+        </section>
+
+        <section class="panel preview-panel">
+          <h3><span class="step">4</span> 登記確認</h3>
+          <div class="preview-row"><span>日期／單位</span><strong id="summaryWhen">2026/11/16 · E5</strong></div>
+          <div class="preview-row"><span>員工</span><strong id="summaryWho">請選擇員工</strong></div>
+          <div class="preview-row"><span>內容</span><strong id="summaryKind">加班 3 小時</strong></div>
+          <div class="preview-row"><span>對應位置</span><strong id="summaryCell">CE · 待確認列號</strong></div>
+          <div class="preview-row"><span>便當規則</span><strong id="summaryLunch">一般日滿 3 小時</strong></div>
+          <p class="helper small">便當由原試算表公式判定，網站不覆寫便當儲存格。</p>
+        </section>
+
+        <div class="form-actions">
+          <button type="submit" id="submitBtn" class="primary-btn">儲存展示登記</button>
+          <p class="helper action-helper" id="submitHint">展示資料只會存在此瀏覽器，不會傳送至 Google。</p>
+        </div>
+      </form>
+    </section>
+
+    <section id="view-history" class="view hidden">
+      <div class="section-heading"><div><h2>查詢／修改</h2><p>依目前選擇的年份、月份、單位及員工檢視登記。</p></div></div>
+      <section class="panel">
+        <p class="helper">請先在「登記」選好日期、單位與員工，再到這裡查詢。</p>
+        <button id="refreshHistory" class="secondary-btn" type="button">重新讀取紀錄</button>
+        <div id="historyList" class="history-list" aria-live="polite"></div>
+      </section>
+    </section>
+
+    <section id="view-settings" class="view hidden">
+      <div class="section-heading"><div><h2>Google 試算表連線</h2><p>網站由 GitHub Pages 提供，不使用 Apps Script 架設網站。</p></div></div>
+      <section class="panel">
+        <h3>帳號授權</h3>
+        <p class="helper">網站透過 Google 官方 OAuth 登入，使用你有編輯權限的 Google 帳號。存取權杖只留在目前頁面記憶體，不存入 GitHub。</p>
+        <label class="field"><span>Google OAuth 網頁用戶端 ID</span>
+          <input id="clientId" type="text" spellcheck="false" autocomplete="off" placeholder="xxxxxxxx.apps.googleusercontent.com">
+        </label>
+        <p class="helper">必須先在 Google Cloud 建立 OAuth 網頁用戶端，授權 JavaScript 來源為 https://sianyu030.github.io 。這是公開用戶端識別碼，不是密碼或服務帳戶金鑰。</p>
+        <div class="settings-actions">
+          <button type="button" id="connectBtn" class="primary-btn">使用 Google 帳號連線</button>
+          <button type="button" id="disconnectBtn" class="secondary-btn">登出連線</button>
+        </div>
+        <p id="settingsState" class="helper">尚未連接 Google。</p>
+      </section>
+      <section class="panel">
+        <h3>來源試算表</h3>
+        <div class="settings-meta"><span>原始文件</span><strong>2026-加班及請假時數登記表</strong></div>
+        <a class="link" target="_blank" rel="noopener noreferrer" href="https://docs.google.com/spreadsheets/d/1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM/edit#gid=426152451">開啟原始 Google 試算表 ↗</a>
+        <p class="helper">只修改所選員工與日期的時數、班別及同格註解。不調整公式、原有欄位與便當資料。</p>
+      </section>
+      <section class="panel">
+        <h3>展示資料</h3>
+        <p class="helper">展示模式的紀錄只會保存在這台裝置的瀏覽器，與正式資料完全分離。</p>
+        <button class="danger-link" type="button" id="clearDemo">清除本機展示紀錄</button>
+      </section>
+    </section>
+  </main>
+
+  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.0.0</footer>
+</div>
+
+<dialog id="confirmDialog">
+  <form method="dialog">
+    <h3>確認送出登記？</h3>
+    <div class="dialog-description" id="confirmText"></div>
+    <div class="dialog-buttons"><button type="submit" value="cancel" class="secondary-btn">取消</button><button type="submit" value="confirm" class="primary-btn">確認儲存</button></div>
+  </form>
+</dialog>
+</body>
+</html>
