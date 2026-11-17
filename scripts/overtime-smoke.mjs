@@ -75,4 +75,15 @@ console.log("PASS forged bridge key rejected");
 const bridgeAdmin=await fetchText(BASE+"bridge-admin.js?v=1.1.17");
 assert(bridgeAdmin.includes('action:"pair"')&&bridgeAdmin.includes("isAdmin"));
 console.log("PASS administrator pairing client deployed");
+let installerCopied=false;
+for(let i=0;i<10;i++){
+ const script=await fetchText(BASE+"google-bridge-code.txt?smoke=1.1.17&attempt="+i);
+ if(script.includes("function installBusinessOvertimeSync()")&&script.includes("function runBusinessOvertimeSync()")&&script.length>12000){
+  installerCopied=true;break;
+ }
+ if(i<9)await new Promise(resolve=>setTimeout(resolve,5000));
+}
+assert(installerCopied,"Google Apps Script installer missing or not published");
+assert(bridgeAdmin.includes("複製 Google 同步程式"),"admin page must support copy-ready script");
+console.log("PASS public Google sync worker downloadable from administrator portal");
 console.log("ALL CHECKS PASSED; no actual employee applications or Google working hours modified.");
