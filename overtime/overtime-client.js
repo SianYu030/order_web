@@ -80,7 +80,7 @@ async function load(){
    card.append(top);
    card.append(element("p","helper",x.department+"｜"+x.reason));
    card.append(element("p","helper small","申請編號："+x.request_no));
-   if(x.status==="待核准" && x.source_sheet==="業務假日或臨時加班登記" && /^A[2-9][0-9]*:R[2-9][0-9]*$/.test(x.source_range||"")){
+   if(x.status==="待核准" && x.source_sheet==="業務假日或臨時加班登記" && /^A([2-9]|[1-9][0-9]{1,3}):R\1$/.test(x.source_range||"")){
     const approve=element("button","primary-btn","主管核准（待正式同步）");
     approve.type="button";
     approve.addEventListener("click",async()=>{
