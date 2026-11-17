@@ -146,3 +146,10 @@ GitHub Pages 前端：`https://sianyu030.github.io/order_web/overtime/`。原報
 - 主管站新增「後端已收到的申請」清單；1494／kurt 及 3109 登入並完成首次密碼修改後可查看後端收件。尚未寫入 Google 的申請可駁回，保留稽核，絕不操作原月份工時。若已進 Google，必須從 Google 月檢視操作，防止兩處狀態不一致。
 - Google 月檢視和原 E4/E5 月表 **尚未自動連上 Supabase**：缺 Google API 正式授權／服務帳號，因此目前後端收件狀態只代表已保存在公司系統，不代表 Google 已同步或主管已正式核准。不能對外宣稱整條流程已正式驗收。
 - 不變更任何既有 Google 表格、既有工時、Supabase 主管帳密；保留三個網頁網址和 Google 分頁核准入口。
+
+## V1.1.16：主管核准進入安全待同步狀態（2026-11-18）
+- 修復正式 GitHub Pages 發布來源為 docs/overtime，原始碼 overtime 與 docs/overtime 必須同步，否則網站仍顯示舊版。
+- Supabase overtime-requests Edge Function 已部署 v5：主管後端可對來源表已同步的待核准申請執行 approve，改為「核准待同步」；拒絕未登入核准並保留稽核。申請仍不會直接修改正式 Google 工時。
+- 主管網站 Supabase 待辦清單可按「主管核准（待正式同步）」或「駁回（保留紀錄）」，只有 Google 來源表已核對的申請可核准。
+- 尚未建立獨立 Google 寫入權杖、正式加班時數/註解自動回寫機制，也沒有實際員工端到端寫入驗收。曾嘗試新增 ChatGPT 排程，因用戶已有 5/5 方案上限而遭拒，並未停止其他現有排程。
+- 保留 E4、E5 既有工時及公式；所有未驗證寫入狀態不可顯示為「已核准」。

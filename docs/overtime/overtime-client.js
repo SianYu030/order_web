@@ -1,4 +1,4 @@
-/* V1.1.15 - Supabase 業務加班收件。只保存申請，Google 正式同步另行驗證。 */
+/* V1.1.16 - Supabase 業務加班收件與主管核准排程同步，Google 正式工時仍以讀回驗證為準。 */
 (function(){
 "use strict";
 const URL="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-requests";
@@ -34,6 +34,7 @@ const api={call,save,find,localReceipts,
  update:(data)=>call("update",data),
  receipt:(id,receipt_token)=>call("receipt",{id,receipt_token}),
  queue:()=>call("queue",{},true),
+ approve:(id)=>call("approve",{id},true),
  reject:(id)=>call("reject",{id},true)
 };
 window.OvertimeApi=api;
@@ -69,7 +70,7 @@ async function load(){
   const result=await api.queue();
   content.replaceChildren();
   const rows=result.records||[];
-  status.textContent="目前後端收件 "+rows.length+" 筆（包括待同步、同步失敗及已進入正式待核准）。注意：待同步不等於正式月檢視已有紀錄。";
+  status.textContent="目前待辦 "+rows.length+" 筆。主管核准後會標為「核准待同步」，正式工時與註解只有 Google 寫入並讀回驗證通過後才算完成。";
   if(!rows.length){content.append(element("div","empty","目前沒有未處理的後端申請。"));return;}
   for(const x of rows){
    const card=element("div","overtime-backend-item");
@@ -79,18 +80,35 @@ async function load(){
    card.append(top);
    card.append(element("p","helper",x.department+"｜"+x.reason));
    card.append(element("p","helper small","申請編號："+x.request_no));
-   if(x.status==="待同步"||x.status==="同步失敗"){
-    const btn=element("button","secondary-btn","駁回（移出待辦）");
-    btn.type="button";
-    btn.addEventListener("click",async()=>{
-     if(!confirm("確定駁回 "+x.employee_name+" "+x.date+" 的加班申請？\n將保留稽核紀錄，不寫入正式工時。"))return;
-     btn.disabled=true;
-     try{await api.reject(x.id);await load();}
-     catch(e){status.textContent="駁回未完成："+e.message;btn.disabled=false;}
+   if(x.status==="待核准" && x.source_sheet==="業務假日或臨時加班登記" && /^A([2-9]|[1-9][0-9]{1,3}):R\1$/.test(x.source_range||"")){
+    const approve=element("button","primary-btn","主管核准（待正式同步）");
+    approve.type="button";
+    approve.addEventListener("click",async()=>{
+     if(!confirm("主管確認核准？\n"+x.date+" · "+x.employee_name+"\n加班 "+x.hours+" 小時\n原因："+x.reason+
+       "\n\n核准會送入 Google 工時寫入佇列；目前尚未完成 Google 正式寫入。"))return;
+     approve.disabled=true;
+     try{await api.approve(x.id);await load();}
+     catch(e){status.textContent="核准未完成："+e.message;approve.disabled=false;}
     });
-    card.append(btn);
+    card.append(approve);
+   }
+   if(["待同步","同步失敗","待核准"].includes(x.status)){
+    const reject=element("button","secondary-btn","駁回（保留紀錄）");
+    reject.type="button";
+    reject.addEventListener("click",async()=>{
+     if(!confirm("確定駁回 "+x.employee_name+" "+x.date+" 的加班申請？\n保留稽核紀錄，Google 正式工時不寫入。"))return;
+     reject.disabled=true;
+     try{await api.reject(x.id);await load();}
+     catch(e){status.textContent="駁回未完成："+e.message;reject.disabled=false;}
+    });
+    card.append(reject);
+    if(x.status!=="待核准")card.append(element("p","helper small","等待來源清單同步完成，暫不可核准。"));
+   }else if(x.status==="核准待同步"){
+    card.append(element("p","helper small","主管已核准；正式 Google 工時及註解尚待同步核對，不會重複核准。"));
+   }else if(x.status==="需人工核對"){
+    card.append(element("p","helper small","Google 儲存格或資料有衝突，已停止自動寫入，須由管理員核對。"));
    }else{
-    card.append(element("p","helper small","已進入正式待核准，請改從 Google 月檢視操作。"));
+    card.append(element("p","helper small","目前狀態不允許再次處理。"));
    }
    content.append(card);
   }
