@@ -92,7 +92,7 @@ async function load(){
     });
     card.append(approve);
    }
-   if(["待同步","同步失敗","待核准"].includes(x.status)){
+   if(["待同步","同步失敗"].includes(x.status)){
     const reject=element("button","secondary-btn","駁回（保留紀錄）");
     reject.type="button";
     reject.addEventListener("click",async()=>{
@@ -102,7 +102,9 @@ async function load(){
      catch(e){status.textContent="駁回未完成："+e.message;reject.disabled=false;}
     });
     card.append(reject);
-    if(x.status!=="待核准")card.append(element("p","helper small","等待來源清單同步完成，暫不可核准。"));
+    card.append(element("p","helper small","等待來源清單同步完成，暫不可核准。"));
+   }else if(x.status==="待核准"){
+    card.append(element("p","helper small","申請已寫入 Google 來源清單；可核准後排入正式工時同步，但此頁暫不提供跨系統駁回。"));
    }else if(x.status==="核准待同步"){
     card.append(element("p","helper small","主管已核准；正式 Google 工時及註解尚待同步核對，不會重複核准。"));
    }else if(x.status==="需人工核對"){
