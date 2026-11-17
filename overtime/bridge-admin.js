@@ -4,6 +4,7 @@
 const ROOT="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-sheet-bridge";
 const SESSION="rightway-overtime-supervisor-session-v1";
 const APP_SCRIPT_URL="https://github.com/SianYu030/order_web/blob/main/integrations/overtime-google/Code.gs";
+const COPYABLE_CODE="../google-bridge-code.txt";
 const MANIFEST_URL="https://github.com/SianYu030/order_web/blob/main/integrations/overtime-google/appsscript.json";
 const SPREADSHEET_URL="https://docs.google.com/spreadsheets/d/1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM/edit";
 const $=(id)=>document.getElementById(id);
@@ -16,8 +17,23 @@ function init(){
  const title=el("h3","","Google 自動同步設定");
  const intro=el("p","helper","員工申請先同步到 Google 待核准清單，主管核准後才更新 E4／E5 正式工時與原因留言。使用試算表所屬 Google 帳號的 Apps Script 授權，不需要 Google Cloud OAuth 用戶端 ID。");
  const links=el("p","helper");
- links.append(link(SPREADSHEET_URL,"開啟正式試算表"),document.createTextNode("　"),link(APP_SCRIPT_URL,"同步程式 Code.gs"),document.createTextNode("　"),link(MANIFEST_URL,"權限設定"));
- const info=el("p","helper","安裝方式：在正式試算表選「擴充功能 → Apps Script」，新增程式檔並貼上 Code.gs（不得覆蓋原有程式）；確認權限範圍後，首次執行 installBusinessOvertimeSync，完成 Google 授權時貼入下方授權碼。之後每 5 分鐘自動同步。");
+ links.append(link(SPREADSHEET_URL,"開啟正式試算表"),document.createTextNode("　"),link(APP_SCRIPT_URL,"查看同步程式"),document.createTextNode("　"),link(MANIFEST_URL,"權限設定"));
+ const codeCopy=el("button","secondary-btn","複製 Google 同步程式");
+ codeCopy.type="button";
+ codeCopy.addEventListener("click",async()=>{
+  codeCopy.disabled=true;
+  try{
+   const resp=await fetch(COPYABLE_CODE+"?v=1.1.17",{cache:"no-store"});
+   if(!resp.ok)throw Error("讀取同步程式失敗 HTTP "+resp.status);
+   const script=await resp.text();
+   if(!script.includes("function installBusinessOvertimeSync()")||!script.includes("function runBusinessOvertimeSync()"))
+    throw Error("同步程式不完整，已拒絕複製");
+   await navigator.clipboard.writeText(script);
+   status.textContent="已複製同步程式。請到正式試算表「擴充功能 → Apps Script」新增程式檔貼上，不要覆蓋既有檔案。";
+  }catch(e){status.textContent="複製失敗："+e.message+"。請使用「查看同步程式」連結。";}
+  finally{codeCopy.disabled=false;}
+ });
+ const info=el("p","helper","安裝方式：先按「複製 Google 同步程式」，再開啟正式試算表選「擴充功能 → Apps Script」，新增程式檔貼上（不得覆蓋原有程式），執行 installBusinessOvertimeSync 並完成 Google 授權，輸入下方產生的同步授權碼。成功後每 5 分鐘同步。");
  const button=el("button","primary-btn","建立 Google 同步授權碼");
  button.type="button";button.id="overtimeBridgePairButton";
  const status=el("p","helper","管理員登入後可建立此試算表專用的同步授權碼。");
@@ -38,7 +54,7 @@ function init(){
   }
  });
  secretBox.append(secretLabel,copy);
- panel.append(title,intro,links,info,button,status,secretBox);
+ panel.append(title,intro,links,codeCopy,info,button,status,secretBox);
  parent.insertBefore(panel,parent.firstChild);
  function refresh(){
   const allowed=window.SupervisorAuth?.isAdmin()===true;
