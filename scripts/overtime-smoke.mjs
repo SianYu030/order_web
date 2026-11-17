@@ -72,6 +72,9 @@ console.log("PASS bridge pull blocked without key");
 const bad=await fetch(BRIDGE,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io","X-Bridge-Token":"00000000000000000000000000000000000000000000"},body:JSON.stringify({action:"pull"})});
 assert.equal(bad.status,401,"bridge pull rejects forged keys");
 console.log("PASS forged bridge key rejected");
+const noStatus=await fetch(BRIDGE,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io"},body:JSON.stringify({action:"status"})});
+assert.equal(noStatus.status,401,"bridge connection diagnostics must require administrator login");
+console.log("PASS Google sync status diagnostics require administrator login");
 const bridgeAdmin=await fetchText(BASE+"bridge-admin.js?v=1.1.17");
 assert(bridgeAdmin.includes('action:"pair"')&&bridgeAdmin.includes("isAdmin"));
 console.log("PASS administrator pairing client deployed");
@@ -85,5 +88,6 @@ for(let i=0;i<10;i++){
 }
 assert(installerCopied,"Google Apps Script installer missing or not published");
 assert(bridgeAdmin.includes("複製 Google 同步程式"),"admin page must support copy-ready script");
+assert(bridgeAdmin.includes('action:"status"')&&bridgeAdmin.includes("最近連線"),"admin page needs connection diagnostics");
 console.log("PASS public Google sync worker downloadable from administrator portal");
 console.log("ALL CHECKS PASSED; no actual employee applications or Google working hours modified.");
