@@ -23,7 +23,7 @@ function localReceipts(){
 function save(record,token,publicKey){
  const all=localReceipts().filter(x=>x.id!==record.id);
  all.push({id:record.id,receipt_token:token,public_key:publicKey,date:record.date,department:record.department,employee_name:record.employee_name});
- localStorage.setItem(RECEIPTS_KEY,JSON.stringify(all.slice(-120)));
+ try{localStorage.setItem(RECEIPTS_KEY,JSON.stringify(all.slice(-120)));return true;}catch{return false;}
 }
 function find(publicKey,department,month){
  return localReceipts().filter(x=>x.public_key===publicKey&&x.department===department&&x.date.startsWith(month));
