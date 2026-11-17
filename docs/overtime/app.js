@@ -802,6 +802,8 @@
         if(!entry.person.remote||!window.OvertimeApi)throw Error("尚未取得正式後端名冊，無法送出");
         const receipt=state.editKey ? window.OvertimeApi.localReceipts().find(x=>x.id===state.editKey) : null;
         if(state.editKey&&!receipt)throw Error("找不到這筆申請的修改憑證，請使用原本送出的裝置查詢");
+        if(receipt && (receipt.date!==entry.date||receipt.department!==entry.department||receipt.public_key!==entry.person.id))
+          throw Error("修改原申請時，日期與員工不可變更；請重新選擇原本的申請。");
         const yes=await confirmAction((receipt?"修改待同步加班申請：\n":"送出加班申請至公司後端：\n")+
           dateString(entry.p)+" · "+entry.person.name+"\n"+formatHours(entry.hours)+"\n原因："+entry.reason+
           "\n注意：目前尚未同步 Google 月檢視，也尚未完成主管核准。");
@@ -810,10 +812,10 @@
           await window.OvertimeApi.update({id:receipt.id,receipt_token:receipt.receipt_token,hours:entry.hours,reason:entry.reason}) :
           await window.OvertimeApi.submit({department:entry.department,roster_key:entry.person.id,
             employee_name:entry.person.name,date:entry.date,hours:entry.hours,reason:entry.reason});
-        if(!receipt)window.OvertimeApi.save(result.record,result.receipt_token,entry.person.id);
+        const saved=receipt ? true : window.OvertimeApi.save(result.record,result.receipt_token,entry.person.id);
         state.editKey="";
         message("後端收件成功："+result.record.request_no+"，狀態「"+result.record.status+
-          "」。正式 Google 試算表尚未同步，尚未完成主管核准。","success");
+          "」。正式 Google 試算表尚未同步，尚未完成主管核准。"+(saved?"":" 這台裝置無法保存查詢憑證，請記下申請編號並通知管理員。"),"success");
         return;
       }
       if (!hasGoogle()) {
