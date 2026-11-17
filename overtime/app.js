@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.12 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.13 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
