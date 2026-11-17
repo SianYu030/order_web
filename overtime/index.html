@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-portal="employee">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
-  <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.8">
+  <title>員工加班登記｜系統櫃廠</title>
+  <link rel="stylesheet" href="./style.css?v=1.1.9">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.8" defer></script>
-  <script src="./supervisor-auth.js?v=1.1.8" defer></script>
+  <script src="./app.js?v=1.1.9" defer></script>
+
 </head>
 <body>
 <div class="app">
@@ -33,8 +33,8 @@
     <nav class="tabs" aria-label="網站分頁">
       <button type="button" class="tab is-active" data-view="entry" aria-selected="true">✎ 登記</button>
       <button type="button" class="tab" data-view="history" aria-selected="false">▤ 查詢／修改</button>
-      <button type="button" class="tab hidden" data-view="batch" id="navBatch" aria-selected="false">☑ 主管批次</button>
-      <button type="button" class="tab hidden" data-view="settings" id="navSettings" aria-selected="false">⚙ 設定</button>
+
+
     </nav>
 
     <section id="supervisorAccess" class="panel hidden supervisor-panel" aria-label="主管登入">
@@ -93,7 +93,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.8</span>
+        <span class="version">V1.1.9</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -238,7 +238,7 @@
     </section>
   </main>
 
-  <footer class="footer">系統櫃廠加班登記 · V1.1.8 <button type="button" class="footer-supervisor-link" id="supervisorPortal">主管登入</button></footer>
+  <footer class="footer">員工加班登記 · V1.1.9 <a class="footer-supervisor-link" id="supervisorPortal" href="./supervisor/">主管登入</a></footer>
 </div>
 
 <dialog id="confirmDialog">

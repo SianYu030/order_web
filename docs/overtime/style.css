@@ -148,3 +148,34 @@ body.supervisor-auth-gate #supervisorChangePrompt{margin:12px 0 8px}
 }
 .footer-supervisor-link:hover,.footer-supervisor-link:focus-visible{color:#245dc8;border-bottom-color:#245dc8}
 @media(max-width:420px){.footer-supervisor-link{margin-left:7px}}
+
+
+/* V1.1.9：三個獨立網址，公用版面不展示其他角色操作。 */
+html[data-portal="employee"] #supervisorAccess,
+html[data-portal="employee"] #view-batch,
+html[data-portal="employee"] #view-approval,
+html[data-portal="employee"] #view-settings,
+html[data-portal="employee"] #modeNotice,
+html[data-portal="employee"] #connectionStatus,
+html[data-portal="supervisor"] #view-entry,
+html[data-portal="supervisor"] #view-history,
+html[data-portal="supervisor"] #view-settings,
+html[data-portal="supervisor"] #modeNotice,
+html[data-portal="supervisor"] #connectionStatus,
+html[data-portal="admin"] #view-entry,
+html[data-portal="admin"] #view-history,
+html[data-portal="admin"] #view-batch,
+html[data-portal="admin"] #view-approval {display:none!important}
+html[data-portal="supervisor"] body:not(.portal-authorized) #view-batch,
+html[data-portal="supervisor"] body:not(.portal-authorized) #view-approval,
+html[data-portal="admin"] body:not(.portal-authorized) #view-settings {display:none!important}
+html[data-portal="admin"] body:not(.portal-authorized) .tabs,
+html[data-portal="supervisor"] body:not(.portal-authorized) .tabs {display:none!important}
+html[data-portal="supervisor"] #supervisorAccess,
+html[data-portal="admin"] #supervisorAccess {max-width:700px;margin:0 auto 18px}
+html[data-portal="employee"] .tabs .tab{flex:1 1 40%}
+html[data-portal="admin"] .tabs .tab,
+html[data-portal="supervisor"] .tabs .tab{flex:1 1 90%}
+html[data-portal="supervisor"] body.portal-authorized #view-batch,
+html[data-portal="supervisor"] body.portal-authorized #view-approval,
+html[data-portal="admin"] body.portal-authorized #view-settings{max-width:100%}

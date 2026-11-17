@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.8 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.9 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -10,9 +10,10 @@
   var REGISTER_SHEET = "業務假日或臨時加班登記";
   var REGISTER_SHEET_ID = 1399193095;
   var MONTH_VIEW_ID = 2131065558;
+  var PORTAL=(document.documentElement.dataset&&document.documentElement.dataset.portal)||"employee";
   var parameters=new URLSearchParams(window.location.search);
   var approvalId=parameters.get("approve")||"";
-  var batchMode=parameters.get("review")==="1";
+  var batchMode=PORTAL==="supervisor"||parameters.get("review")==="1";
   var reviewAction=parameters.get("action")==="reject"?"reject":"approve";
   var batchRows=[],selectedIds=new Set(),batchActor="";
   var CLIENT_KEY = "overtime:oauth-client-id:v1";
@@ -183,8 +184,10 @@
     $("summaryLunch").textContent = getLunchPreview(p, numberOrNull($("hours").value) || 0);
   }
   function switchView(name) {
-    // 視覺層角色隔離；真正的主管權限仍由 Supabase 後端重新驗證。
-    if(name==="settings" && !(window.SupervisorAuth && window.SupervisorAuth.isAdmin())) return;
+    // 三個網址具有獨立的入口與頁面；真實寫入仍須經後端及 Google 權限驗證。
+    if(PORTAL==="employee"&&!["entry","history"].includes(name))return;
+    if(PORTAL==="supervisor"&&!["batch","approval"].includes(name))return;
+    if(PORTAL==="admin"&&name!=="settings")return;
     document.querySelectorAll(".tab").forEach(function (btn) {
       var yes = btn.dataset.view === name;
       btn.classList.toggle("is-active", yes);
@@ -900,7 +903,10 @@
         message("已取得 Google 授權，正在讀取人員主檔與日期…", "");
         try {
           await loadConnectionData(previousName);
-          if (approvalId) {
+          if (PORTAL==="admin") {
+            switchView("settings");
+            message("Google 已授權；目前維持在管理員設定頁。正式核准寫入仍需完成驗收。", "warning");
+          } else if (approvalId) {
             await loadApprovalRequest();
           } else if(batchMode) {
             switchView("batch");
@@ -991,11 +997,19 @@
   // 來源表的「主管核准」連結導向這個審核頁。
   var originalInit=init;
   init=function(){
+    // 保留舊 Google Sheets 逐筆連結的可用性，轉向新的主管專屬網頁。
+    if(PORTAL==="employee"&&(approvalId||parameters.get("review")==="1")){
+      const url=new URL("./supervisor/",window.location.href);
+      url.search=window.location.search;
+      window.location.replace(url.href);
+      return;
+    }
     originalInit();
     $("approveBtn").addEventListener("click",approvePending);
     $("rejectBtn").addEventListener("click",rejectPending);
-    if(approvalId)loadApprovalRequest();
-    else if(batchMode)switchView("batch");
+    if(approvalId&&PORTAL==="supervisor")loadApprovalRequest();
+    else if(PORTAL==="supervisor")switchView("batch");
+    else if(PORTAL==="admin")switchView("settings");
   };
   document.addEventListener("DOMContentLoaded", init);
 })();
