@@ -25,5 +25,7 @@ jobs:
           node --check overtime/bridge-admin.js
           cp integrations/overtime-google/Code.gs /tmp/overtime-google-bridge.js
           node --check /tmp/overtime-google-bridge.js
+      - name: Verify Google worker mapping and read-only safety checks
+        run: node scripts/overtime-bridge-unit.mjs
       - name: Verify public webpages, live Edge roster and access control (no real writes)
         run: node scripts/overtime-smoke.mjs
