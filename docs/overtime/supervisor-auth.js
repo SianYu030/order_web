@@ -4,6 +4,7 @@
   const ROOT="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-auth";
   const KEY="rightway-overtime-supervisor-session-v1";
   const PORTAL=(document.documentElement.dataset&&document.documentElement.dataset.portal)||"employee";
+  const ROLE_LABEL=PORTAL==="admin"?"管理員":"主管";
   const $=id=>document.getElementById(id);
   let token=sessionStorage.getItem(KEY)||"";
   let user=null;
@@ -37,8 +38,8 @@
     show("supervisorChangeForm",!!user.must_change);
     show("supervisorTogglePasswordBtn",!user.must_change);
     show("supervisorAdminBox",PORTAL==="admin"&&user.role==="admin"&&!user.must_change&&isView("settings"));
-    if(user.must_change)msg("初次登入必須先修改密碼，完成後才會開放主管功能。");
-    else msg("已登入主管系統。正式核准仍須完成 Google 試算表授權。");
+    if(user.must_change)msg("初次登入必須先修改密碼，完成後才會開放"+ROLE_LABEL+"功能。");
+    else msg("已登入"+ROLE_LABEL+"系統。正式核准仍須完成 Google 試算表授權。");
     syncPanel();
   }
   function isView(name){
@@ -92,9 +93,9 @@
         reset.type="button";
         reset.textContent="重設密碼";
         reset.addEventListener("click",async()=>{
-          const pw=prompt("設定 "+entry.username+" 的新暫時密碼（至少8字元），主管首次登入必須更改：");
+          const pw=prompt("設定 "+entry.username+" 的新暫時密碼（至少4碼），主管首次登入必須更改：");
           if(pw===null)return;
-          if(pw.length<8){msg("新密碼至少8個字元",true);return;}
+          if(pw.length<4){msg("新密碼至少4碼",true);return;}
           try{setBusy(true);await call("reset",{username:entry.username,password:pw});await loadUsers();msg("已重設 "+entry.username+" 密碼，原工作階段已失效。");}
           catch(e){msg(e.message,true);}finally{setBusy(false);}
         });
@@ -106,7 +107,7 @@
   async function login(e){
     e.preventDefault();
     try{
-      if(busy)return;setBusy(true);msg("正在核對主管帳號…");
+      if(busy)return;setBusy(true);msg("正在核對"+ROLE_LABEL+"帳號…");
       const result=await call("login",{username:value("supervisorUsername").trim(),password:value("supervisorPassword")});
       token=result.token;user=result.user;sessionStorage.setItem(KEY,token);
       $("supervisorPassword").value="";
@@ -119,7 +120,7 @@
     e.preventDefault();
     const old=value("supervisorOldPassword"),next=value("supervisorNewPassword"),again=value("supervisorConfirmPassword");
     if(next!==again){msg("兩次輸入的新密碼不一致",true);return;}
-    if(next.length<8){msg("新密碼至少8個字元",true);return;}
+    if(next.length<4){msg("新密碼至少4碼",true);return;}
     try{
       setBusy(true);
       await call("change-password",{old_password:old,new_password:next});
@@ -136,7 +137,7 @@
     setBusy(true);
     try{if(token)await call("logout");}catch(_){}
     token="";user=null;sessionStorage.removeItem(KEY);
-    render();msg("已登出主管系統。");changed();setBusy(false);
+    render();msg("已登出"+ROLE_LABEL+"系統。");changed();setBusy(false);
   }
   async function addUser(e){
     e.preventDefault();
@@ -164,7 +165,7 @@
   }
   window.SupervisorAuth={
     async requireApprover(){
-      if(!token)throw Error("請先在上方輸入主管帳號與密碼。");
+      if(!token)throw Error("請先在上方輸入"+ROLE_LABEL+"帳號與密碼。");
       const response=await call("review-access");
       user=response.user;render();
       return user.username;
