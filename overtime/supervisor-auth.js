@@ -35,16 +35,35 @@
     show("supervisorChangePrompt",!!user.must_change);
     show("supervisorChangeForm",!!user.must_change);
     show("supervisorTogglePasswordBtn",!user.must_change);
-    show("supervisorAdminBox",user.role==="admin"&&!user.must_change);
+    show("supervisorAdminBox",user.role==="admin"&&!user.must_change && isView("settings"));
     if(user.must_change)msg("初次登入必須先修改密碼，完成後才會開放主管功能。");
     else msg("已登入主管系統。正式核准仍須完成 Google 試算表授權。");
     syncPanel();
   }
+  function isView(name){
+    const section=$("view-"+name);
+    return Boolean(section && !section.classList.contains("hidden"));
+  }
+  function ready(){
+    return Boolean(user && !user.must_change && (user.role==="admin" || user.role==="supervisor"));
+  }
   function syncPanel(){
-    const batch=$("view-batch"),approval=$("view-approval");
-    const visible=Boolean(batch&&!batch.classList.contains("hidden") || approval&&!approval.classList.contains("hidden"));
-    show("supervisorAccess",visible);
-    document.body.classList.toggle("supervisor-auth-gate",visible && (!user || user.must_change));
+    const allowed=ready(),admin=allowed&&user.role==="admin";
+    // 員工只顯示「登記、查詢／修改」。主管登入請使用頁尾入口。
+    show("navBatch",allowed);
+    show("navSettings",admin);
+    show("connectionStatus",admin);
+    show("modeNotice",admin&&isView("settings"));
+    show("supervisorPortal",!allowed);
+    show("supervisorAdminBox",admin&&isView("settings"));
+    if(isView("settings")&&!admin){
+      // 登出或工作階段失效時，立即離開管理設定，避免殘留顯示。
+      const entry=document.querySelector('.tab[data-view="entry"]');
+      if(entry)entry.click();
+    }
+    const privateReview=isView("batch")||isView("approval");
+    show("supervisorAccess",privateReview||(isView("settings")&&admin));
+    document.body.classList.toggle("supervisor-auth-gate",privateReview&&!allowed);
   }
   function changed(){
     document.dispatchEvent(new CustomEvent("supervisor-auth-change",{detail:{user}}));
@@ -137,6 +156,10 @@
     $("supervisorLogoutBtn").addEventListener("click",logOut);
     $("supervisorAddForm").addEventListener("submit",addUser);
     $("supervisorTogglePasswordBtn").addEventListener("click",()=>show("supervisorChangeForm",$("supervisorChangeForm").classList.contains("hidden")));
+    $("supervisorPortal").addEventListener("click",()=>{
+      // 即使主管批次分頁對員工隱藏，也可直接進入主管登入頁。
+      document.querySelector('.tab[data-view="batch"]').click();
+    });
     document.querySelectorAll(".view").forEach(view=>new MutationObserver(syncPanel).observe(view,{attributes:true,attributeFilter:["class"]}));
     render();syncPanel();
     if(token){
@@ -151,7 +174,8 @@
       user=response.user;render();
       return user.username;
     },
-    signedIn(){return !!user&&!user.must_change;},
+    signedIn(){return ready();},
+    isAdmin(){return ready() && user.role==="admin";},
     currentUser(){return user;}
   };
   document.addEventListener("DOMContentLoaded",init);

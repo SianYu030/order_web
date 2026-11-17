@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.7 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.8 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -145,11 +145,11 @@
   function updateMode() {
     var online = hasGoogle();
     $("connectionStatus").textContent = online ? "Google 已連線" : "Google 未連線";
-    $("connectionStatus").className = "pill status-pill" + (online ? " connected" : "");
+    $("connectionStatus").classList.toggle("connected",online);
     $("modeNotice").textContent = online ?
       "已登入 Google。送出只會建立「待核准」紀錄，不會修改 對應原月表。" :
       "Google 尚未連線：業務登記僅儲存在本機，不會寫入公司試算表。主管帳號登入不代表已取得 Google 工時寫入權限。";
-    $("modeNotice").className = online ? "notice" : "notice warning";
+    $("modeNotice").classList.toggle("warning",!online);
     $("submitHint").textContent = online ?
       "送出申請後，先顯示於業務加班月檢視；主管核准前不寫入 對應月表。" :
       "展示資料只會儲存在本機，不會傳送至 Google。";
@@ -183,6 +183,8 @@
     $("summaryLunch").textContent = getLunchPreview(p, numberOrNull($("hours").value) || 0);
   }
   function switchView(name) {
+    // 視覺層角色隔離；真正的主管權限仍由 Supabase 後端重新驗證。
+    if(name==="settings" && !(window.SupervisorAuth && window.SupervisorAuth.isAdmin())) return;
     document.querySelectorAll(".tab").forEach(function (btn) {
       var yes = btn.dataset.view === name;
       btn.classList.toggle("is-active", yes);
