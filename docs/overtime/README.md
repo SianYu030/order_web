@@ -94,7 +94,7 @@ GitHub Pages 前端：`https://sianyu030.github.io/order_web/overtime/`。原報
 
 ## V1.1.9：員工、主管、管理員三個不同網址
 
-- **員工**：`https://sianyu030.github.io/order_web/overtime/`。只顯示登記／查詢，頁尾的「主管登入」是連到獨立主管網頁，不在員工頁顯示管理選單。
+- **員工**：`https://sianyu030.github.io/order_web/overtime/`。只顯示登記／查詢，沒有主管登入或管理員入口；主管、管理員直接使用各自專用網址。
 - **主管**：`https://sianyu030.github.io/order_web/overtime/supervisor/`。直接顯示主管登入與待核准功能，1494/kurt 可使用，3109 管理員也可核准。原 Google 月檢視逐筆核准／駁回連結改連到此專用網址。
 - **管理員**：`https://sianyu030.github.io/order_web/overtime/admin/`。直接顯示管理員登入；僅已經由 Supabase 後端驗證的 3109 管理員可進入設定、Google OAuth 及主管帳號管理。1494/kurt 登入這頁會顯示權限不足。
 - 三個網址共用 `app.js`、`supervisor-auth.js` 與 `style.css`，保留既有資料欄位、工號規則和 E4/E5 流程；前台維持各自明確入口，不用複製維護三份流程程式。
