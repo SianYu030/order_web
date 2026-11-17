@@ -155,3 +155,12 @@ GitHub Pages 前端：`https://sianyu030.github.io/order_web/overtime/`。原報
 - 保留 E4、E5 既有工時及公式；所有未驗證寫入狀態不可顯示為「已核准」。
 
 - 【修正】Google 來源表已同步的待核准工單暫不允許從 Supabase 單獨駁回，避免 Google 月檢視與 Supabase 狀態分裂；僅尚未同步的待同步／同步失敗工單可由後端駁回。
+
+
+## V1.1.17：Google Apps Script 正式同步橋接（待 Google 原生授權啟用）
+
+- 新增 Supabase `overtime-sheet-bridge` Edge Function，只有後端驗證過的管理員能產生每個同步器的獨立密鑰；公開網頁不存入密鑰。
+- Google Apps Script 同步器位於 `integrations/overtime-google/Code.gs` 與 `appsscript.json`；安裝到既有正式 Google 試算表後，依 Google 官方授權建置每五分鐘觸發器。
+- 先鎖定 Supabase 工單狀態為「同步中」，核對正式在職名冊、日期、單位及原月份表後，才寫隱藏來源表並讀回；主管核准後檢查目標工時、公式與既有留言，寫入工時、註記及留言並讀回確認，才標記「已核准」。
+- 正式 Google Apps Script **尚未安裝／授權**，目前僅部署程式及 API，不可聲稱已自動同步或完成真實端到端驗收。
+- 原有 E3/W8 工時與公式不受影響。Google OAuth 手動連線仍保留作既有備援。

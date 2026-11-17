@@ -1,0 +1,77 @@
+/* V1.1.17：正式 Google Apps Script 同步授權管理。只有後端驗證通過的管理員可產生授權碼。 */
+(function(){
+"use strict";
+const ROOT="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-sheet-bridge";
+const SESSION="rightway-overtime-supervisor-session-v1";
+const APP_SCRIPT_URL="https://github.com/SianYu030/order_web/blob/main/integrations/overtime-google/Code.gs";
+const MANIFEST_URL="https://github.com/SianYu030/order_web/blob/main/integrations/overtime-google/appsscript.json";
+const SPREADSHEET_URL="https://docs.google.com/spreadsheets/d/1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM/edit";
+const $=(id)=>document.getElementById(id);
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e;}
+function link(href,title){const a=el("a","link",title);a.href=href;a.target="_blank";a.rel="noopener noreferrer";return a;}
+function init(){
+ const parent=$("view-settings");if(!parent)return;
+ const panel=el("section","panel hidden");
+ panel.id="overtimeGoogleBridgeSetup";
+ const title=el("h3","","Google 自動同步設定");
+ const intro=el("p","helper","員工申請先同步到 Google 待核准清單，主管核准後才更新 E4／E5 正式工時與原因留言。使用試算表所屬 Google 帳號的 Apps Script 授權，不需要 Google Cloud OAuth 用戶端 ID。");
+ const links=el("p","helper");
+ links.append(link(SPREADSHEET_URL,"開啟正式試算表"),document.createTextNode("　"),link(APP_SCRIPT_URL,"同步程式 Code.gs"),document.createTextNode("　"),link(MANIFEST_URL,"權限設定"));
+ const info=el("p","helper","安裝方式：在正式試算表選「擴充功能 → Apps Script」，新增程式檔並貼上 Code.gs（不得覆蓋原有程式）；確認權限範圍後，首次執行 installBusinessOvertimeSync，完成 Google 授權時貼入下方授權碼。之後每 5 分鐘自動同步。");
+ const button=el("button","primary-btn","建立 Google 同步授權碼");
+ button.type="button";button.id="overtimeBridgePairButton";
+ const status=el("p","helper","管理員登入後可建立此試算表專用的同步授權碼。");
+ status.id="overtimeBridgePairStatus";status.setAttribute("role","status");
+ const secretBox=el("div","hidden");secretBox.id="overtimeBridgeSecretBox";
+ const secretLabel=el("label","field");
+ secretLabel.append(el("span","","同步授權碼（只顯示一次）"));
+ const tokenInput=el("textarea","","");tokenInput.readOnly=true;tokenInput.rows=3;
+ tokenInput.style.width="100%";tokenInput.autocomplete="off";tokenInput.spellcheck=false;
+ tokenInput.id="overtimeBridgeSecret";secretLabel.append(tokenInput);
+ const copy=el("button","secondary-btn","複製授權碼");copy.type="button";
+ copy.addEventListener("click",async()=>{
+  if(!tokenInput.value)return;
+  try{await navigator.clipboard.writeText(tokenInput.value);status.textContent="授權碼已複製，請貼入正式 Google Apps Script 的安裝提示框。";}
+  catch(_){
+   tokenInput.focus();tokenInput.select();
+   status.textContent="無法自動複製，授權碼已反白，可以使用裝置的複製功能。";
+  }
+ });
+ secretBox.append(secretLabel,copy);
+ panel.append(title,intro,links,info,button,status,secretBox);
+ parent.insertBefore(panel,parent.firstChild);
+ function refresh(){
+  const allowed=window.SupervisorAuth?.isAdmin()===true;
+  panel.classList.toggle("hidden",!allowed);
+  button.disabled=!allowed;
+  if(!allowed){
+   tokenInput.value="";secretBox.classList.add("hidden");
+   status.textContent="需以管理員帳號登入後才能設定 Google 同步。";
+  }
+ }
+ button.addEventListener("click",async()=>{
+  if(!window.SupervisorAuth?.isAdmin())return;
+  if(!confirm("確認建立新的 Google 同步授權碼？授權碼只能給正式試算表所屬的 Apps Script 使用，請勿傳到群組或公開網站。"))return;
+  const sessionToken=sessionStorage.getItem(SESSION);
+  if(!sessionToken){status.textContent="登入已過期，請重新登入管理員。";return;}
+  button.disabled=true;status.textContent="正在向 Supabase 核對管理員權限並建立憑證…";
+  try{
+   const resp=await fetch(ROOT,{method:"POST",cache:"no-store",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+sessionToken},
+    body:JSON.stringify({action:"pair"})});
+   const data=await resp.json().catch(()=>({}));
+   if(!resp.ok||data.ok!==true||typeof data.token!=="string")
+    throw Error(data.error||"管理員授權建立失敗");
+   tokenInput.value=data.token;
+   secretBox.classList.remove("hidden");
+   status.textContent="已建立專用授權碼，請立即完成 Google Apps Script 安裝。重新整理或登出後，本頁不會再次顯示此碼。";
+  }catch(e){
+   tokenInput.value="";secretBox.classList.add("hidden");
+   status.textContent="尚未建立授權碼："+e.message;
+  }finally{button.disabled=false;}
+ });
+ document.addEventListener("supervisor-auth-change",refresh);
+ refresh();
+}
+document.addEventListener("DOMContentLoaded",init);
+})();

@@ -39,7 +39,7 @@
     show("supervisorTogglePasswordBtn",!user.must_change);
     show("supervisorAdminBox",PORTAL==="admin"&&user.role==="admin"&&!user.must_change&&isView("settings"));
     if(user.must_change)msg("初次登入必須先修改密碼，完成後才會開放"+ROLE_LABEL+"功能。");
-    else msg("已登入"+ROLE_LABEL+"系統。正式核准仍須完成 Google 試算表授權。");
+    else msg("已登入"+ROLE_LABEL+"系統。主管核准會進入 Google 待同步佇列，正式工時以 Google 讀回驗證成功為準。");
     syncPanel();
   }
   function isView(name){

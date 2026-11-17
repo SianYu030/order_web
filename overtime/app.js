@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.15 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.17 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -170,7 +170,7 @@
       "Google 尚未連線：業務登記僅儲存在本機，不會寫入公司試算表。主管帳號登入不代表已取得 Google 工時寫入權限。";
     $("modeNotice").classList.toggle("warning",!online);
     $("submitHint").textContent = PORTAL==="employee" ?
-      "申請將送入公司後端，顯示「待同步」。Google 月檢視尚未連線，尚不算正式核准。" :
+      "申請先送入公司後端，待 Google 同步成功後進入主管待核准清單。核准前不寫入正式工時。" :
       (online?"送出後建立待核准紀錄，核准前不寫入原月表。":"Google 尚未連線，正式核准功能暫停。");
     $("settingsState").textContent = online ? "連線有效。資料存取取決於目前 Google 帳號的試算表權限。" : "尚未連接 Google。";
     setBusy(false);
@@ -430,7 +430,7 @@
   // appendCells 往表尾延伸，避免超出月檢視的讀取範圍。
   var PENDING_LAST_ROW = 1500;
   function findPendingRecord(records,id) {
-    if (!/^BUS-[0-9]{8}-(E4|E5)-[A-Za-z0-9]+(?:-R[1-9][0-9]*)?$/.test(id)) throw Error("申請編號格式不正確。");
+    if (!/^BUS-[0-9]{8}-(E4|E5)-[A-Za-z0-9]+(?:-[A-Fa-f0-9]{8})?(?:-R[1-9][0-9]*)?$/.test(id)) throw Error("申請編號格式不正確。");
     var matches=[];
     records.forEach(function(r,i){
       if(String(r[0]||"")===id)matches.push({row:r,rowIndex:i+1});
@@ -729,7 +729,7 @@
       var unique=new Set();
       for(var row of rows){
         var id=String(row[0]||"");
-        if(!/^BUS-[0-9]{8}-(E4|E5)-[A-Za-z0-9]+(?:-R[1-9][0-9]*)?$/.test(id))
+        if(!/^BUS-[0-9]{8}-(E4|E5)-[A-Za-z0-9]+(?:-[A-Fa-f0-9]{8})?(?:-R[1-9][0-9]*)?$/.test(id))
           throw Error("待核准清單中存在不合法的登記編號，已停止操作。");
         if(unique.has(id))throw Error("待核准清單存在重複登記編號，已停止操作。");
         unique.add(id);
@@ -806,7 +806,7 @@
           throw Error("修改原申請時，日期與員工不可變更；請重新選擇原本的申請。");
         const yes=await confirmAction((receipt?"修改待同步加班申請：\n":"送出加班申請至公司後端：\n")+
           dateString(entry.p)+" · "+entry.person.name+"\n"+formatHours(entry.hours)+"\n原因："+entry.reason+
-          "\n注意：目前尚未同步 Google 月檢視，也尚未完成主管核准。");
+          "\n申請先送公司後端，Google 待同步成功後才會進入正式月檢視。主管核准前不會更動工時。");
         if(!yes)return;
         const result=receipt ?
           await window.OvertimeApi.update({id:receipt.id,receipt_token:receipt.receipt_token,hours:entry.hours,reason:entry.reason}) :
@@ -815,7 +815,7 @@
         const saved=receipt ? true : window.OvertimeApi.save(result.record,result.receipt_token,entry.person.id);
         state.editKey="";
         message("後端收件成功："+result.record.request_no+"，狀態「"+result.record.status+
-          "」。正式 Google 試算表尚未同步，尚未完成主管核准。"+(saved?"":" 這台裝置無法保存查詢憑證，請記下申請編號並通知管理員。"),"success");
+          "」。請至查詢頁確認 Google 同步及主管核准狀態。"+(saved?"":" 這台裝置無法保存查詢憑證，請記下申請編號並通知管理員。"),"success");
         return;
       }
       if (!hasGoogle()) {

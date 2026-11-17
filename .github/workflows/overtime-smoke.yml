@@ -5,6 +5,7 @@ on:
     paths:
       - 'overtime/**'
       - 'docs/overtime/**'
+      - 'integrations/overtime-google/**'
       - 'scripts/overtime-smoke.mjs'
       - '.github/workflows/overtime-smoke.yml'
   workflow_dispatch:
@@ -19,6 +20,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Static JS syntax check
-        run: node --check overtime/overtime-client.js
+        run: |
+          node --check overtime/overtime-client.js
+          node --check overtime/bridge-admin.js
+          cp integrations/overtime-google/Code.gs /tmp/overtime-google-bridge.js
+          node --check /tmp/overtime-google-bridge.js
       - name: Verify public webpages, live Edge roster and access control (no real writes)
         run: node scripts/overtime-smoke.mjs

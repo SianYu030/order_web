@@ -6,10 +6,11 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班管理｜系統櫃廠</title>
-  <link rel="stylesheet" href="../style.css?v=1.1.16">
+  <link rel="stylesheet" href="../style.css?v=1.1.17">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="../app.js?v=1.1.16" defer></script>
-  <script src="../supervisor-auth.js?v=1.1.16" defer></script>
+  <script src="../app.js?v=1.1.17" defer></script>
+  <script src="../supervisor-auth.js?v=1.1.17" defer></script>
+  <script src="../bridge-admin.js?v=1.1.17" defer></script>
 </head>
 <body>
 <div class="app">
@@ -90,7 +91,7 @@
     <section id="view-entry" class="view hidden">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.16</span>
+        <span class="version">V1.1.17</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -208,8 +209,8 @@
     <section id="view-settings" class="view">
       <div class="section-heading"><div><h2>Google 試算表連線</h2><p>網站由 GitHub Pages 提供，不使用 Apps Script 架設網站。</p></div></div>
       <section class="panel">
-        <h3>帳號授權</h3>
-        <p class="helper">網站透過 Google 官方 OAuth 登入，使用你有編輯權限的 Google 帳號。存取權杖只留在目前頁面記憶體，不存入 GitHub。</p>
+        <h3>舊式 Google OAuth 手動連線（備援）</h3>
+        <p class="helper">此處保留原有 Google OAuth 手動操作設定。正式自動同步改由上方 Apps Script 執行，不需要在此建立 OAuth 用戶端 ID。既有權杖只留在目前頁面記憶體，不存入 GitHub。</p>
         <label class="field"><span>Google OAuth 網頁用戶端 ID</span>
           <input id="clientId" type="text" spellcheck="false" autocomplete="off" placeholder="xxxxxxxx.apps.googleusercontent.com">
         </label>
@@ -235,7 +236,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班管理 · V1.1.16 <a class="footer-supervisor-link" id="supervisorPortal" href="../supervisor/">業務假日或臨時加班審核</a> <a class="footer-supervisor-link" href="../">業務假日或臨時加班登記</a></footer>
+  <footer class="footer">業務假日或臨時加班管理 · V1.1.17 <a class="footer-supervisor-link" id="supervisorPortal" href="../supervisor/">業務假日或臨時加班審核</a> <a class="footer-supervisor-link" href="../">業務假日或臨時加班登記</a></footer>
 </div>
 
 <dialog id="confirmDialog">

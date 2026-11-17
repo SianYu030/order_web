@@ -1,4 +1,4 @@
-/* V1.1.16 - Supabase 業務加班收件與主管核准排程同步，Google 正式工時仍以讀回驗證為準。 */
+/* V1.1.17 - Supabase 收件及 Google Apps Script 橋接狀態顯示；正式工時以雙向讀回為準。 */
 (function(){
 "use strict";
 const URL="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-requests";
@@ -105,6 +105,8 @@ async function load(){
     card.append(element("p","helper small","等待來源清單同步完成，暫不可核准。"));
    }else if(x.status==="待核准"){
     card.append(element("p","helper small","申請已寫入 Google 來源清單；可核准後排入正式工時同步，但此頁暫不提供跨系統駁回。"));
+   }else if(x.status==="同步中"){
+    card.append(element("p","helper small","Google 同步器已鎖定此申請，處理完成前禁止修改或駁回。"));
    }else if(x.status==="核准待同步"){
     card.append(element("p","helper small","主管已核准；正式 Google 工時及註解尚待同步核對，不會重複核准。"));
    }else if(x.status==="需人工核對"){

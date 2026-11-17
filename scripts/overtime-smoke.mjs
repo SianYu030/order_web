@@ -18,8 +18,8 @@ const expected=[
 for(const [slug,title] of expected){
  let pass=false;
  for(let i=0;i<12;i++){
-  const html=await fetchText(BASE+slug+"?smoke=v1.1.16&attempt="+i);
-  if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v=1.1.16")){
+  const html=await fetchText(BASE+slug+"?smoke=v1.1.17&attempt="+i);
+  if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v=1.1.17")){
     pass=true;break;
   }
   if(i<11)await new Promise(resolve=>setTimeout(resolve,5000));
@@ -27,7 +27,7 @@ for(const [slug,title] of expected){
  assert(pass,"published GitHub Pages wrong version / title: "+slug);
  console.log("PASS public webpage",slug||"employee",title);
 }
-const client=await fetchText(BASE+"overtime-client.js?v=1.1.16");
+const client=await fetchText(BASE+"overtime-client.js?v=1.1.17");
 assert(client.includes("overtime-requests")&&client.includes("receipt_token"));
 console.log("PASS public frontend API client");
 const preflight=await fetch(EDGE,{method:"OPTIONS",headers:{
@@ -62,4 +62,17 @@ console.log("PASS supervisor approval unauthorized denied");
 const invalidReceipt=await post("receipt",{id:"00000000-0000-4000-8000-000000000000",receipt_token:"fake"});
 assert.equal(invalidReceipt.status,400);
 console.log("PASS anonymous receipt rejected");
+const BRIDGE="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-sheet-bridge";
+const pair=await fetch(BRIDGE,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io"},body:JSON.stringify({action:"pair"})});
+assert.equal(pair.status,401,"bridge pairing requires an authenticated administrator");
+console.log("PASS bridge pairing blocked without admin session");
+const pull=await fetch(BRIDGE,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io"},body:JSON.stringify({action:"pull"})});
+assert.equal(pull.status,401,"bridge pull requires its own secret token");
+console.log("PASS bridge pull blocked without key");
+const bad=await fetch(BRIDGE,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io","X-Bridge-Token":"00000000000000000000000000000000000000000000"},body:JSON.stringify({action:"pull"})});
+assert.equal(bad.status,401,"bridge pull rejects forged keys");
+console.log("PASS forged bridge key rejected");
+const bridgeAdmin=await fetchText(BASE+"bridge-admin.js?v=1.1.17");
+assert(bridgeAdmin.includes('action:"pair"')&&bridgeAdmin.includes("isAdmin"));
+console.log("PASS administrator pairing client deployed");
 console.log("ALL CHECKS PASSED; no actual employee applications or Google working hours modified.");
