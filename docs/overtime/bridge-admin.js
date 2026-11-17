@@ -38,6 +38,30 @@ function init(){
  button.type="button";button.id="overtimeBridgePairButton";
  const status=el("p","helper","管理員登入後可建立此試算表專用的同步授權碼。");
  status.id="overtimeBridgePairStatus";status.setAttribute("role","status");
+ const health=el("p","helper","Google 同步排程尚未確認連線。");
+ health.id="overtimeBridgeHealth";health.setAttribute("role","status");
+ const healthCheck=el("button","secondary-btn","檢查 Google 同步狀態");
+ healthCheck.type="button";
+ async function fetchHealth(){
+  if(window.SupervisorAuth?.isAdmin()!==true)return;
+  const sessionToken=sessionStorage.getItem(SESSION);
+  if(!sessionToken){health.textContent="管理員登入逾時，暫無法查詢 Google 同步狀態。";return;}
+  healthCheck.disabled=true;
+  try{
+   const resp=await fetch(ROOT,{method:"POST",cache:"no-store",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+sessionToken},
+    body:JSON.stringify({action:"status"})});
+   const data=await resp.json().catch(()=>({}));
+   if(!resp.ok||data.ok!==true)throw Error(data.error||"同步狀態無法查詢");
+   if(!data.paired)health.textContent="Google 尚未配對：沒有有效的專用同步授權碼。";
+   else if(!data.connected)health.textContent="已有 "+data.active_keys+" 組同步授權碼，但目前沒有近期 Google 連線紀錄，尚未確認自動同步已啟用。";
+   else health.textContent="Google 同步器已回報連線，最近連線："+
+    new Date(data.last_seen_at).toLocaleString("zh-TW",{timeZone:"Asia/Taipei"})+
+    "。此狀態只證明橋接器連線，並不代表正式工時已驗收。";
+  }catch(e){health.textContent="檢查失敗："+e.message;}
+  finally{healthCheck.disabled=false;}
+ }
+ healthCheck.addEventListener("click",fetchHealth);
  const secretBox=el("div","hidden");secretBox.id="overtimeBridgeSecretBox";
  const secretLabel=el("label","field");
  secretLabel.append(el("span","","同步授權碼（只顯示一次）"));
@@ -54,7 +78,7 @@ function init(){
   }
  });
  secretBox.append(secretLabel,copy);
- panel.append(title,intro,links,codeCopy,info,button,status,secretBox);
+ panel.append(title,intro,health,healthCheck,links,codeCopy,info,button,status,secretBox);
  parent.insertBefore(panel,parent.firstChild);
  function refresh(){
   const allowed=window.SupervisorAuth?.isAdmin()===true;
@@ -63,7 +87,8 @@ function init(){
   if(!allowed){
    tokenInput.value="";secretBox.classList.add("hidden");
    status.textContent="需以管理員帳號登入後才能設定 Google 同步。";
-  }
+   health.textContent="需登入管理員才能查看 Google 同步連線狀態。";
+  }else{fetchHealth();}
  }
  button.addEventListener("click",async()=>{
   if(!window.SupervisorAuth?.isAdmin())return;
@@ -81,6 +106,7 @@ function init(){
    tokenInput.value=data.token;
    secretBox.classList.remove("hidden");
    status.textContent="已建立專用授權碼，請立即完成 Google Apps Script 安裝。重新整理或登出後，本頁不會再次顯示此碼。";
+   await fetchHealth();
   }catch(e){
    tokenInput.value="";secretBox.classList.add("hidden");
    status.textContent="尚未建立授權碼："+e.message;
