@@ -903,7 +903,10 @@
         message("已取得 Google 授權，正在讀取人員主檔與日期…", "");
         try {
           await loadConnectionData(previousName);
-          if (approvalId) {
+          if (PORTAL==="admin") {
+            switchView("settings");
+            message("Google 已授權；目前維持在管理員設定頁。正式核准寫入仍需完成驗收。", "warning");
+          } else if (approvalId) {
             await loadApprovalRequest();
           } else if(batchMode) {
             switchView("batch");
