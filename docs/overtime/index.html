@@ -6,9 +6,10 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.14">
+  <link rel="stylesheet" href="./style.css?v=1.1.15">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.14" defer></script>
+  <script src="./app.js?v=1.1.15" defer></script>
+  <script src="./overtime-client.js?v=1.1.15" defer></script>
 
 </head>
 <body>
@@ -93,7 +94,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.14</span>
+        <span class="version">V1.1.15</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -136,7 +137,7 @@
           <label class="field reason-field"><span>加班原因／備註 <em id="reasonRequired">*</em></span>
             <textarea id="reason" rows="3" maxlength="1600" placeholder="例如：文書加班、臨時訂單、客戶需求、趕工"></textarea>
           </label>
-          <p class="helper">主管核准後才會把時數和原因寫入原月表同一儲存格（原因使用 Google 試算表註解）。</p>
+          <p class="helper">申請先送到公司後端，之後才會同步到 Google 月檢視；主管核准後才會寫入原月表及註解。</p>
         </section>
 
         <section class="panel preview-panel">
@@ -145,7 +146,7 @@
           <div class="preview-row"><span>員工</span><strong id="summaryWho">請選擇員工</strong></div>
           <div class="preview-row"><span>內容</span><strong id="summaryKind">加班 3 小時</strong></div>
           <div class="preview-row"><span>對應位置</span><strong id="summaryCell">CE · 待確認列號</strong></div>
-          <div class="preview-row"><span>申請狀態</span><strong>待主管核准，不直接寫入原月表</strong></div>
+          <div class="preview-row"><span>申請狀態</span><strong>先送公司後端，等待 Google 同步及主管核准</strong></div>
           <div class="preview-row"><span>便當規則</span><strong id="summaryLunch">一般日滿 3 小時</strong></div>
           <p class="helper small">便當由原試算表公式判定，網站不覆寫便當儲存格。</p>
         </section>
@@ -238,7 +239,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班登記 · V1.1.14</footer>
+  <footer class="footer">業務假日或臨時加班登記 · V1.1.15</footer>
 </div>
 
 <dialog id="confirmDialog">
