@@ -3,10 +3,13 @@ on:
   push:
     branches: [main]
     paths:
+      - 'overtime/**'
       - 'docs/overtime/**'
       - 'scripts/overtime-smoke.mjs'
       - '.github/workflows/overtime-smoke.yml'
   workflow_dispatch:
+  schedule:
+    - cron: '0 17 * * *' # 01:00 Asia/Taipei, read-only checks
 permissions:
   contents: read
 jobs:
