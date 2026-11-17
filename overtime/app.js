@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.14 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.15 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -24,7 +24,7 @@
   var KINDS = { "加班": 1 }; // 原月表每日五欄，固定使用第 2 欄「加班」；不修改支援或班別
   var WEEKDAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
   var state = {
-    token: null, tokenClient: null, metadata: null, roster: [],
+    token: null, tokenClient: null, metadata: null, roster: [], remoteRoster: [],
     kind: "加班", month: null, monthKey: "", loadId: 0, busy: false, editKey: ""
   };
   var $ = function (id) { return document.getElementById(id); };
@@ -44,7 +44,7 @@
     if($("batchRefresh")) $("batchRefresh").disabled=isBusy;
     if($("batchSelectAll")) $("batchSelectAll").disabled=isBusy||!batchActor;
     if($("batchApproveBtn")) updateBatchActions();
-    $("submitBtn").textContent = isBusy ? "處理中，請勿重複送出…" : (state.token ? "送出加班申請（待核准）" : "儲存展示申請");
+    $("submitBtn").textContent = isBusy ? "處理中，請勿重複送出…" : (PORTAL==="employee" ? "送出加班申請" : (state.token ? "送出加班申請（待核准）" : "未連線不可送出"));
   }
   function hasGoogle() { return !!state.token; }
   function pad(n) { return String(n).padStart(2, "0"); }
@@ -122,7 +122,7 @@
     d.value = String(Math.min(Math.max(1, selected), last));
     updatePreview();
   }
-  function getPeople() { return hasGoogle() ? state.roster : demoRoster(); }
+  function getPeople() { return PORTAL==="employee" ? state.remoteRoster : (hasGoogle() ? state.roster : demoRoster()); }
   function populateEmployees(preferredName) {
     var currentId = $("employee").value, dept = $("department").value;
     var selected = getPeople().filter(function (p) { return belongsToDept(p, dept); });
@@ -130,15 +130,33 @@
     field.replaceChildren();
     selectOption(field, "", selected.length ? "請選擇員工" : "目前沒有此單位的在職名冊");
     selected.forEach(function (p) {
-      selectOption(field, p.id, p.preview ? p.name : (p.id + " · " + p.name));
+      selectOption(field, p.id, p.remote || p.preview ? p.name : (p.id + " · " + p.name));
     });
     var previous = selected.find(function(p){return p.id===currentId;}) ||
       (hasGoogle() && preferredName ? selected.find(function(p){return p.name===preferredName;}) : null);
     if (previous) field.value=previous.id;
-    $("rosterText").textContent = hasGoogle() ?
-      "已從原始人員主檔讀取在職人員，E5 限業務、E4 限潘詠升，並以完整工號比對。" :
-      "已顯示 E5 業務及 E4 的潘詠升供選擇；正式送出須先完成 Google 登入並重新核對工號。";
+    $("rosterText").textContent = PORTAL==="employee" ?
+      (state.remoteRoster.length?"已從後端核對 E5 業務 6 位及 E4 潘詠升；正式工號不會顯示於公開網站。":"正在載入後端名冊；尚未載入時不可送出申請。") :
+      (hasGoogle()?"已從原始人員主檔核對在職員工。":"管理員尚未連結 Google 試算表。");
     updatePreview();
+  }
+
+  async function loadBackendRoster(){
+    if(PORTAL!=="employee")return;
+    try{
+      if(!window.OvertimeApi)throw Error("後端收件元件未載入");
+      const resp=await window.OvertimeApi.roster();
+      const people=(resp.people||[]).filter(p=>["E4","E5"].includes(p.department)&&p.public_key&&p.employee_name);
+      if(!people.length)throw Error("沒有讀到正式業務名冊");
+      state.remoteRoster=people.map(p=>({
+        id:String(p.public_key),name:String(p.employee_name),unit:p.department==="E4"?"E4":"內勤",
+        detail:p.department==="E4"?"E4櫃體股":"業務",remote:true,preview:false
+      }));
+      populateEmployees();
+    }catch(e){
+      state.remoteRoster=[];populateEmployees();
+      message("讀取公司名冊失敗："+e.message+"。本頁暫停送出，請勿當作已完成申請。","error");
+    }
   }
   function chosenPerson() {
     return getPeople().find(function (p) { return p.id === $("employee").value && belongsToDept(p, $("department").value); }) || null;
@@ -151,9 +169,9 @@
       "已登入 Google。送出只會建立「待核准」紀錄，不會修改 對應原月表。" :
       "Google 尚未連線：業務登記僅儲存在本機，不會寫入公司試算表。主管帳號登入不代表已取得 Google 工時寫入權限。";
     $("modeNotice").classList.toggle("warning",!online);
-    $("submitHint").textContent = online ?
-      "送出申請後，先顯示於業務加班月檢視；主管核准前不寫入 對應月表。" :
-      "展示資料只會儲存在本機，不會傳送至 Google。";
+    $("submitHint").textContent = PORTAL==="employee" ?
+      "申請將送入公司後端，顯示「待同步」。Google 月檢視尚未連線，尚不算正式核准。" :
+      (online?"送出後建立待核准紀錄，核准前不寫入原月表。":"Google 尚未連線，正式核准功能暫停。");
     $("settingsState").textContent = online ? "連線有效。資料存取取決於目前 Google 帳號的試算表權限。" : "尚未連接 Google。";
     setBusy(false);
     populateEmployees();
@@ -176,7 +194,7 @@
     var p = dateParts(), person = chosenPerson();
     $("weekdayText").textContent = WEEKDAYS[dayOfWeek(p)] + " · " + getDayType(p) + (hasGoogle() ? "（以原表為準）" : "（展示推算）");
     $("summaryWhen").textContent = dateString(p) + " · " + (DEPT_LABEL[$("department").value] || "");
-    $("summaryWho").textContent = person ? (person.preview ? person.name + "（預覽）" : person.id + " · " + person.name) : "請選擇員工";
+    $("summaryWho").textContent = person ? (person.remote ? person.name : (person.preview ? person.name + "（預覽）" : person.id + " · " + person.name)) : "請選擇員工";
     $("summaryKind").textContent = "加班 " + (numberOrNull($("hours").value) || 0) + " 小時";
     var cell = a1Col(colIndex(p.d, state.kind));
     var row = state.month && state.monthKey === contextKey() ? state.month.employeeRows.get($("employee").value) : null;
@@ -780,14 +798,26 @@
     catch (e) { message(e.message, "error"); return; }
     setBusy(true);
     try {
-      if (!hasGoogle()) {
-        var yes = await confirmAction("展示模式，不會寫入公司試算表。\n" + dateString(entry.p) + " · " + entry.person.name +
-          "\n" + entry.kind + " " + formatHours(entry.hours) + "\n原因：" + (entry.reason || "未填"));
-        if (!yes) return;
-        saveDemoRecord(entry);
-        message("展示申請已儲存在本機，不會寫入月檢視或 對應月表。", "success");
-        state.editKey = "";
+      if(PORTAL==="employee"){
+        if(!entry.person.remote||!window.OvertimeApi)throw Error("尚未取得正式後端名冊，無法送出");
+        const receipt=state.editKey ? window.OvertimeApi.localReceipts().find(x=>x.id===state.editKey) : null;
+        if(state.editKey&&!receipt)throw Error("找不到這筆申請的修改憑證，請使用原本送出的裝置查詢");
+        const yes=await confirmAction((receipt?"修改待同步加班申請：\n":"送出加班申請至公司後端：\n")+
+          dateString(entry.p)+" · "+entry.person.name+"\n"+formatHours(entry.hours)+"\n原因："+entry.reason+
+          "\n注意：目前尚未同步 Google 月檢視，也尚未完成主管核准。");
+        if(!yes)return;
+        const result=receipt ?
+          await window.OvertimeApi.update({id:receipt.id,receipt_token:receipt.receipt_token,hours:entry.hours,reason:entry.reason}) :
+          await window.OvertimeApi.submit({department:entry.department,roster_key:entry.person.id,
+            employee_name:entry.person.name,date:entry.date,hours:entry.hours,reason:entry.reason});
+        if(!receipt)window.OvertimeApi.save(result.record,result.receipt_token,entry.person.id);
+        state.editKey="";
+        message("後端收件成功："+result.record.request_no+"，狀態「"+result.record.status+
+          "」。正式 Google 試算表尚未同步，尚未完成主管核准。","success");
         return;
+      }
+      if (!hasGoogle()) {
+        throw Error("Google 尚未授權，暫停正式加班申請寫入；不能以本機展示紀錄代替申請。");
       }
       // 正式申請只能建立待核准資料；這裡不可寫入 對應月表或註解。
       var ctx=await ensureMonth(entry);
@@ -828,7 +858,7 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = entry.status==="已核准"?"已核准":"編輯";
-      btn.disabled = entry.status==="已核准";
+      btn.disabled = entry.remoteId ? entry.status!=="待同步" : entry.status==="已核准";
       btn.addEventListener("click", function () { editFromHistory(entry, online); });
       card.append(left, btn);
       list.appendChild(card);
@@ -838,6 +868,21 @@
     var person = chosenPerson(), p = dateParts();
     if (!person) {
       $("historyList").textContent = "請先回「登記」選擇員工。";
+      return;
+    }
+    if(PORTAL==="employee"){
+      $("historyList").textContent="正在核對後端收件狀態…";
+      try{
+        const month=String(p.y)+"-"+pad(p.m);
+        const receipts=window.OvertimeApi.find(person.id,$("department").value,month);
+        const verified=await Promise.all(receipts.map(x=>window.OvertimeApi.receipt(x.id,x.receipt_token)));
+        const rows=verified.map(x=>x.record).map(r=>({
+          date:r.date,id:person.id,department:r.department,kind:"加班",
+          hours:r.hours,reason:r.reason,status:r.status,remoteId:r.id
+        })).sort((a,b)=>b.date.localeCompare(a.date));
+        renderHistoryItems(rows,false);
+        if(!rows.length)$("historyList").textContent="這台裝置尚未保有此員工當月的後端收件憑證。";
+      }catch(e){$("historyList").textContent="查詢後端失敗："+e.message;}
       return;
     }
     if (!hasGoogle()) {
@@ -867,12 +912,12 @@
     if (!state.month) throw Error("沒有可查詢的月份表。");
   }
   async function editFromHistory(entry, online) {
-    if (online && entry.status!=="待核准") { message("此筆已完成核准，無法直接修改。","warning"); return; }
+    if ((entry.remoteId && entry.status!=="待同步") || (online && entry.status!=="待核准")) { message("申請已進入正式流程，不能自行修改。","warning"); return; }
     $("day").value = String(Number(entry.date.slice(-2)));
     $("hours").value = String(entry.hours);
     $("reason").value = entry.reason || "";
     // 待核准申請的原因直接來自申請來源表，不讀取 對應月表註解。
-    state.editKey = entry.date + "|" + entry.kind + "|" + entry.id;
+    state.editKey = entry.remoteId || (entry.date + "|" + entry.kind + "|" + entry.id);
     updatePreview();
     switchView("entry");
     $("reason").focus({ preventScroll: true });
@@ -993,8 +1038,9 @@
     bindEvents();
     updateMode();
     updatePreview();
+    if(PORTAL==="employee")loadBackendRoster();
   }
-  // 來源表的「主管核准」連結導向這個審核頁。
+  // 來源表的「主管核准」連結導向這個審核頁.
   var originalInit=init;
   init=function(){
     // 保留舊 Google Sheets 逐筆連結的可用性，轉向新的主管專屬網頁。
