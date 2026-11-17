@@ -18,8 +18,8 @@ const expected=[
 for(const [slug,title] of expected){
  let pass=false;
  for(let i=0;i<12;i++){
-  const html=await fetchText(BASE+slug+"?smoke=v1.1.15&attempt="+i);
-  if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v=1.1.15")){
+  const html=await fetchText(BASE+slug+"?smoke=v1.1.16&attempt="+i);
+  if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v=1.1.16")){
     pass=true;break;
   }
   if(i<11)await new Promise(resolve=>setTimeout(resolve,5000));
@@ -27,7 +27,7 @@ for(const [slug,title] of expected){
  assert(pass,"published GitHub Pages wrong version / title: "+slug);
  console.log("PASS public webpage",slug||"employee",title);
 }
-const client=await fetchText(BASE+"overtime-client.js?v=1.1.15");
+const client=await fetchText(BASE+"overtime-client.js?v=1.1.16");
 assert(client.includes("overtime-requests")&&client.includes("receipt_token"));
 console.log("PASS public frontend API client");
 const preflight=await fetch(EDGE,{method:"OPTIONS",headers:{
@@ -56,6 +56,9 @@ console.log("PASS invalid employee cannot submit");
 const withoutAuth=await post("queue");
 assert.equal(withoutAuth.status,401,"supervisor queue should require login");
 console.log("PASS queue unauthorized denied");
+const withoutApprove=await post("approve",{id:"00000000-0000-4000-8000-000000000000"});
+assert.equal(withoutApprove.status,401,"approval must require supervisor login");
+console.log("PASS supervisor approval unauthorized denied");
 const invalidReceipt=await post("receipt",{id:"00000000-0000-4000-8000-000000000000",receipt_token:"fake"});
 assert.equal(invalidReceipt.status,400);
 console.log("PASS anonymous receipt rejected");
