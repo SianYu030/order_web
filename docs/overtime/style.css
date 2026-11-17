@@ -132,3 +132,19 @@ body.supervisor-auth-gate #supervisorChangePrompt{margin:12px 0 8px}
 @media(max-width:420px){
   body.supervisor-auth-gate #supervisorAccess{margin:4px 0 14px}
 }
+
+
+/* 只有已通過主管權限驗證才顯示主管批次與管理設定入口。 */
+.footer-supervisor-link{
+  border:0;
+  border-bottom:1px solid #a8b7c8;
+  background:transparent;
+  color:#647995;
+  font-size:12px;
+  font-weight:600;
+  padding:3px 1px;
+  margin-left:10px;
+  vertical-align:baseline
+}
+.footer-supervisor-link:hover,.footer-supervisor-link:focus-visible{color:#245dc8;border-bottom-color:#245dc8}
+@media(max-width:420px){.footer-supervisor-link{margin-left:7px}}
