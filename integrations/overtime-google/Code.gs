@@ -237,8 +237,8 @@ function otRegister_(ss,r){
  });
  if(found){
   if(!otMatches_(found.values,r,target))throw Error("Google 原來源資料與 Supabase 不吻合，禁止覆蓋。");
-  if(!["待核准","已核准"].includes(String(found.values[15])))
-   throw Error("Google 來源表已有不可確認的申請狀態。");
+  if(String(found.values[15])!=="待核准")
+   throw Error("Google 來源表已被核准、駁回或發生狀態衝突，禁止重設為待核准，請人工核對。");
   return {row:found.row};
  }
  var empty=-1;
