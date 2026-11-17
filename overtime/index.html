@@ -6,10 +6,10 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.7">
+  <link rel="stylesheet" href="./style.css?v=1.1.8">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.7" defer></script>
-  <script src="./supervisor-auth.js?v=1.1.7" defer></script>
+  <script src="./app.js?v=1.1.8" defer></script>
+  <script src="./supervisor-auth.js?v=1.1.8" defer></script>
 </head>
 <body>
 <div class="app">
@@ -20,12 +20,12 @@
         <h1>業務假日或臨時加班登記</h1>
         <p>系統櫃廠 · 人員工時登記</p>
       </div>
-      <span class="pill status-pill" id="connectionStatus">Google 未連線</span>
+      <span class="pill status-pill hidden" id="connectionStatus">Google 未連線</span>
     </div>
   </header>
 
   <main class="main">
-    <div class="notice warning" id="modeNotice" role="status">
+    <div class="notice warning hidden" id="modeNotice" role="status">
       Google 尚未連線：一般登記只會保存在本機，不會送入公司試算表。主管登入與 Google 資料授權是不同步驟。
     </div>
     <div class="notice hidden" id="banner" role="status" aria-live="polite"></div>
@@ -33,8 +33,8 @@
     <nav class="tabs" aria-label="網站分頁">
       <button type="button" class="tab is-active" data-view="entry" aria-selected="true">✎ 登記</button>
       <button type="button" class="tab" data-view="history" aria-selected="false">▤ 查詢／修改</button>
-      <button type="button" class="tab" data-view="batch" aria-selected="false">☑ 主管批次</button>
-      <button type="button" class="tab" data-view="settings" aria-selected="false">⚙ 設定</button>
+      <button type="button" class="tab hidden" data-view="batch" id="navBatch" aria-selected="false">☑ 主管批次</button>
+      <button type="button" class="tab hidden" data-view="settings" id="navSettings" aria-selected="false">⚙ 設定</button>
     </nav>
 
     <section id="supervisorAccess" class="panel hidden supervisor-panel" aria-label="主管登入">
@@ -93,7 +93,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.7</span>
+        <span class="version">V1.1.8</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -238,7 +238,7 @@
     </section>
   </main>
 
-  <footer class="footer">系統櫃廠加班登記 · GitHub Pages · V1.1.7</footer>
+  <footer class="footer">系統櫃廠加班登記 · V1.1.8 <button type="button" class="footer-supervisor-link" id="supervisorPortal">主管登入</button></footer>
 </div>
 
 <dialog id="confirmDialog">
