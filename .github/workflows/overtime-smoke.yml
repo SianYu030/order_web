@@ -1,0 +1,19 @@
+name: Overtime Live Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/overtime/**'
+      - 'scripts/overtime-smoke.mjs'
+      - '.github/workflows/overtime-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify public webpages, live Edge roster and access control (no real writes)
+        run: node scripts/overtime-smoke.mjs
