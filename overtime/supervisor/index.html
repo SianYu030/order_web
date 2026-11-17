@@ -6,10 +6,10 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>主管加班審核｜系統櫃廠</title>
-  <link rel="stylesheet" href="../style.css?v=1.1.9">
+  <link rel="stylesheet" href="../style.css?v=1.1.10">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="../app.js?v=1.1.9" defer></script>
-  <script src="../supervisor-auth.js?v=1.1.9" defer></script>
+  <script src="../app.js?v=1.1.10" defer></script>
+  <script src="../supervisor-auth.js?v=1.1.10" defer></script>
 </head>
 <body>
 <div class="app">
@@ -61,11 +61,11 @@
           <label class="field"><span>目前密碼</span>
             <input id="supervisorOldPassword" type="password" autocomplete="current-password" required>
           </label>
-          <label class="field"><span>新密碼（至少 8 個字元）</span>
-            <input id="supervisorNewPassword" type="password" autocomplete="new-password" minlength="8" required>
+          <label class="field"><span>新密碼（至少 4 碼）</span>
+            <input id="supervisorNewPassword" type="password" autocomplete="new-password" minlength="4" required>
           </label>
           <label class="field"><span>再次輸入新密碼</span>
-            <input id="supervisorConfirmPassword" type="password" autocomplete="new-password" minlength="8" required>
+            <input id="supervisorConfirmPassword" type="password" autocomplete="new-password" minlength="4" required>
           </label>
           <button type="submit" id="supervisorChangeBtn" class="primary-btn">儲存新密碼</button>
         </form>
@@ -76,8 +76,8 @@
             <label class="field"><span>新增主管帳號</span>
               <input id="supervisorAddName" autocomplete="off" maxlength="32" placeholder="英數字帳號" required>
             </label>
-            <label class="field"><span>初始密碼（至少 8 個字元）</span>
-              <input id="supervisorAddPassword" type="password" autocomplete="new-password" minlength="8" required>
+            <label class="field"><span>初始密碼（至少 4 碼）</span>
+              <input id="supervisorAddPassword" type="password" autocomplete="new-password" minlength="4" required>
             </label>
             <button type="submit" class="secondary-btn">新增主管</button>
           </form>
@@ -90,7 +90,7 @@
     <section id="view-entry" class="view hidden">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.9</span>
+        <span class="version">V1.1.10</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -235,7 +235,7 @@
     </section>
   </main>
 
-  <footer class="footer">主管審核 · V1.1.9 <a class="footer-supervisor-link" id="supervisorPortal" href="../">員工登記</a></footer>
+  <footer class="footer">主管審核 · V1.1.10 <a class="footer-supervisor-link" id="supervisorPortal" href="../">員工登記</a></footer>
 </div>
 
 <dialog id="confirmDialog">
