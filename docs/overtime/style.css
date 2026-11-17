@@ -179,3 +179,17 @@ html[data-portal="supervisor"] .tabs .tab{flex:1 1 90%}
 html[data-portal="supervisor"] body.portal-authorized #view-batch,
 html[data-portal="supervisor"] body.portal-authorized #view-approval,
 html[data-portal="admin"] body.portal-authorized #view-settings{max-width:100%}
+
+
+/* V1.1.15 公司後端真實收件，與 Google 正式工時分開顯示 */
+.overtime-backend-panel{border:1px solid #b8cdec;margin:0 0 18px;background:#fff}
+.overtime-backend-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.overtime-backend-heading h3{margin:0;font-size:19px}
+.overtime-backend-list{display:flex;flex-direction:column;gap:11px;margin-top:12px}
+.overtime-backend-item{border:1px solid #dce5f2;border-radius:11px;background:#f8fbff;padding:13px 15px}
+.overtime-backend-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.overtime-backend-top strong{font-size:16px}
+.overtime-backend-status{font-size:12px;font-weight:750;padding:4px 10px;border-radius:18px;color:#795300;background:#fff0c3}
+.overtime-backend-item .helper{margin:6px 0}
+.overtime-backend-item button{margin:7px 0 2px}
+@media(max-width:420px){.overtime-backend-heading h3{font-size:17px}.overtime-backend-item{padding:11px}.overtime-backend-top{align-items:flex-start}}
