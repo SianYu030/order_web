@@ -18,5 +18,7 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+      - name: Static JS syntax check
+        run: node --check overtime/overtime-client.js
       - name: Verify public webpages, live Edge roster and access control (no real writes)
         run: node scripts/overtime-smoke.mjs
