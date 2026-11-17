@@ -84,8 +84,8 @@ async function load(){
     const approve=element("button","primary-btn","主管核准（待正式同步）");
     approve.type="button";
     approve.addEventListener("click",async()=>{
-     if(!confirm("主管確認核准？\\n"+x.date+" · "+x.employee_name+"\\n加班 "+x.hours+" 小時\\n原因："+x.reason+
-       "\\n\\n核准會送入 Google 工時寫入佇列；目前尚未完成 Google 正式寫入。"))return;
+     if(!confirm("主管確認核准？\n"+x.date+" · "+x.employee_name+"\n加班 "+x.hours+" 小時\n原因："+x.reason+
+       "\n\n核准會送入 Google 工時寫入佇列；目前尚未完成 Google 正式寫入。"))return;
      approve.disabled=true;
      try{await api.approve(x.id);await load();}
      catch(e){status.textContent="核准未完成："+e.message;approve.disabled=false;}
@@ -96,7 +96,7 @@ async function load(){
     const reject=element("button","secondary-btn","駁回（保留紀錄）");
     reject.type="button";
     reject.addEventListener("click",async()=>{
-     if(!confirm("確定駁回 "+x.employee_name+" "+x.date+" 的加班申請？\\n保留稽核紀錄，Google 正式工時不寫入。"))return;
+     if(!confirm("確定駁回 "+x.employee_name+" "+x.date+" 的加班申請？\n保留稽核紀錄，Google 正式工時不寫入。"))return;
      reject.disabled=true;
      try{await api.reject(x.id);await load();}
      catch(e){status.textContent="駁回未完成："+e.message;reject.disabled=false;}
