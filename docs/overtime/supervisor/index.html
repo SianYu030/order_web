@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-Hant" data-portal="supervisor">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f6f8fc">
+  <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
+  <title>主管加班審核｜系統櫃廠</title>
+  <link rel="stylesheet" href="../style.css?v=1.1.9">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="../app.js?v=1.1.9" defer></script>
+  <script src="../supervisor-auth.js?v=1.1.9" defer></script>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="top-inner">
+      <div class="brand-mark" aria-hidden="true">▤</div>
+      <div class="brand">
+        <h1>主管加班審核</h1>
+        <p>主管專用 · 核准與駁回</p>
+      </div>
+      <span class="pill status-pill hidden" id="connectionStatus">Google 未連線</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="notice warning hidden" id="modeNotice" role="status">
+      Google 尚未連線：一般登記只會保存在本機，不會送入公司試算表。主管登入與 Google 資料授權是不同步驟。
+    </div>
+    <div class="notice hidden" id="banner" role="status" aria-live="polite"></div>
+
+    <nav class="tabs" aria-label="主管頁面">
+      <button type="button" class="tab is-active" data-view="batch" id="navBatch" aria-selected="true">☑ 待核准清單</button>
+    </nav>
+
+    <section id="supervisorAccess" class="panel supervisor-panel" aria-label="主管登入">
+      <div class="supervisor-heading">
+        <h3><span class="step">🔒</span> 主管帳號登入</h3>
+        <span id="supervisorRolePill" class="pill hidden">未登入</span>
+      </div>
+      <div id="supervisorLoginBox">
+        <form id="supervisorLoginForm" autocomplete="on">
+          <label class="field"><span>主管帳號</span>
+            <input id="supervisorUsername" type="text" autocomplete="username" maxlength="32" required placeholder="例如：1494、kurt、3109">
+          </label>
+          <label class="field"><span>密碼</span>
+            <input id="supervisorPassword" type="password" autocomplete="current-password" required>
+          </label>
+          <button type="submit" id="supervisorLoginBtn" class="primary-btn">登入主管系統</button>
+        </form>
+      </div>
+      <div id="supervisorSignedBox" class="hidden">
+        <div class="supervisor-profile">
+          <strong id="supervisorSignedName">未登入</strong>
+          <button type="button" id="supervisorLogoutBtn" class="secondary-btn">登出</button>
+        </div>
+        <div id="supervisorChangePrompt" class="notice warning hidden">首次登入必須先修改密碼。</div>
+        <button type="button" id="supervisorTogglePasswordBtn" class="secondary-btn">修改我的密碼</button>
+        <form id="supervisorChangeForm" class="hidden supervisor-form">
+          <label class="field"><span>目前密碼</span>
+            <input id="supervisorOldPassword" type="password" autocomplete="current-password" required>
+          </label>
+          <label class="field"><span>新密碼（至少 8 個字元）</span>
+            <input id="supervisorNewPassword" type="password" autocomplete="new-password" minlength="8" required>
+          </label>
+          <label class="field"><span>再次輸入新密碼</span>
+            <input id="supervisorConfirmPassword" type="password" autocomplete="new-password" minlength="8" required>
+          </label>
+          <button type="submit" id="supervisorChangeBtn" class="primary-btn">儲存新密碼</button>
+        </form>
+        <div id="supervisorAdminBox" class="hidden">
+          <h3 class="admin-title">主管帳號管理</h3>
+          <div id="supervisorUsersList" class="supervisor-users"></div>
+          <form id="supervisorAddForm" class="supervisor-form">
+            <label class="field"><span>新增主管帳號</span>
+              <input id="supervisorAddName" autocomplete="off" maxlength="32" placeholder="英數字帳號" required>
+            </label>
+            <label class="field"><span>初始密碼（至少 8 個字元）</span>
+              <input id="supervisorAddPassword" type="password" autocomplete="new-password" minlength="8" required>
+            </label>
+            <button type="submit" class="secondary-btn">新增主管</button>
+          </form>
+        </div>
+      </div>
+      <p id="supervisorMessage" class="helper" role="status" aria-live="polite">主管操作須登入；首次登入需修改初始密碼。</p>
+      <p class="helper small">主管登入與 Google 試算表連線分開管理；正式工時核准需另完成 Google 存取授權。</p>
+    </section>
+
+    <section id="view-entry" class="view hidden">
+      <div class="section-heading">
+        <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
+        <span class="version">V1.1.9</span>
+      </div>
+
+      <form id="entryForm" novalidate>
+        <section class="panel">
+          <h3><span class="step">1</span> 登記日期</h3>
+          <div class="date-grid">
+            <label class="field"><span>年份</span><select id="year" required aria-label="年份"></select></label>
+            <label class="field"><span>月份</span><select id="month" required aria-label="月份"></select></label>
+            <label class="field"><span>日期</span><select id="day" required aria-label="日期"></select></label>
+          </div>
+          <p class="helper" id="weekdayText">請選擇日期</p>
+        </section>
+
+        <section class="panel">
+          <h3><span class="step">2</span> 所屬單位與員工</h3>
+          <label class="field"><span>所屬單位 <em>*</em></span>
+            <select id="department" required>
+              <option value="E5">E5 業務</option>
+              <option value="E4">E4</option>
+            </select>
+          </label>
+          <label class="field"><span>員工（工號／姓名）<em>*</em></span>
+            <select id="employee" required></select>
+          </label>
+          <p class="helper" id="rosterText">展示模式可預覽員工姓名；正式登入 Google 後，才會核對工號及在職資料。</p>
+        </section>
+
+        <section class="panel">
+          <h3><span class="step">3</span> 加班登記</h3>
+          <label class="field"><span>加班時數 <em>*</em></span>
+            <div class="suffix-field"><input type="number" id="hours" min="0.5" max="24" step="0.5" inputmode="decimal" value="3" required><span>小時</span></div>
+          </label>
+          <div class="quick-hours" aria-label="快速設定時數">
+            <button type="button" data-hour="1">1 小時</button>
+            <button type="button" data-hour="2">2 小時</button>
+            <button type="button" data-hour="3">3 小時</button>
+            <button type="button" data-hour="4">4 小時</button>
+            <button type="button" data-hour="8">8 小時</button>
+          </div>
+          <label class="field reason-field"><span>加班原因／備註 <em id="reasonRequired">*</em></span>
+            <textarea id="reason" rows="3" maxlength="1600" placeholder="例如：文書加班、臨時訂單、客戶需求、趕工"></textarea>
+          </label>
+          <p class="helper">主管核准後才會把時數和原因寫入原月表同一儲存格（原因使用 Google 試算表註解）。</p>
+        </section>
+
+        <section class="panel preview-panel">
+          <h3><span class="step">4</span> 登記確認</h3>
+          <div class="preview-row"><span>日期／單位</span><strong id="summaryWhen">2026/11/16 · E5</strong></div>
+          <div class="preview-row"><span>員工</span><strong id="summaryWho">請選擇員工</strong></div>
+          <div class="preview-row"><span>內容</span><strong id="summaryKind">加班 3 小時</strong></div>
+          <div class="preview-row"><span>對應位置</span><strong id="summaryCell">CE · 待確認列號</strong></div>
+          <div class="preview-row"><span>申請狀態</span><strong>待主管核准，不直接寫入原月表</strong></div>
+          <div class="preview-row"><span>便當規則</span><strong id="summaryLunch">一般日滿 3 小時</strong></div>
+          <p class="helper small">便當由原試算表公式判定，網站不覆寫便當儲存格。</p>
+        </section>
+
+        <div class="form-actions">
+          <button type="submit" id="submitBtn" class="primary-btn">儲存展示申請</button>
+          <p class="helper action-helper" id="submitHint">展示資料只會存在此瀏覽器，不會傳送至 Google。</p>
+        </div>
+      </form>
+    </section>
+
+    <section id="view-history" class="view hidden">
+      <div class="section-heading"><div><h2>查詢／修改</h2><p>依目前選擇的年份、月份、單位及員工檢視登記。</p></div></div>
+      <section class="panel">
+        <p class="helper">請先在「登記」選好日期、單位與員工，再到這裡查詢。</p>
+        <button id="refreshHistory" class="secondary-btn" type="button">重新讀取紀錄</button>
+        <div id="historyList" class="history-list" aria-live="polite"></div>
+      </section>
+    </section>
+
+    <section id="view-batch" class="view">
+      <div class="section-heading"><div><h2>主管批次核准／駁回</h2>
+        <p>勾選多筆待核准申請，核准才寫入對應 E4／E5 月表。</p></div></div>
+      <div class="notice warning" id="batchState" role="status" aria-live="polite">
+        尚未連線主管 Google 帳號。未授權前無法核准或駁回。
+      </div>
+      <section class="panel">
+        <div class="batch-topline">
+          <strong id="batchCount">待核准 0 筆</strong>
+          <button type="button" class="secondary-btn" id="batchRefresh">重新讀取</button>
+        </div>
+        <label class="batch-all"><input id="batchSelectAll" type="checkbox" disabled>
+          <span>全選目前待核准申請</span><span id="batchSelectedCount">已選 0 筆</span>
+        </label>
+        <div id="batchList" class="batch-list" aria-live="polite">
+          <div class="empty">連線並驗證主管身分後顯示待核准清單。</div>
+        </div>
+        <div class="batch-actions">
+          <button type="button" id="batchApproveBtn" class="primary-btn" disabled>核准並寫入（0）</button>
+          <button type="button" id="batchRejectBtn" class="danger-btn" disabled>駁回刪除（0）</button>
+        </div>
+        <p class="helper">每筆依序核對工號、日期、時數及註解；任一筆失敗立即停止。
+          駁回會從待核准清單與月檢視移除，原始登記紀錄仍保留供查核，絕不刪除已核准的 E4／E5 工時。</p>
+      </section>
+    </section>
+
+    <section id="view-approval" class="view hidden">
+      <div class="section-heading"><div><h2>主管核准／駁回</h2><p>核對申請後選擇「核准寫入」或「駁回刪除」。</p></div></div>
+      <div class="notice warning" id="approvalState" role="status">尚未讀取申請。需先使用授權的主管 Google 帳號登入。</div>
+      <section class="panel">
+        <h3>待核准紀錄</h3>
+        <div class="preview-row"><span>日期</span><strong id="approvalDate">未載入</strong></div>
+        <div class="preview-row"><span>員工</span><strong id="approvalEmployee">未載入</strong></div>
+        <div class="preview-row"><span>加班時數</span><strong id="approvalHours">未載入</strong></div>
+        <div class="preview-row"><span>加班原因</span><strong id="approvalReason">未載入</strong></div>
+        <div class="preview-row"><span>目前狀態</span><strong id="approvalStatus">未載入</strong></div>
+        <button class="primary-btn" type="button" id="approveBtn" disabled>主管核准並寫入對應月表</button>
+        <p class="helper">此功能必須核對主管帳號與原月表儲存格。尚未配置核准身分權限時，一律禁止正式核准。</p>
+        <button class="danger-btn" type="button" id="rejectBtn" disabled>駁回並從清單移除</button>
+      </section>
+    </section>
+
+    <section id="view-settings" class="view hidden">
+      <div class="section-heading"><div><h2>Google 試算表連線</h2><p>網站由 GitHub Pages 提供，不使用 Apps Script 架設網站。</p></div></div>
+      <section class="panel">
+        <h3>帳號授權</h3>
+        <p class="helper">網站透過 Google 官方 OAuth 登入，使用你有編輯權限的 Google 帳號。存取權杖只留在目前頁面記憶體，不存入 GitHub。</p>
+        <label class="field"><span>Google OAuth 網頁用戶端 ID</span>
+          <input id="clientId" type="text" spellcheck="false" autocomplete="off" placeholder="xxxxxxxx.apps.googleusercontent.com">
+        </label>
+        <p class="helper">必須先在 Google Cloud 建立 OAuth 網頁用戶端，授權 JavaScript 來源為 https://sianyu030.github.io 。這是公開用戶端識別碼，不是密碼或服務帳戶金鑰。</p>
+        <div class="settings-actions">
+          <button type="button" id="connectBtn" class="primary-btn">使用 Google 帳號連線</button>
+          <button type="button" id="disconnectBtn" class="secondary-btn">登出連線</button>
+        </div>
+        <p id="settingsState" class="helper">尚未連接 Google。</p>
+      </section>
+      <section class="panel">
+        <h3>來源試算表</h3>
+        <div class="settings-meta"><span>原始文件</span><strong>2026-加班及請假時數登記表</strong></div>
+        <a class="link" target="_blank" rel="noopener noreferrer" href="https://docs.google.com/spreadsheets/d/1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM/edit#gid=426152451">開啟原始 Google 試算表 ↗</a>
+        <p class="helper">業務申請先寫入待核准清單；經授權主管核准後，才會更新對應月表的加班時數與註解。未完成正式授權前不會寫入員工工時。</p>
+        <a class="link" target="_blank" rel="noopener noreferrer" href="https://docs.google.com/spreadsheets/d/1yx_QWF4CFiRYn1Fp4osMjBAkX97_0QQu03yGJIpteLM/edit#gid=2131065558">開啟業務加班月檢視 ↗</a>
+      </section>
+      <section class="panel">
+        <h3>展示資料</h3>
+        <p class="helper">展示模式的紀錄只會保存在這台裝置的瀏覽器，與正式資料完全分離。</p>
+        <button class="danger-link" type="button" id="clearDemo">清除本機展示紀錄</button>
+      </section>
+    </section>
+  </main>
+
+  <footer class="footer">主管審核 · V1.1.9 <a class="footer-supervisor-link" id="supervisorPortal" href="../">員工登記</a> <a class="footer-supervisor-link" href="../admin/">管理員頁面</a></footer>
+</div>
+
+<dialog id="confirmDialog">
+  <form method="dialog">
+    <h3>確認送出登記？</h3>
+    <div class="dialog-description" id="confirmText"></div>
+    <div class="dialog-buttons"><button type="submit" value="cancel" class="secondary-btn">取消</button><button type="submit" value="confirm" class="primary-btn">確認儲存</button></div>
+  </form>
+</dialog>
+</body>
+</html>
