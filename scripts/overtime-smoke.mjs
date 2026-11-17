@@ -75,7 +75,15 @@ console.log("PASS forged bridge key rejected");
 const noStatus=await fetch(BRIDGE,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io"},body:JSON.stringify({action:"status"})});
 assert.equal(noStatus.status,401,"bridge connection diagnostics must require administrator login");
 console.log("PASS Google sync status diagnostics require administrator login");
-const bridgeAdmin=await fetchText(BASE+"bridge-admin.js?v=1.1.17");
+let bridgeAdmin="";
+for(let i=0;i<12;i++){
+ const js=await fetchText(BASE+"bridge-admin.js?v=1.1.17b&attempt="+i);
+ if(js.includes('action:"pair"')&&js.includes('action:"status"')&&js.includes("最近連線")){
+  bridgeAdmin=js;break;
+ }
+ if(i<11)await new Promise(resolve=>setTimeout(resolve,5000));
+}
+assert(bridgeAdmin,"published bridge-admin.js is stale");
 assert(bridgeAdmin.includes('action:"pair"')&&bridgeAdmin.includes("isAdmin"));
 console.log("PASS administrator pairing client deployed");
 let installerCopied=false;
