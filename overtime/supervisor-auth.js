@@ -127,7 +127,8 @@
       const result=await call("me");user=result.user;
       render();
       if(user.role==="admin")await loadUsers();
-      msg("密碼修改成功。其他裝置的登入已失效。");
+      if(PORTAL==="admin"&&user.role!=="admin")msg("密碼修改成功，但此頁僅限 3109 系統管理員。請前往主管審核頁。",true);
+      else msg("密碼修改成功。其他裝置的登入已失效。");
       changed();
     }catch(e){msg(e.message,true);}finally{setBusy(false);}
   }
