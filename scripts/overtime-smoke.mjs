@@ -30,6 +30,16 @@ for(const [slug,title] of expected){
 const client=await fetchText(BASE+"overtime-client.js?v=1.1.15");
 assert(client.includes("overtime-requests")&&client.includes("receipt_token"));
 console.log("PASS public frontend API client");
+const preflight=await fetch(EDGE,{method:"OPTIONS",headers:{
+ "Origin":"https://sianyu030.github.io",
+ "Access-Control-Request-Method":"POST",
+ "Access-Control-Request-Headers":"content-type,authorization"
+}});
+assert.equal(preflight.status,204,"browser preflight OPTIONS must succeed");
+assert.equal(preflight.headers.get("access-control-allow-origin"),"https://sianyu030.github.io");
+assert.match(preflight.headers.get("access-control-allow-methods")||"",/POST/);
+assert.match(preflight.headers.get("access-control-allow-headers")||"",/content-type/i);
+console.log("PASS browser CORS preflight POST/Authorization");
 const roster=await post("roster");
 assert.equal(roster.status,200,"roster HTTP "+roster.status+" "+JSON.stringify(roster.body));
 assert.equal(roster.body.ok,true);
