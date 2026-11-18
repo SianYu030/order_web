@@ -155,3 +155,37 @@ ctx.otBridgeApi_=(action,payload)=>{
 assert.equal(ctx.registerBusinessOvertimeInstantWebhook().registered,true);
 ctx.otBridgeApi_=originalBridge;
 console.log("PASS signed webhook, time window, replay guard and installation URL validation");
+
+// V1.4: read-only health check covers direct REST API and advanced Sheets service.
+assert(source.includes("function testBusinessOvertimeSheetsApi()"));
+const previousProperties=ctx.PropertiesService, previousSheets=ctx.Sheets, previousUrl=ctx.UrlFetchApp;
+ctx.ScriptApp.getOAuthToken=()=>"test-only-token";
+let getCalls=0;
+ctx.UrlFetchApp={
+ fetch:(url,opts)=>{
+  assert(url.startsWith("https://sheets.googleapis.com/v4/spreadsheets/"+ctx.OT_BRIDGE.SPREADSHEET_ID+"?fields="));
+  assert.equal(opts.method,"get");
+  assert.equal(opts.headers.Authorization,"Bearer test-only-token");
+  getCalls++;
+  return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({
+   spreadsheetId:ctx.OT_BRIDGE.SPREADSHEET_ID,properties:{title:"正式試算表"},
+   sheets:[{properties:{sheetId:ctx.OT_BRIDGE.SOURCE_ID,title:ctx.OT_BRIDGE.SOURCE}}]
+  })};
+ }
+};
+ctx.Sheets={Spreadsheets:{get:(id,fields)=>{
+ assert.equal(id,ctx.OT_BRIDGE.SPREADSHEET_ID);
+ assert.equal(fields.fields,"spreadsheetId,properties(title)");
+ return {spreadsheetId:id,properties:{title:"正式試算表"}};
+}}};
+const inspected=ctx.testBusinessOvertimeSheetsApi();
+assert.equal(inspected.ok,true);
+assert.equal(inspected.read_only,true);
+assert.equal(inspected.http_status,200);
+assert.equal(getCalls,1);
+ctx.UrlFetchApp={fetch:()=>({getResponseCode:()=>403,getContentText:()=>'{"error":{"message":"API disabled"}}'})};
+assert.throws(()=>ctx.testBusinessOvertimeSheetsApi(),/HTTP 403/);
+ctx.UrlFetchApp=previousUrl;
+ctx.Sheets=previousSheets;
+ctx.PropertiesService=previousProperties;
+console.log("PASS Google Sheets v4 read-only health check; 403 fail-closed; no writes");

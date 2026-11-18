@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.3（簽章即時通知＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.4（Google Sheets API 唯讀診斷＋即時通知＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -59,6 +59,43 @@ function otEnsureOneMinuteTrigger_(){
   throw Error("同步觸發器數量或識別碼不一致，請人工檢查，不可繼續建立更多排程。");
  props.setProperty(key,"1");
  return 1;
+}
+/**
+ * 唯讀健康檢查：透過「正式同步實際使用的 Sheets REST API」核對 HTTP 200，
+ * 再確認進階服務 Sheets(v4) 的連線，不會寫入、核准、刪除或重設任何工單。
+ * 需於左側「服務」加入 Google Sheets API v4，識別碼維持 Sheets。
+ */
+function testBusinessOvertimeSheetsApi(){
+ var id=OT_BRIDGE.SPREADSHEET_ID;
+ var url="https://sheets.googleapis.com/v4/spreadsheets/"+id+
+  "?fields="+encodeURIComponent("spreadsheetId,properties(title),sheets(properties(sheetId,title))");
+ var response=UrlFetchApp.fetch(url,{
+  method:"get",muteHttpExceptions:true,
+  headers:{"Authorization":"Bearer "+ScriptApp.getOAuthToken()}
+ });
+ var status=response.getResponseCode();
+ if(status!==200){
+  var body=String(response.getContentText()||"").slice(0,500);
+  Logger.log("Google Sheets API 健康檢查失敗，HTTP "+status+"："+body);
+  throw Error("Google Sheets API 讀取測試失敗（HTTP "+status+"）；禁止執行正式工時同步。請核對 Apps Script 所屬 Google Cloud 專案已啟用 Sheets API v4。");
+ }
+ var json=JSON.parse(response.getContentText());
+ if(json.spreadsheetId!==id)throw Error("API 讀回的正式試算表 ID 不吻合。");
+ var registered=(json.sheets||[]).some(function(s){
+  return s.properties&&s.properties.sheetId===OT_BRIDGE.SOURCE_ID&&
+   s.properties.title===OT_BRIDGE.SOURCE;
+ });
+ if(!registered)throw Error("正式業務加班登記分頁的名稱或 sheetId 不吻合。");
+ if(typeof Sheets==="undefined"||!Sheets.Spreadsheets||
+    typeof Sheets.Spreadsheets.get!=="function")
+  throw Error("尚未在 Apps Script 左側『服務』新增 Google Sheets API v4，服務 ID 應為 Sheets。");
+ var viaAdvanced=Sheets.Spreadsheets.get(id,{fields:"spreadsheetId,properties(title)"});
+ if(!viaAdvanced||viaAdvanced.spreadsheetId!==id)
+  throw Error("進階服務 Google Sheets API 讀取結果不吻合。");
+ var title=String((viaAdvanced.properties||{}).title||"");
+ Logger.log("Google Sheets API 唯讀測試成功：HTTP 200，試算表="+title+"，來源分頁 ID 正確。");
+ Logger.log("僅驗證讀取權限，未修改任何儲存格；原『需人工核對』工單仍須另外安全處理。");
+ return {ok:true,read_only:true,http_status:200,spreadsheet_id:id,title:title};
 }
 function testBusinessOvertimeSync(){
  var result=otBridgeApi_("pull",{});
