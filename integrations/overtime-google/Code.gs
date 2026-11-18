@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.4（Google Sheets API 唯讀診斷＋即時通知＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.5（Google Sheets API 讀回修復＋唯讀診斷＋即時通知＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -324,6 +324,35 @@ function otTarget_(ss,r){
 function otSourceRows_(ss){
  return ss.getSheetByName(OT_BRIDGE.SOURCE).getRange("A2:R1500").getValues();
 }
+/**
+ * 用 Sheets REST API 重新讀取 Google 來源登記表，避開 SpreadsheetApp
+ * 在同一輪 REST batchUpdate 後可能仍持有的舊讀取快取。
+ * 日期採 SERIAL_NUMBER，避免 Apps Script Date 物件的時區轉換差異。
+ * 唯讀，嚴格限定來源 A2:R1500，不修改正式月表。
+ */
+function otSourceReadApi_(row){
+ if(!Number.isInteger(row)||row<2||row>1500)
+  throw Error("Google 來源登記列超出允許範圍。");
+ var range="'"+OT_BRIDGE.SOURCE.replace(/'/g,"''")+"'!A"+row+":R"+row;
+ var url="https://sheets.googleapis.com/v4/spreadsheets/"+
+  OT_BRIDGE.SPREADSHEET_ID+"/values/"+encodeURIComponent(range)+
+  "?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER";
+ var response=UrlFetchApp.fetch(url,{
+  method:"get",muteHttpExceptions:true,
+  headers:{"Authorization":"Bearer "+ScriptApp.getOAuthToken()}
+ });
+ if(response.getResponseCode()!==200)
+  throw Error("Google 來源表 API 讀回失敗（HTTP "+response.getResponseCode()+"），不更改工單狀態。");
+ var payload;
+ try{payload=JSON.parse(response.getContentText());}
+ catch(e){throw Error("Google 來源表 API 讀回格式不正確。");}
+ var found=payload.values||[];
+ if(found.length!==1||!Array.isArray(found[0])||found[0].length<16||found[0].length>18)
+  throw Error("Google 來源表 API 讀回列數或欄數異常。");
+ var values=found[0].slice();
+ while(values.length<18)values.push("");
+ return values;
+}
 function otSourceFind_(rows,r){
  var result=[];
  rows.forEach(function(values,i){
@@ -366,7 +395,7 @@ function otRegister_(ss,r){
     throw Error("Google 來源表同人同日另有未駁回工單，禁止重複。");
  });
  if(found){
-  if(!otMatches_(found.values,r,target))throw Error("Google 原來源資料與 Supabase 不吻合，禁止覆蓋。");
+  if(!otMatches_(otSourceReadApi_(found.row),r,target))throw Error("Google 原來源資料與 Supabase 不吻合，禁止覆蓋。");
   if(String(found.values[15])!=="待核准")
    throw Error("Google 來源表已被核准、駁回或發生狀態衝突，禁止重設為待核准，請人工核對。");
   return {row:found.row};
@@ -385,7 +414,7 @@ function otRegister_(ss,r){
   start:{sheetId:OT_BRIDGE.SOURCE_ID,rowIndex:empty-1,columnIndex:0},
   rows:[{values:values.map(otRequest_)}],fields:"userEnteredValue"
  }}]);
- var verify=source.getRange(empty,1,1,18).getValues()[0];
+ var verify=otSourceReadApi_(empty);
  if(!otMatches_(verify,r,target)||String(verify[9])!=="待同步"||String(verify[15])!=="待核准")
   throw Error("Google 來源表寫入後讀回不一致，禁止標示同步成功。");
  return {row:empty};
@@ -394,7 +423,7 @@ function otRegisteredSource_(ss,r){
  if(r.source_sheet!==OT_BRIDGE.SOURCE||!/^A([2-9]|[1-9][0-9]{1,3}):R\1$/.test(String(r.source_range||"")))
   throw Error("後端來源儲存格範圍錯誤。");
  var row=Number(/A(\d+):R/.exec(r.source_range)[1]);
- var values=ss.getSheetByName(OT_BRIDGE.SOURCE).getRange(row,1,1,18).getValues()[0];
+ var values=otSourceReadApi_(row);
  var target=otTarget_(ss,r);
  if(!otMatches_(values,r,target))throw Error("來源表申請內容被修改，拒絕寫入原工時。");
  return {row:row,values:values,target:target};
@@ -470,7 +499,7 @@ function otApprove_(ss,r){
   }};
   otGoogleBatch_([status,approve]);
  }
- var after=ss.getSheetByName(OT_BRIDGE.SOURCE).getRange(src.row,1,1,18).getValues()[0];
+ var after=otSourceReadApi_(src.row);
  if(String(after[15])!=="已核准"||String(after[16])!==String(r.manager_name)||
     String(after[9])!=="已同步")
   throw Error("主管核准資料更新後讀回不吻合。");
@@ -488,7 +517,7 @@ function otReject_(ss,r){
    rows:[{values:["已駁回",r.manager_name||"系統",now].map(otRequest_)}],
    fields:"userEnteredValue"}}
  ]);
- var after=ss.getSheetByName(OT_BRIDGE.SOURCE).getRange(src.row,1,1,18).getValues()[0];
+ var after=otSourceReadApi_(src.row);
  if(after[15]!=="已駁回"||after[9]!=="不需同步")throw Error("駁回寫入讀回失敗。");
  return {row:src.row};
 }

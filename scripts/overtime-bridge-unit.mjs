@@ -189,3 +189,53 @@ ctx.UrlFetchApp=previousUrl;
 ctx.Sheets=previousSheets;
 ctx.PropertiesService=previousProperties;
 console.log("PASS Google Sheets v4 read-only health check; 403 fail-closed; no writes");
+
+
+// V1.5 registration readback must use REST to avoid stale SpreadsheetApp values.
+assert(source.includes("function otSourceReadApi_(row)"));
+assert(source.includes("dateTimeRenderOption=SERIAL_NUMBER"));
+assert(source.includes("var verify=otSourceReadApi_(empty);"));
+assert(source.includes("otMatches_(otSourceReadApi_(found.row),r,target)"));
+assert(source.includes("var values=otSourceReadApi_(row);"));
+assert(source.includes("var after=otSourceReadApi_(src.row);"));
+let batchCalled=false,restReadCalled=false,staleRangeRead=false;
+const saved={target:ctx.otTarget_,rows:ctx.otSourceRows_,batch:ctx.otGoogleBatch_,
+ api:ctx.UrlFetchApp,serial:ctx.otTaiwanDateSerial_};
+const restoredSource=[person.request_no,46328,2026,11,"E4","3045","潘詠升",2,
+ "假日支援","待同步","11月份E4","M20",46328.56,46328.56,"Supabase員工網站","待核准"];
+ctx.otTarget_=()=>target;
+ctx.otSourceRows_=()=>Array.from({length:1499},()=>Array(18).fill(""));
+ctx.otTaiwanDateSerial_=()=>46328.56;
+ctx.otGoogleBatch_=(batch)=>{batchCalled=true;assert.equal(batch.length,1);return {};};
+ctx.UrlFetchApp={
+ fetch:(url,opts)=>{
+  assert(batchCalled,"REST read must happen after batchUpdate");
+  assert.equal(opts.method,"get");
+  assert(url.includes("/values/"),"Readback must query Sheets values API");
+  assert(url.includes("dateTimeRenderOption=SERIAL_NUMBER"));
+  restReadCalled=true;
+  return {
+   getResponseCode:()=>200,
+   getContentText:()=>JSON.stringify({values:[restoredSource]})
+  };
+ }
+};
+const sourceSheet={
+ getRange:()=>{staleRangeRead=true;return {getValues:()=>[Array(18).fill("")]};}
+};
+const registration=ctx.otRegister_({getSheetByName:n=>n===ctx.OT_BRIDGE.SOURCE?sourceSheet:null},person);
+assert.equal(registration.row,2);
+assert.equal(batchCalled,true);
+assert.equal(restReadCalled,true);
+assert.equal(staleRangeRead,false,"must never use the potentially stale SpreadsheetApp cache for readback");
+assert.equal(ctx.otIso_(restoredSource[1]),person.date);
+const invalidSource=restoredSource.slice();
+invalidSource[7]=3;
+ctx.UrlFetchApp.fetch=()=>({getResponseCode:()=>200,getContentText:()=>JSON.stringify({values:[invalidSource]})});
+assert.throws(()=>ctx.otRegister_({getSheetByName:()=>sourceSheet},person),/讀回不一致/);
+ctx.otTarget_=saved.target;
+ctx.otSourceRows_=saved.rows;
+ctx.otGoogleBatch_=saved.batch;
+ctx.UrlFetchApp=saved.api;
+ctx.otTaiwanDateSerial_=saved.serial;
+console.log("PASS register writes once, verifies via Google REST not stale SpreadsheetApp cache, rejects mismatched rows");
