@@ -44,23 +44,23 @@ assert(completeApp.includes('receiptPoller=window.setInterval(')&&completeApp.in
 console.log("PASS mobile completion screen, single-submit path and live status refresh code deployed");
 let supervisorPageUpdated=false;
 for(let i=0;i<15;i++){
- const page=await fetchText(BASE+"supervisor/?admin-review=v1.1.26&attempt="+i);
- if(page.includes('app.js?v=1.1.26')&&page.includes('overtime-client.js?v=1.1.26')&&page.includes("不需另做瀏覽器 Google OAuth")){
-  const liveClient=await fetchText(BASE+"overtime-client.js?v=1.1.26&attempt="+i);
-  if(liveClient.includes("主管加班審核清單")&&liveClient.includes("不要重新提交同日申請。")){
+ const page=await fetchText(BASE+"supervisor/?admin-review=v1.1.29&attempt="+i);
+ if(page.includes('app.js?v=1.1.26')&&page.includes('overtime-client.js?v=1.1.29')&&page.includes("不需另做瀏覽器 Google OAuth")){
+  const liveClient=await fetchText(BASE+"overtime-client.js?v=1.1.29&attempt="+i);
+  if(liveClient.includes("主管加班審核清單")&&liveClient.includes("不要重複提交。")){
    supervisorPageUpdated=true;break;
   }
  }
  if(i<14)await new Promise(resolve=>setTimeout(resolve,4000));
 }
-assert(supervisorPageUpdated,"supervisor backend-only queue not yet published");
+assert(supervisorPageUpdated,"supervisor backend-only review queue not yet published");
 console.log("PASS supervisor no obsolete Google OAuth approval gate, true backend error displayed");
 const supervisorV29=await fetchText(BASE+"supervisor/?actions=v1.1.29");
 assert(supervisorV29.includes("overtime-client.js?v=1.1.29")&&supervisorV29.includes('legacy-google-batch" id="batchState"'),"latest supervisor review screen must hide obsolete Google auth");
 const supervisorActions=await fetchText(BASE+"overtime-client.js?v=1.1.29");
 assert(supervisorActions.includes("駁回刪除（移出月檢視）")&&supervisorActions.includes('api.reject(x.id)')&&supervisorActions.includes('api.approve(x.id)'),"both actions must be available for verified pending request");
 console.log("PASS two supervisor actions and old OAuth warning hidden");
-const client=await fetchText(BASE+"overtime-client.js?v=1.1.17");
+const client=await fetchText(BASE+"overtime-client.js?v=1.1.29");
 assert(client.includes("overtime-requests")&&client.includes("receipt_token"));
 console.log("PASS public frontend API client");
 const preflight=await fetch(EDGE,{method:"OPTIONS",headers:{
