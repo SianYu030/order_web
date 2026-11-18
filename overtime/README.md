@@ -164,3 +164,10 @@ GitHub Pages 前端：`https://sianyu030.github.io/order_web/overtime/`。原報
 - 先鎖定 Supabase 工單狀態為「同步中」，核對正式在職名冊、日期、單位及原月份表後，才寫隱藏來源表並讀回；主管核准後檢查目標工時、公式與既有留言，寫入工時、註記及留言並讀回確認，才標記「已核准」。
 - 正式 Google Apps Script **尚未安裝／授權**，目前僅部署程式及 API，不可聲稱已自動同步或完成真實端到端驗收。
 - 原有 E3/W8 工時與公式不受影響。Google OAuth 手動連線仍保留作既有備援。
+
+
+## V1.1.19：修復 Apps Script 安裝執行逾時（2026-11-18）
+
+使用者在 Apps Script 編輯器直接執行 `installBusinessOvertimeSync`，原版呼叫 `SpreadsheetApp.getUi().prompt()`，對話框出現在試算表介面而非程式編輯器，可能持續等待到六分鐘上限。修正版移除全部安裝 UI 對話框，改用 `專案設定 → 指令碼屬性` 手動設定 `BUSINESS_OVERTIME_SYNC_TOKEN`，然後執行同名函式；首次成功連線後才建立唯一每五分鐘觸發器。舊腳本的安裝版本應由使用者在**新建的「業務加班同步.gs」檔案**覆蓋，不改寫原有 `程式碼.gs`、`假日午餐月結紀錄.gs`、其餘現有工作表及工時。
+
+本修復須以廠務室 Google 帳號完成一次 Apps Script 原生權限授權，GitHub / Supabase 側無法代替。若已有憑證但關閉網頁後遺失原文，無法由 Supabase 取回，須由管理員重新配對；最多兩組有效金鑰。

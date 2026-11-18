@@ -1,4 +1,4 @@
-/* V1.1.18：正式 Google Apps Script 同步授權管理。只有後端驗證通過的管理員可產生授權碼。 */
+/* V1.1.19：正式 Google Apps Script 同步授權管理。只有後端驗證通過的管理員可產生授權碼。 */
 (function(){
 "use strict";
 const ROOT="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-sheet-bridge";
@@ -23,17 +23,17 @@ function init(){
  codeCopy.addEventListener("click",async()=>{
   codeCopy.disabled=true;
   try{
-   const resp=await fetch(COPYABLE_CODE+"?v=1.1.18",{cache:"no-store"});
+   const resp=await fetch(COPYABLE_CODE+"?v=1.1.19",{cache:"no-store"});
    if(!resp.ok)throw Error("讀取同步程式失敗 HTTP "+resp.status);
    const script=await resp.text();
    if(!script.includes("function installBusinessOvertimeSync()")||!script.includes("function runBusinessOvertimeSync()"))
     throw Error("同步程式不完整，已拒絕複製");
    await navigator.clipboard.writeText(script);
-   status.textContent="已複製同步程式。請到正式試算表「擴充功能 → Apps Script」新增程式檔貼上，不要覆蓋既有檔案。";
+   status.textContent="已複製修正版同步程式。請只替換「業務加班同步.gs」內容；原有「程式碼.gs」與「假日午餐月結紀錄.gs」不要更動。";
   }catch(e){status.textContent="複製失敗："+e.message+"。請使用「查看同步程式」連結。";}
   finally{codeCopy.disabled=false;}
  });
- const info=el("p","helper","安裝方式：先按「複製 Google 同步程式」，再開啟正式試算表選「擴充功能 → Apps Script」，新增程式檔貼上（不得覆蓋原有程式），執行 installBusinessOvertimeSync 並完成 Google 授權，輸入下方產生的同步授權碼。成功後每 5 分鐘同步。");
+ const info=el("p","helper","安裝修正版（解決 6 分鐘執行逾時）：① 按「複製 Google 同步程式」，只替換既有「業務加班同步.gs」內容，勿動其他程式檔。② Apps Script 左側齒輪「專案設定」→「指令碼屬性」→「新增指令碼屬性」，名稱填 BUSINESS_OVERTIME_SYNC_TOKEN、值貼上管理員版產生的授權碼，儲存。③ 回程式編輯器選 installBusinessOvertimeSync → 執行，同意 Google 授權。新版不會跳出等待輸入的對話框；成功後每 5 分鐘同步一次。");
  const button=el("button","primary-btn","建立 Google 同步授權碼");
  button.type="button";button.id="overtimeBridgePairButton";
  const status=el("p","helper","管理員登入後可建立此試算表專用的同步授權碼。");
@@ -90,7 +90,7 @@ function init(){
    health.textContent="需登入管理員才能查看 Google 同步連線狀態。";
   }else{
    if(!tokenInput.value){
-    status.textContent="管理員身分已確認。請按「建立 Google 同步授權碼」，再將授權碼填入正式試算表的 Apps Script 安裝畫面。";
+    status.textContent="管理員身分已確認。請建立 Google 同步授權碼，並將其填入 Apps Script 專案設定的指令碼屬性，勿再等待安裝對話框。";
    }
    fetchHealth();
   }
@@ -110,7 +110,7 @@ function init(){
     throw Error(data.error||"管理員授權建立失敗");
    tokenInput.value=data.token;
    secretBox.classList.remove("hidden");
-   status.textContent="已建立專用授權碼，請立即完成 Google Apps Script 安裝。重新整理或登出後，本頁不會再次顯示此碼。";
+   status.textContent="授權碼已建立。請到 Apps Script「專案設定 → 指令碼屬性」建立 BUSINESS_OVERTIME_SYNC_TOKEN，貼上授權碼並儲存；授權碼只顯示這一次。";
    await fetchHealth();
   }catch(e){
    tokenInput.value="";secretBox.classList.add("hidden");

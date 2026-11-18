@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.0
+ * 正道業務加班 Google 同步器 V1.1（修復 6 分鐘安裝逾時）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -14,31 +14,37 @@ var OT_BRIDGE={
  TOKEN_KEY:"BUSINESS_OVERTIME_SYNC_TOKEN",
  COMMENT_TAG:"\n\n［加班登記網站］"
 };
-/** 在正式試算表：「擴充功能→Apps Script」第一次執行這個函式。需完成 Google 本身的授權。 */
+/** 先到『專案設定 → 指令碼屬性』保存 BUSINESS_OVERTIME_SYNC_TOKEN；再從編輯器執行本函式。 */
 function installBusinessOvertimeSync(){
- var ui=SpreadsheetApp.getUi();
- var file=SpreadsheetApp.getActiveSpreadsheet();
- if(!file||file.getId()!==OT_BRIDGE.SPREADSHEET_ID)
-  throw Error("安裝位置不是正式的業務加班試算表，已拒絕安裝。");
- var resp=ui.prompt("設定業務加班同步授權",
-  "貼上由業務加班管理員版產生的一次性同步授權碼。授權碼只保存在 Apps Script 私有設定內。",
-  ui.ButtonSet.OK_CANCEL);
- if(resp.getSelectedButton()!==ui.Button.OK)return;
- var token=String(resp.getResponseText()||"").trim();
- if(!/^[A-Za-z0-9_-]{40,100}$/.test(token))throw Error("同步授權碼格式不正確。");
- PropertiesService.getScriptProperties().setProperty(OT_BRIDGE.TOKEN_KEY,token);
+ // 從編輯器執行時禁止使用 SpreadsheetApp.getUi().prompt/alert，避免等不到輸入而六分鐘逾時。
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==OT_BRIDGE.SPREADSHEET_ID)
+  throw Error("請從正式加班試算表的擴充功能開啟此 Apps Script 專案，拒絕安裝到其他試算表。");
+ var token=(PropertiesService.getScriptProperties().getProperty(OT_BRIDGE.TOKEN_KEY)||"").trim();
+ if(!/^[A-Za-z0-9_-]{40,100}$/.test(token))
+  throw Error("尚未設定 BUSINESS_OVERTIME_SYNC_TOKEN。請點左側齒輪『專案設定』→『指令碼屬性』→『新增指令碼屬性』，將管理員網站的同步授權碼貼入值欄並儲存，再重新執行。");
+ Logger.log("正在驗證 Supabase 專用同步授權，未修改任何工時。");
  var result=otBridgeApi_("pull",{});
  if(result.ok!==true||!Array.isArray(result.records))
-  throw Error("Google 與 Supabase 驗證失敗，尚未建立排程。");
- var removed=0;
- ScriptApp.getProjectTriggers().forEach(function(t){
-  if(t.getHandlerFunction()==="runBusinessOvertimeSync"){
-   ScriptApp.deleteTrigger(t);removed++;
-  }
+  throw Error("Supabase 驗證失敗；未建立同步排程，正式工時未修改。");
+ var triggers=ScriptApp.getProjectTriggers().filter(function(t){
+  return t.getHandlerFunction()==="runBusinessOvertimeSync";
  });
- ScriptApp.newTrigger("runBusinessOvertimeSync").timeBased().everyMinutes(5).create();
- ui.alert("同步已設定","已驗證 Google / Supabase 連線並建立每 5 分鐘自動執行排程。"
-  +"目前待處理 "+result.records.length+" 筆。第一次真正寫入後仍須核對正式月表。",ui.ButtonSet.OK);
+ // 保留既有正常觸發器，不重複新增，避免多個任務同時處理同一工單。
+ if(triggers.length===0){
+  ScriptApp.newTrigger("runBusinessOvertimeSync").timeBased().everyMinutes(5).create();
+  Logger.log("已建立每 5 分鐘一次的 Google 同步觸發器。");
+ }else{
+  Logger.log("找到 "+triggers.length+" 個既有同步觸發器，未重複建立。");
+ }
+ var verified=ScriptApp.getProjectTriggers().filter(function(t){
+  return t.getHandlerFunction()==="runBusinessOvertimeSync";
+ });
+ if(verified.length!==1)
+  throw Error("應有恰好 1 個同步觸發器，目前 "+verified.length+" 個。請先檢查 Apps Script 左側『觸發條件』，不要重複安裝。");
+ Logger.log("安裝完成：同步授權已驗證、觸發器已存在；目前後端待處理 "+result.records.length+" 筆。");
+ Logger.log("請回管理員網站按『檢查 Google 同步狀態』核對最近連線。");
+ return {ok:true,triggers:verified.length,pending:result.records.length};
 }
 function testBusinessOvertimeSync(){
  var result=otBridgeApi_("pull",{});

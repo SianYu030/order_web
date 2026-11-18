@@ -65,3 +65,35 @@ assert.equal(ctx.otMatches_(modified,person,target),false);
 const badMonth={...month,getRange:(a,b)=>a===1?{getValue:()=>new Date("2026-11-03T00:00:00Z")}:{getValues:()=>people}};
 assert.throws(()=>ctx.otTarget_({...ss,getSheetByName:n=>n==="11月份E4"?badMonth:ss.getSheetByName(n)},person),/日期欄不吻合/);
 console.log("PASS offline Google synchronization mapping and safety checks");
+
+
+// Install function must never suspend the IDE with Spreadsheet UI prompts.
+const installerSource=source.slice(source.indexOf("function installBusinessOvertimeSync(){"),source.indexOf("function testBusinessOvertimeSync(){"));
+assert(!installerSource.includes("getUi("),"installer must not show Spreadsheet UI");
+assert(!installerSource.includes(".prompt(")&&!installerSource.includes(".alert("),"installer must not wait for a dialog");
+const originalBridge=ctx.otBridgeApi_;
+let bridgeCalls=0, triggerCreations=0, token="A".repeat(48), triggerSet=[];
+ctx.SpreadsheetApp={getActiveSpreadsheet:()=>({getId:()=>ctx.OT_BRIDGE.SPREADSHEET_ID})};
+ctx.PropertiesService={getScriptProperties:()=>({getProperty:()=>token})};
+ctx.ScriptApp={
+ getProjectTriggers:()=>triggerSet,
+ newTrigger:(name)=>{assert.equal(name,"runBusinessOvertimeSync");return {
+  timeBased(){return this;},
+  everyMinutes(x){assert.equal(x,5);return this;},
+  create(){triggerCreations++;triggerSet.push({getHandlerFunction:()=>name});return this;}
+ };}
+};
+ctx.Logger={log:()=>{}};
+ctx.otBridgeApi_=(action,data)=>{assert.equal(action,"pull");bridgeCalls++;return {ok:true,records:[]};};
+const installed=ctx.installBusinessOvertimeSync();
+assert.equal(installed.ok,true);
+assert.equal(installed.triggers,1);
+assert.equal(triggerCreations,1);
+assert.equal(bridgeCalls,1);
+ctx.installBusinessOvertimeSync();
+assert.equal(triggerCreations,1,"second install must not duplicate triggers");
+token="";
+assert.throws(()=>ctx.installBusinessOvertimeSync(),/BUSINESS_OVERTIME_SYNC_TOKEN/);
+assert.equal(triggerCreations,1);
+ctx.otBridgeApi_=originalBridge;
+console.log("PASS installer no UI prompts, one sync trigger, second run idempotent, missing token rejected");
