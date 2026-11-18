@@ -2507,8 +2507,11 @@ function select(state,file){
 }
 async function startRecording(state){
   if(state.recorder&&state.recorder.state!=="inactive")return;
-  // Browsers lacking MediaRecorder can invoke the mobile system camera.
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
+  // On phones/tablets, use the native video camera for reliable recording.
+  // On desktops, use the live browser camera and MediaRecorder.
+  var nativeMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  if(nativeMobile || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
     el(state.prefix+"VideoCapture").click();
     return;
   }
