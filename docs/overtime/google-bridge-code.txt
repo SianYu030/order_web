@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.5（Google Sheets API 讀回修復＋唯讀診斷＋即時通知＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.6（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -132,7 +132,7 @@ function runBusinessOvertimeSync(){
      otBridgeApi_("ack",{id:r.id,stage:"approved",
       source_sheet:OT_BRIDGE.SOURCE,source_row:approved.row});
      success++;
-    }else if(r.status==="已駁回"&&r.source_range){
+    }else if(r.status==="駁回待同步"&&r.source_range){
      var rejected=otReject_(ss,r);
      otBridgeApi_("ack",{id:r.id,stage:"rejected",
       source_sheet:OT_BRIDGE.SOURCE,source_row:rejected.row});
@@ -184,7 +184,7 @@ function doPost(e){
   var ts=data.ts,id=String(data.id||""),event=String(data.event||""),
       signature=String(data.signature||"");
   if(typeof ts!=="number"||!Number.isSafeInteger(ts)||Math.abs(Date.now()-ts)>120000||
-    !/^[0-9a-f-]{36}$/i.test(id)||["submit","approve","update"].indexOf(event)<0||
+    !/^[0-9a-f-]{36}$/i.test(id)||["submit","approve","update","reject"].indexOf(event)<0||
     !/^[a-f0-9]{64}$/.test(signature))
    return otWakeReply_({ok:false,error:"Invalid wake-up request"});
   var expected=otWakeSignature_(ts+"."+id+"."+event);
@@ -507,7 +507,11 @@ function otApprove_(ss,r){
 }
 function otReject_(ss,r){
  var src=otRegisteredSource_(ss,r);
- if(String(src.values[15])==="已駁回")return {row:src.row};
+ if(String(src.values[15])==="已駁回"){
+  if(String(src.values[9])!=="不需同步")
+   throw Error("Google 來源表駁回狀態與同步狀態不一致，需人工核對。");
+  return {row:src.row};
+ }
  if(String(src.values[15])!=="待核准")throw Error("已核准工單禁止駁回覆蓋。");
  var now=r.manager_time?otTaiwanDateSerial_(r.manager_time):otTaiwanDateSerial_(new Date());
  otGoogleBatch_([

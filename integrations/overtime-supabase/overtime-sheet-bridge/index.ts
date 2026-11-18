@@ -118,13 +118,10 @@ Deno.serve(async(req:Request)=>{
   }
   if(action==="pull"){
    const {data:pending,error:a}=await db.from("overtime_web_requests").select("*")
-    .in("status",["待同步","同步失敗","同步中","核准待同步"])
+    .in("status",["待同步","同步失敗","同步中","核准待同步","駁回待同步"])
     .order("created_at",{ascending:true}).limit(MAX);
    if(a)throw a;
-   const {data:rejected,error:b}=await db.from("overtime_web_requests").select("*")
-    .eq("status","已駁回").not("source_range","is",null).order("updated_at",{ascending:false}).limit(MAX);
-   if(b)throw b;
-   const records=[...(pending||[]),...(rejected||[])].slice(0,MAX).map(clean);
+   const records=(pending||[]).slice(0,MAX).map(clean);
    return res({ok:true,records,count:records.length});
   }
   if(action==="claim"){
@@ -159,10 +156,20 @@ Deno.serve(async(req:Request)=>{
    if(ce)throw ce;
    if(!current)return res({ok:false,error:"Missing request"},404);
    if(stage==="rejected"){
-    if(current.status!=="已駁回")return res({ok:false,error:"Not rejected"},409);
-    if(current.source_range && (!suppliedRange||current.source_range!==suppliedRange||source!==SOURCE))
+    if(!["駁回待同步","已駁回"].includes(current.status))
+     return res({ok:false,error:"Not rejected"},409);
+    if(!suppliedRange||current.source_range!==suppliedRange||source!==SOURCE)
      return res({ok:false,error:"Source does not match"},409);
-    return res({ok:true,status:"已駁回",already:true});
+    if(current.status==="已駁回")return res({ok:true,status:"已駁回",already:true});
+    const {data:updated,error}=await db.from("overtime_web_requests")
+     .update({status:"已駁回",last_error:null,updated_at:new Date().toISOString()})
+     .eq("id",id).eq("status","駁回待同步").eq("source_range",suppliedRange)
+     .select("*").maybeSingle();
+    if(error)throw error;
+    if(!updated)return res({ok:false,error:"Rejection sync race"},409);
+    await audit(updated,"google-bridge","rejected_and_verified",
+     {source_range:suppliedRange,manager_name:current.manager_name});
+    return res({ok:true,status:"已駁回"});
    }
    if(source!==SOURCE||!suppliedRange)return res({ok:false,error:"Source invalid"},400);
    if(stage==="registered"){

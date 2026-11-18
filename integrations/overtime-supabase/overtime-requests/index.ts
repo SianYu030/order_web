@@ -2,7 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 const db=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false,autoRefreshToken:false}});
 const ALLOWED_ORIGIN="https://sianyu030.github.io";
-const OK_STATUSES=["待同步","同步中","同步失敗","待核准","核准待同步","需人工核對"];
+const OK_STATUSES=["待同步","同步中","同步失敗","待核准","核准待同步","駁回待同步","需人工核對"];
 function headers(origin:string|null){return {"Content-Type":"application/json; charset=utf-8","Access-Control-Allow-Origin":ALLOWED_ORIGIN,"Access-Control-Allow-Headers":"Content-Type, Authorization, apikey","Access-Control-Allow-Methods":"POST, OPTIONS","Cache-Control":"no-store"};}
 function response(data:Record<string,unknown>,status=200,origin:string|null=null){return new Response(JSON.stringify(data),{status,headers:headers(origin)});}
 function parseDate(date:unknown){
@@ -15,7 +15,7 @@ async function sha256(x:string){const h=new Uint8Array(await crypto.subtle.diges
 function makeToken(){return b64(crypto.getRandomValues(new Uint8Array(32)));}
 // Post a signed wake-up signal only. Google Apps Script ALWAYS pulls the authoritative request
 // again with its own server-side bridge token. No hour/employee fields go to the webhook.
-async function wakeGoogle(id:string,event:"submit"|"approve"|"update"){
+async function wakeGoogle(id:string,event:"submit"|"approve"|"update"|"reject"){
  try{
   const {data:keys,error}=await db.from("overtime_sheet_bridge_keys")
    .select("id,token_hash,webhook_url").eq("enabled",true).not("webhook_url","is",null).limit(2);
@@ -48,7 +48,7 @@ async function wakeGoogle(id:string,event:"submit"|"approve"|"update"){
   }
  }catch(e){console.warn("Google instant wake-up skipped:",String(e));}
 }
-async function notifyGoogle(id:string,event:"submit"|"approve"|"update"){
+async function notifyGoogle(id:string,event:"submit"|"approve"|"update"|"reject"){
  const job=wakeGoogle(id,event);
  const edge=(globalThis as any).EdgeRuntime;
  if(edge?.waitUntil)edge.waitUntil(job);
@@ -180,16 +180,25 @@ Deno.serve(async(req:Request)=>{
    const id=String(body.id||"");
    if(!/^[0-9a-f-]{36}$/.test(id))return response({ok:false,error:"申請編號錯誤"},400,origin);
    const {data:before}=await db.from("overtime_web_requests").select("*").eq("id",id).maybeSingle();
-   if(!before||!["待同步","同步失敗"].includes(before.status))
-    return response({ok:false,error:"這筆申請已進入 Google 待核准或核准流程；同步橋接未完成前，禁止兩邊分開駁回。"},409,origin);
-   const now=new Date().toISOString();
+   if(!before||!["待同步","同步失敗","待核准"].includes(before.status))
+    return response({ok:false,error:"這筆申請已進入核准、駁回或人工核對流程，請更新收件清單，不可重複處理。"},409,origin);
+   const registered=before.status==="待核准";
+   if(registered&&(before.source_sheet!=="業務假日或臨時加班登記"||
+      !/^A([2-9]|[1-9][0-9]{1,3}):R\1$/.test(String(before.source_range||""))))
+    return response({ok:false,error:"Google 來源儲存格沒有通過驗證，禁止駁回，請管理員核對。"},409,origin);
+   const nextStatus=registered?"駁回待同步":"已駁回",now=new Date().toISOString();
    const {data:updated,error}=await db.from("overtime_web_requests")
-    .update({status:"已駁回",manager_name:actor.username,manager_time:now,updated_at:now})
+    .update({status:nextStatus,manager_name:actor.username,manager_time:now,updated_at:now})
     .eq("id",id).eq("status",before.status).select("*").maybeSingle();
    if(error)throw error;
-   if(!updated)return response({ok:false,error:"申請已被其他主管處理，請重新整理"},409,origin);
-   await db.from("overtime_web_audit").insert({request_id:id,actor:actor.username,action:"rejected",details:{previous_status:before.status}});
-   return response({ok:true,record:clean(updated),message:"已駁回尚未同步的申請，Google 正式工時未更動，原始稽核紀錄保留。"},200,origin);
+   if(!updated)return response({ok:false,error:"申請已由其他主管處理，請重新整理"},409,origin);
+   await db.from("overtime_web_audit").insert({request_id:id,actor:actor.username,
+    action:registered?"rejected_pending_sheet_sync":"rejected",
+    details:{previous_status:before.status,source_sheet:before.source_sheet||null,source_range:before.source_range||null}});
+   if(registered)await notifyGoogle(id,"reject");
+   return response({ok:true,record:clean(updated),message:registered?
+    "主管駁回已記錄，正在同步 Google 來源表；Google 讀回成功後才會從月檢視移除，正式工時未修改。":
+    "尚未進入 Google 登記表的申請已駁回，歷史紀錄保留。"},200,origin);
   }
   return response({ok:false,error:"不支援的操作"},400,origin);
  }catch(e){
