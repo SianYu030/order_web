@@ -6,10 +6,10 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班審核｜系統櫃廠</title>
-  <link rel="stylesheet" href="../style.css?v=1.1.29">
+  <link rel="stylesheet" href="../style.css?v=1.1.30">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="../app.js?v=1.1.26" defer></script>
-  <script src="../supervisor-auth.js?v=1.1.23" defer></script>
+  <script src="../supervisor-auth.js?v=1.1.30" defer></script>
   <script src="../overtime-client.js?v=1.1.29" defer></script>
 </head>
 <body>
@@ -54,10 +54,12 @@
       <div id="supervisorSignedBox" class="hidden">
         <div class="supervisor-profile">
           <strong id="supervisorSignedName">未登入</strong>
-          <button type="button" id="supervisorLogoutBtn" class="secondary-btn">登出</button>
+          <div class="supervisor-profile-actions">
+            <button type="button" id="supervisorTogglePasswordBtn" class="secondary-btn">修改密碼</button>
+            <button type="button" id="supervisorLogoutBtn" class="secondary-btn">登出</button>
+          </div>
         </div>
         <div id="supervisorChangePrompt" class="notice warning hidden">此帳號需修改密碼才能繼續。</div>
-        <button type="button" id="supervisorTogglePasswordBtn" class="secondary-btn">修改我的密碼</button>
         <form id="supervisorChangeForm" class="hidden supervisor-form">
           <label class="field"><span>目前密碼</span>
             <input id="supervisorOldPassword" type="password" autocomplete="current-password" required>
@@ -236,7 +238,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班審核 · V1.1.29 <a class="footer-supervisor-link" id="supervisorPortal" href="../">業務假日或臨時加班登記</a></footer>
+  <footer class="footer">業務假日或臨時加班審核 · V1.1.30 <a class="footer-supervisor-link" id="supervisorPortal" href="../">業務假日或臨時加班登記</a></footer>
 </div>
 
 <dialog id="confirmDialog">

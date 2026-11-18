@@ -254,3 +254,46 @@ html[data-portal="supervisor"] .legacy-google-batch{display:none!important}
 .overtime-targeted-card{border:2px solid #2c61c1;background:#f5f9ff;scroll-margin-top:110px}
 .overtime-deeplink-guide{margin:0 0 10px;padding:10px;border-radius:8px;background:#e7f1ff;font-size:13px;color:#1e4c91;line-height:1.5}
 @media(max-width:460px){.overtime-backend-actions{flex-direction:column}.overtime-backend-actions button{width:100%;flex:none}}
+
+
+/* V1.1.30: 已登入主管改為精簡帳號列，完整登入與變更密碼表單保留。 */
+html[data-portal="supervisor"] #supervisorAccess.supervisor-compact{
+ max-width:490px;margin:0 0 12px auto;padding:10px 13px;
+ border-color:#e0e6f0;box-shadow:none;border-radius:12px
+}
+html[data-portal="supervisor"] .supervisor-compact .supervisor-heading{display:none}
+html[data-portal="supervisor"] .supervisor-compact #supervisorSignedBox .supervisor-profile{
+ display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0;flex-wrap:wrap
+}
+html[data-portal="supervisor"] .supervisor-compact .supervisor-profile strong{
+ font-size:14px;line-height:1.4;color:#26374e;white-space:nowrap
+}
+html[data-portal="supervisor"] .supervisor-compact .supervisor-profile-actions{
+ display:flex;align-items:center;gap:7px;flex-wrap:wrap
+}
+html[data-portal="supervisor"] .supervisor-compact .supervisor-profile-actions button,
+html[data-portal="supervisor"] .supervisor-compact #supervisorTogglePasswordBtn{
+ width:auto;min-height:35px;padding:7px 11px;margin:0;font-size:13px;font-weight:650;
+ border-radius:8px
+}
+html[data-portal="supervisor"] .supervisor-compact > .helper.small{display:none}
+html[data-portal="supervisor"] .supervisor-compact #supervisorMessage:not(.is-alert){
+ position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap
+}
+html[data-portal="supervisor"] .supervisor-compact #supervisorMessage.is-alert{
+ display:block;margin:10px 0 0;font-size:13px;line-height:1.5
+}
+html[data-portal="supervisor"] .supervisor-compact #supervisorChangeForm:not(.hidden){
+ margin-top:14px;padding-top:14px
+}
+@media(max-width:470px){
+ html[data-portal="supervisor"] #supervisorAccess.supervisor-compact{
+  width:100%;max-width:none;margin:0 0 11px;padding:9px 11px
+ }
+ html[data-portal="supervisor"] .supervisor-compact .supervisor-profile strong{font-size:13px}
+ html[data-portal="supervisor"] .supervisor-compact .supervisor-profile-actions{gap:5px}
+ html[data-portal="supervisor"] .supervisor-compact .supervisor-profile-actions button,
+ html[data-portal="supervisor"] .supervisor-compact #supervisorTogglePasswordBtn{
+  min-height:35px;padding:7px 8px;font-size:12px
+ }
+}

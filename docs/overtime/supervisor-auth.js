@@ -11,7 +11,7 @@
   let busy=false;
   const show=(id,visible)=>$(id)?.classList.toggle("hidden",!visible);
   const value=id=>$(id)?.value||"";
-  function msg(t,fail=false){const e=$("supervisorMessage");if(!e)return;e.textContent=t;e.style.color=fail?"#b13032":"#35546d";}
+  function msg(t,fail=false){const e=$("supervisorMessage");if(!e)return;e.textContent=t;e.style.color=fail?"#b13032":"#35546d";e.classList.toggle("is-alert",!!fail);}
   async function call(action,body={}){
     const res=await fetch(ROOT,{
       method:"POST",cache:"no-store",
@@ -31,6 +31,8 @@
     show("supervisorLoginBox",!signed);
     show("supervisorSignedBox",signed);
     show("supervisorRolePill",signed);
+    // Compact only on the signed-in supervisor site; admin and login pages retain full controls.
+    $("supervisorAccess")?.classList.toggle("supervisor-compact",PORTAL==="supervisor"&&signed&&!user.must_change);
     if(!signed){syncPanel();return;}
     $("supervisorSignedName").textContent=user.username+" · "+(user.role==="admin"?"系統管理員":"主管");
     $("supervisorRolePill").textContent=user.role==="admin"?"管理員":"主管";

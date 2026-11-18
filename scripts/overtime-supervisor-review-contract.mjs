@@ -25,3 +25,14 @@ assert(front.includes('window.setInterval(')&&front.includes('visibilitychange')
 assert(html.includes('class="notice warning legacy-google-batch" id="batchState"'));
 assert(front.includes('if(!confirm(warning))return;')&&front.includes('if(!confirm("確定核准？'),"both actions require manual confirmation");
 console.log("PASS supervisor approval/rejection controls, Google source guard, deep links, auto-refresh and obsolete OAuth warning hidden");
+
+assert(html.includes('class="supervisor-profile-actions"'),"signed-in account actions must be inline");
+assert(html.includes('supervisor-auth.js?v=1.1.30')&&html.includes('style.css?v=1.1.30'),"cache bust compact supervisor UI");
+assert(css.includes('#supervisorAccess.supervisor-compact'),"only signed-in supervisor card should shrink");
+assert(css.includes('.supervisor-compact .supervisor-heading{display:none}'),"redundant login heading should be hidden");
+assert(css.includes('.supervisor-compact > .helper.small{display:none}'),"redundant Google description should be hidden when signed in");
+const auth=readFileSync("overtime/supervisor-auth.js","utf8");
+assert(auth.includes('PORTAL==="supervisor"&&signed&&!user.must_change'),"must not collapse login, admin or mandatory-password screens");
+assert(auth.includes('e.classList.toggle("is-alert",!!fail)'),"errors must remain visible in compact state");
+assert(html.includes('id="supervisorLogoutBtn"')&&html.includes('id="supervisorTogglePasswordBtn"')&&html.includes('id="supervisorChangeForm"'),"logout and password update must remain available");
+console.log("PASS compact signed-in supervisor bar retains logout, password change and error visibility");
