@@ -1,0 +1,20 @@
+// Read-only cross-system rejection contract; no supervisor or Google changes.
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const request=readFileSync("integrations/overtime-supabase/overtime-requests/index.ts","utf8");
+const bridge=readFileSync("integrations/overtime-supabase/overtime-sheet-bridge/index.ts","utf8");
+const google=readFileSync("integrations/overtime-google/Code.gs","utf8");
+const front=readFileSync("overtime/overtime-client.js","utf8");
+assert(request.includes('const nextStatus=registered?"駁回待同步":"已駁回"'));
+assert(request.includes('before.source_sheet!=="業務假日或臨時加班登記"'));
+assert(request.includes('await notifyGoogle(id,"reject")'));
+assert(request.includes('.eq("id",id).eq("status",before.status).select("*").maybeSingle()'));
+assert(bridge.includes('"駁回待同步"')&&bridge.includes('stage==="rejected"'));
+assert(bridge.includes('.eq("status","駁回待同步").eq("source_range",suppliedRange)'));
+assert(bridge.includes('action:"rejected_and_verified"')||bridge.includes('"rejected_and_verified"'));
+assert(!bridge.includes('.eq("status","已駁回").not("source_range"'),"confirmed rejections must not be repolled each minute");
+assert(google.includes('r.status==="駁回待同步"&&r.source_range'));
+assert(google.includes('if(after[15]!=="已駁回"||after[9]!=="不需同步")'));
+assert(front.includes("主管核准")&&front.includes("駁回刪除（移出月檢視）"));
+assert(front.includes('query.get("approve")')&&front.includes('query.get("action")'));
+console.log("PASS pending rejection stays non-final until Google readback and audit; confirms month view links");

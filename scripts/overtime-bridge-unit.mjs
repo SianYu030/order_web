@@ -239,3 +239,11 @@ ctx.otGoogleBatch_=saved.batch;
 ctx.UrlFetchApp=saved.api;
 ctx.otTaiwanDateSerial_=saved.serial;
 console.log("PASS register writes once, verifies via Google REST not stale SpreadsheetApp cache, rejects mismatched rows");
+
+
+// V1.6: supervisor rejection must wait for Google P/J readback, and avoid double processing.
+assert(source.includes('r.status==="駁回待同步"&&r.source_range'));
+assert(source.includes('["submit","approve","update","reject"].indexOf(event)<0'));
+assert(source.includes('Google 來源表駁回狀態與同步狀態不一致'));
+assert(source.includes('if(after[15]!=="已駁回"||after[9]!=="不需同步")'));
+console.log("PASS Google rejection worker only handles pending rejections, verifies Google source states");

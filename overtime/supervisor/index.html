@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班審核｜系統櫃廠</title>
-  <link rel="stylesheet" href="../style.css?v=1.1.26">
+  <link rel="stylesheet" href="../style.css?v=1.1.29">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="../app.js?v=1.1.26" defer></script>
   <script src="../supervisor-auth.js?v=1.1.23" defer></script>
-  <script src="../overtime-client.js?v=1.1.26" defer></script>
+  <script src="../overtime-client.js?v=1.1.29" defer></script>
 </head>
 <body>
 <div class="app">
@@ -167,7 +167,7 @@
     <section id="view-batch" class="view">
       <div class="section-heading legacy-google-batch"><div><h2>主管批次核准／駁回</h2>
         <p>勾選多筆待核准申請，核准才寫入對應 E4／E5 月表。</p></div></div>
-      <div class="notice warning" id="batchState" role="status" aria-live="polite">
+      <div class="notice warning legacy-google-batch" id="batchState" role="status" aria-live="polite">
         尚未連線主管 Google 帳號。未授權前無法核准或駁回。
       </div>
       <section class="panel legacy-google-batch">
@@ -236,7 +236,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班審核 · V1.1.26 <a class="footer-supervisor-link" id="supervisorPortal" href="../">業務假日或臨時加班登記</a></footer>
+  <footer class="footer">業務假日或臨時加班審核 · V1.1.29 <a class="footer-supervisor-link" id="supervisorPortal" href="../">業務假日或臨時加班登記</a></footer>
 </div>
 
 <dialog id="confirmDialog">

@@ -245,3 +245,12 @@ body.employee-receipt .tabs{display:none}
 
 /* V1.1.26：主管使用 Supabase 後端單一審核清單；舊 Google OAuth 批次介面仍保留於 DOM，避免既有初始化事件失敗，但不可操作。 */
 html[data-portal="supervisor"] .legacy-google-batch{display:none!important}
+
+/* V1.1.29：主管核准及駁回刪除操作，在手機上維持可點擊、清楚分離。 */
+.overtime-backend-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:13px}
+.overtime-backend-actions button{flex:1 1 185px;min-height:46px}
+.overtime-backend-actions .overtime-reject-btn{color:#a12d2d;border-color:#e5bab7;background:#fff8f8}
+.overtime-backend-actions .overtime-reject-btn:hover{background:#ffeaea}
+.overtime-targeted-card{border:2px solid #2c61c1;background:#f5f9ff;scroll-margin-top:110px}
+.overtime-deeplink-guide{margin:0 0 10px;padding:10px;border-radius:8px;background:#e7f1ff;font-size:13px;color:#1e4c91;line-height:1.5}
+@media(max-width:460px){.overtime-backend-actions{flex-direction:column}.overtime-backend-actions button{width:100%;flex:none}}
