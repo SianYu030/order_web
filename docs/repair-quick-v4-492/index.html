@@ -2470,7 +2470,7 @@ update();
 (function(){
 "use strict";
 var qs=new URLSearchParams(location.search);
-if(qs.get("video_test")!=="1" || qs.get("drive_upload")==="1" || qs.get("drive_direct_test")==="1")return;
+if(qs.get("video_test")!=="1" || qs.get("drive_upload")==="1")return;
 var MAX_BYTES=500*1024*1024,items=Object.create(null);
 function el(id){return document.getElementById(id);}
 function mb(n){return (n/(1024*1024)).toFixed(1)+" MB";}
@@ -2587,9 +2587,13 @@ async function startRecording(state){
   });
   el(prefix+"VideoClear").addEventListener("click",function(){clearVideo(state);});
 });
+window.repairVideoTestBridge={
+  getFile:function(prefix){return items[prefix]&&items[prefix].file||null;},
+  clear:function(prefix){if(items[prefix])clearVideo(items[prefix]);}
+};
 document.addEventListener("click",function(ev){
   var target=ev.target&&ev.target.closest&&ev.target.closest("#submitBtn,#saveRepairBtn,#completeRepairBtn");
-  if(!target)return;
+  if(!target || qs.get("drive_direct_test")==="1")return;
   var state=items[target.id==="submitBtn"?"report":"repair"];
   if(!state||(!state.file&&!(state.recorder&&state.recorder.state!=="inactive")))return;
   var proceed=confirm("影片仍在測試階段，不會上傳或備份。\n按「確定」只送出原本的報修文字及照片；按「取消」返回保留影片預覽。");
