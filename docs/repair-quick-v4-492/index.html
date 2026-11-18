@@ -595,6 +595,8 @@ html,body{background:#f5f7f8}
 .video-pilot-detail{font-size:13px;line-height:1.55;color:#34485c;overflow-wrap:anywhere;margin:9px 0}
 .video-pilot video{display:block;width:100%;max-height:220px;border-radius:12px;background:#101820}
 .video-preview-wrap{margin-top:8px;padding:10px;border:1px solid var(--line);background:#f8fbff;border-radius:12px}
+.video-preview-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.video-preview-actions button{min-height:45px;width:100%;margin-top:0}
 .video-remove{display:block;margin-top:10px;width:100%;min-height:42px;background:#fff;border:1px solid #c9d7e5;color:#31577c}
 </style>
 </head>
@@ -700,11 +702,14 @@ html,body{background:#f5f7f8}
             <div class="photo-note" id="reportVideoRecordingStatus" role="status">正在錄製影片…</div>
             <button type="button" class="smallbtn" id="reportVideoRecordStop">⏹ 停止錄影並預覽</button>
           </div>
-          <div class="photo-note video-hint">單支影片上限 500 MB（接收器設定）。此頁只提供錄影、選取及預覽，<strong>不會上傳影片或備份 NAS</strong>。</div>
+          <div class="photo-note video-hint">單支影片上限 500 MB（接收器設定）。此頁只提供錄影、選取及預覽，<strong>不會上傳影片或備份 NAS</strong>。錄影後請按「下載影片」留存，離開頁面可能遺失。</div>
           <div class="video-preview-wrap" id="reportVideoSelected" hidden>
             <div class="video-pilot-detail" id="reportVideoDetails" role="status"></div>
             <div id="reportVideoPreview"></div>
-            <button type="button" class="smallbtn video-remove" id="reportVideoClear">✕ 移除影片</button>
+            <div class="video-preview-actions">
+              <button type="button" class="smallbtn" id="reportVideoSave">⬇️ 下載影片</button>
+              <button type="button" class="smallbtn video-remove" id="reportVideoClear">✕ 移除影片</button>
+            </div>
           </div>
         </div>
     </section>
@@ -964,11 +969,14 @@ html,body{background:#f5f7f8}
             <div class="photo-note" id="repairVideoRecordingStatus" role="status">正在錄製影片…</div>
             <button type="button" class="smallbtn" id="repairVideoRecordStop">⏹ 停止錄影並預覽</button>
           </div>
-          <div class="photo-note video-hint">單支影片上限 500 MB（接收器設定）。此頁只提供錄影、選取及預覽，<strong>不會上傳影片或備份 NAS</strong>。</div>
+          <div class="photo-note video-hint">單支影片上限 500 MB（接收器設定）。此頁只提供錄影、選取及預覽，<strong>不會上傳影片或備份 NAS</strong>。錄影後請按「下載影片」留存，離開頁面可能遺失。</div>
           <div class="video-preview-wrap" id="repairVideoSelected" hidden>
             <div class="video-pilot-detail" id="repairVideoDetails" role="status"></div>
             <div id="repairVideoPreview"></div>
-            <button type="button" class="smallbtn video-remove" id="repairVideoClear">✕ 移除影片</button>
+            <div class="video-preview-actions">
+              <button type="button" class="smallbtn" id="repairVideoSave">⬇️ 下載影片</button>
+              <button type="button" class="smallbtn video-remove" id="repairVideoClear">✕ 移除影片</button>
+            </div>
           </div>
         </div>
 
@@ -2568,6 +2576,14 @@ async function startRecording(state){
   el(prefix+"VideoRecordStart").addEventListener("click",function(){startRecording(state);});
   el(prefix+"VideoRecordStop").addEventListener("click",function(){
     if(state.recorder&&state.recorder.state!=="inactive")state.recorder.stop();
+  });
+  el(prefix+"VideoSave").addEventListener("click",function(){
+    if(!state.file||!state.url){alert("請先錄製或選取影片。");return;}
+    const link=document.createElement("a");
+    link.href=state.url;
+    link.download=state.file.name;
+    document.body.appendChild(link);
+    link.click();link.remove();
   });
   el(prefix+"VideoClear").addEventListener("click",function(){clearVideo(state);});
 });
