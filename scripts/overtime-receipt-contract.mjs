@@ -11,6 +11,10 @@ for(const id of ["receiptHeading","receiptNo","receiptStatus","receiptProgress",
 assert(app.includes('if(PORTAL==="employee"&&!["entry","history","receipt"].includes(name))return;'));
 assert(app.includes('showReceiptPage(result.record,entry,saved,receipt?receipt.receipt_token:result.receipt_token);'),"only confirmed backend response triggers completion view");
 assert(app.includes('switchView("receipt")'));
+assert(app.includes('void refreshReceiptStatus();'),"must refresh status immediately after confirming backend acceptance");
+assert(app.includes('receiptPoller=window.setInterval(')&&app.includes('},60000);'),"must refresh while receipt is visible every minute");
+assert(app.includes('window.clearInterval(receiptPoller)'),"polling must stop after leaving receipt view");
+assert(app.includes('if(button.disabled)return;'),"prevent overlapping status refreshes");
 assert(app.includes('if (state.busy) return;'));
 assert(app.includes('state.editKey="";'));
 assert(app.includes('window.OvertimeApi.receipt(latestReceipt.id,latestReceipt.token)'),"refresh must query the exact receipt token");

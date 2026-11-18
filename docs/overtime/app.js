@@ -29,6 +29,7 @@
   };
   var $ = function (id) { return document.getElementById(id); };
   var latestReceipt = null;
+  var receiptPoller = null;
 
   function receiptStage(status){
     switch(String(status||"")){
@@ -64,6 +65,8 @@
     displayReceiptStatus(record.status);
     switchView("receipt");
     $("receiptHeading").focus({preventScroll:true});
+    // 立即再核對一次後端，避免只顯示送出當下的「待同步」狀態。
+    void refreshReceiptStatus();
   }
   async function refreshReceiptStatus(){
     if(!latestReceipt||!latestReceipt.token){
@@ -71,13 +74,14 @@
       return;
     }
     var button=$("receiptRefresh");
+    if(button.disabled)return;
     button.disabled=true;button.textContent="查詢中…";
     try{
       var response=await window.OvertimeApi.receipt(latestReceipt.id,latestReceipt.token);
       if(!response.record||response.record.id!==latestReceipt.id)
         throw Error("伺服器回傳的申請編號不一致，請聯絡管理員");
       displayReceiptStatus(response.record.status);
-      $("receiptRefreshed").textContent="已向公司後端重新取得最新狀態";
+      $("receiptRefreshed").textContent="最新狀態已核對："+new Date().toLocaleTimeString("zh-TW",{timeZone:"Asia/Taipei",hour:"2-digit",minute:"2-digit"});
     }catch(e){
       $("receiptRefreshed").textContent="查詢未完成："+e.message+"。原申請已送出，請勿重複提交。";
     }finally{button.disabled=false;button.textContent="更新申請狀態";}
@@ -273,6 +277,15 @@
     if(PORTAL==="supervisor"&&!["batch","approval"].includes(name))return;
     if(PORTAL==="admin"&&name!=="settings")return;
     document.body.classList.toggle("employee-receipt",PORTAL==="employee"&&name==="receipt");
+    if(PORTAL==="employee"){
+      if(receiptPoller!==null){window.clearInterval(receiptPoller);receiptPoller=null;}
+      if(name==="receipt"){
+        // 只在完成畫面開啟時每分鐘更新；切換離開就停止，避免不必要的背景請求。
+        receiptPoller=window.setInterval(function(){
+          if(!document.hidden&&latestReceipt)void refreshReceiptStatus();
+        },60000);
+      }
+    }
     document.querySelectorAll(".tab").forEach(function (btn) {
       var yes = btn.dataset.view === name;
       btn.classList.toggle("is-active", yes);

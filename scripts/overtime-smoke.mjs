@@ -40,6 +40,7 @@ for(let i=0;i<16;i++){
 }
 assert(receiptPublished,"mobile receipt screen must be published with matching app.js, GitHub Pages may still be deploying");
 assert(completeApp.includes('switchView("receipt")')&&completeApp.includes('state.editKey=""'),"post-submit must hide form and reset duplicate action");
+assert(completeApp.includes('receiptPoller=window.setInterval(')&&completeApp.includes('window.clearInterval(receiptPoller)'),"receipt must auto-refresh without background polling after leaving");
 console.log("PASS mobile completion screen, single-submit path and live status refresh code deployed");
 const client=await fetchText(BASE+"overtime-client.js?v=1.1.17");
 assert(client.includes("overtime-requests")&&client.includes("receipt_token"));
