@@ -69,6 +69,9 @@ console.log("PASS bridge pairing blocked without admin session");
 const pull=await fetch(BRIDGE,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io"},body:JSON.stringify({action:"pull"})});
 assert.equal(pull.status,401,"bridge pull requires its own secret token");
 console.log("PASS bridge pull blocked without key");
+const anonymousRegister=await fetch(BRIDGE,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io"},body:JSON.stringify({action:"register_webhook",url:"https://script.google.com/macros/s/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/exec"})});
+assert.equal(anonymousRegister.status,401,"anonymous webhook registration must be blocked");
+console.log("PASS unauthorized webhook registration rejected");
 const bad=await fetch(BRIDGE,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io","X-Bridge-Token":"00000000000000000000000000000000000000000000"},body:JSON.stringify({action:"pull"})});
 assert.equal(bad.status,401,"bridge pull rejects forged keys");
 console.log("PASS forged bridge key rejected");
@@ -77,7 +80,7 @@ assert.equal(noStatus.status,401,"bridge connection diagnostics must require adm
 console.log("PASS Google sync status diagnostics require administrator login");
 let bridgeAdmin="";
 for(let i=0;i<12;i++){
- const js=await fetchText(BASE+"bridge-admin.js?v=1.1.19&attempt="+i);
+ const js=await fetchText(BASE+"bridge-admin.js?v=1.1.20&attempt="+i);
  if(js.includes('action:"pair"')&&js.includes('action:"status"')&&js.includes("最近連線")){
   bridgeAdmin=js;break;
  }
@@ -88,16 +91,16 @@ assert(bridgeAdmin.includes('action:"pair"')&&bridgeAdmin.includes("isAdmin"));
 console.log("PASS administrator pairing client deployed");
 assert(bridgeAdmin.includes("管理員身分已確認"),"paired admin must not display stale login-required instruction");
 console.log("PASS admin authenticated state guidance is accurate");
-assert(bridgeAdmin.includes("指令碼屬性")&&bridgeAdmin.includes("BUSINESS_OVERTIME_SYNC_TOKEN"),"admin must show no-dialog installation guidance");
+assert(bridgeAdmin.includes("installBusinessOvertimeSync")&&bridgeAdmin.includes("registerBusinessOvertimeInstantWebhook"),"admin must show minute backup and instant webhook setup");
 console.log("PASS Google script property instructions displayed");
-const adminHTML=await fetchText(BASE+"admin/?bridge-ui=1.1.19");
-assert(adminHTML.includes("legacyGoogleOAuthPanel")&&adminHTML.includes("bridge-admin.js?v=1.1.19"),
+const adminHTML=await fetchText(BASE+"admin/?bridge-ui=1.1.20");
+assert(adminHTML.includes("legacyGoogleOAuthPanel")&&adminHTML.includes("bridge-admin.js?v=1.1.20"),
  "legacy OAuth must be collapsed and latest bridge guidance loaded");
 console.log("PASS Google OAuth legacy fallback collapsed by default");
 let installerCopied=false;
 for(let i=0;i<10;i++){
- const script=await fetchText(BASE+"google-bridge-code.txt?smoke=1.1.17&attempt="+i);
- if(script.includes("function installBusinessOvertimeSync()")&&script.includes("function runBusinessOvertimeSync()")&&script.length>12000){
+ const script=await fetchText(BASE+"google-bridge-code.txt?smoke=1.1.20&attempt="+i);
+ if(script.includes("function installBusinessOvertimeSync()")&&script.includes("function doPost(e)")&&script.includes("registerBusinessOvertimeInstantWebhook")&&script.includes("everyMinutes(1)")&&script.length>18000){
   installerCopied=true;break;
  }
  if(i<9)await new Promise(resolve=>setTimeout(resolve,5000));

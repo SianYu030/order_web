@@ -171,3 +171,14 @@ GitHub Pages 前端：`https://sianyu030.github.io/order_web/overtime/`。原報
 使用者在 Apps Script 編輯器直接執行 `installBusinessOvertimeSync`，原版呼叫 `SpreadsheetApp.getUi().prompt()`，對話框出現在試算表介面而非程式編輯器，可能持續等待到六分鐘上限。修正版移除全部安裝 UI 對話框，改用 `專案設定 → 指令碼屬性` 手動設定 `BUSINESS_OVERTIME_SYNC_TOKEN`，然後執行同名函式；首次成功連線後才建立唯一每五分鐘觸發器。舊腳本的安裝版本應由使用者在**新建的「業務加班同步.gs」檔案**覆蓋，不改寫原有 `程式碼.gs`、`假日午餐月結紀錄.gs`、其餘現有工作表及工時。
 
 本修復須以廠務室 Google 帳號完成一次 Apps Script 原生權限授權，GitHub / Supabase 側無法代替。若已有憑證但關閉網頁後遺失原文，無法由 Supabase 取回，須由管理員重新配對；最多兩組有效金鑰。
+
+
+## V1.1.20：即時通知＋每 1 分鐘補同步（2026-11-18）
+- Supabase overtime-requests v8 已在 submit、update、approve 後使用 EdgeRuntime.waitUntil 發送 HMAC-SHA256 簽章通知。
+- Google 原生 Apps Script 新增 doPost 接收端，驗簽、120 秒時效限制及短期重放防護；合法通知只執行既有 runBusinessOvertimeSync，仍受原始表和工時防覆蓋檢查，通知本身不能指定寫入目標。
+- Supabase overtime-sheet-bridge v5 提供專用橋接 token 的 register_webhook 和 unregister_webhook；URL 只接受 script.google.com/macros/s/.../exec。
+- Apps Script 安裝函式 installBusinessOvertimeSync 改成替換舊的 5 分鐘觸發器為 1 分鐘觸發器，並儲存 BUSINESS_OT_TRIGGER_MINUTES=1。避免重複建立和中途掉排程。
+- 必須由已授權的廠務室 Google 帳號，**手動把最新 Code.gs 更新到原有「業務加班同步.gs」檔案**，執行 installBusinessOvertimeSync，並在 Apps Script「部署 → 新增部署 → 網頁應用程式」設定「以我身分執行，所有人可存取」，部署後執行 registerBusinessOvertimeInstantWebhook。後者只登記 web app URL，不要求重新配對，也不會變動正式工時。
+- 若公司禁止公開部署 Apps Script 網頁應用程式，**不可繞過政策**，只保留每 1 分鐘補同步。
+- App Script 專案內若已有其他 doPost(e)，必須先排除函式名稱衝突才部署。不得覆蓋原有處理器。回退即時通知可執行 disableBusinessOvertimeInstantWebhook，1 分鐘排程仍正常。
+- GitHub 和後端程式部署通過不等於 Google Web App 已發布。必須依後端 webhook_url 及 last_notify_result 查核是否登記及實際送達，並做一筆經授權、真實資料的端到端驗收，才可宣稱「即時同步正式完成」。

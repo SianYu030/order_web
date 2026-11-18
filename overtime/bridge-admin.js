@@ -1,4 +1,4 @@
-/* V1.1.19：正式 Google Apps Script 同步授權管理。只有後端驗證通過的管理員可產生授權碼。 */
+/* V1.1.20：正式 Google Apps Script 同步授權管理。只有後端驗證通過的管理員可產生授權碼。 */
 (function(){
 "use strict";
 const ROOT="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-sheet-bridge";
@@ -15,7 +15,7 @@ function init(){
  const panel=el("section","panel hidden");
  panel.id="overtimeGoogleBridgeSetup";
  const title=el("h3","","Google 自動同步設定");
- const intro=el("p","helper","員工申請先同步到 Google 待核准清單，主管核准後才更新 E4／E5 正式工時與原因留言。使用試算表所屬 Google 帳號的 Apps Script 授權，不需要 Google Cloud OAuth 用戶端 ID。");
+ const intro=el("p","helper","正式同步方式：送出申請與主管核准後立即通知 Google，並保留每 1 分鐘自動補同步。Google 仍會重新核對員工、日期與主管授權，不直接相信通知內容。Google 原有工時與公式受到防覆蓋檢查。");
  const links=el("p","helper");
  links.append(link(SPREADSHEET_URL,"開啟正式試算表"),document.createTextNode("　"),link(APP_SCRIPT_URL,"查看同步程式"),document.createTextNode("　"),link(MANIFEST_URL,"權限設定"));
  const codeCopy=el("button","secondary-btn","複製 Google 同步程式");
@@ -23,17 +23,17 @@ function init(){
  codeCopy.addEventListener("click",async()=>{
   codeCopy.disabled=true;
   try{
-   const resp=await fetch(COPYABLE_CODE+"?v=1.1.19",{cache:"no-store"});
+   const resp=await fetch(COPYABLE_CODE+"?v=1.1.20",{cache:"no-store"});
    if(!resp.ok)throw Error("讀取同步程式失敗 HTTP "+resp.status);
    const script=await resp.text();
    if(!script.includes("function installBusinessOvertimeSync()")||!script.includes("function runBusinessOvertimeSync()"))
     throw Error("同步程式不完整，已拒絕複製");
    await navigator.clipboard.writeText(script);
-   status.textContent="已複製修正版同步程式。請只替換「業務加班同步.gs」內容；原有「程式碼.gs」與「假日午餐月結紀錄.gs」不要更動。";
+   status.textContent="已複製 V1.1.20 同步程式。請只替換「業務加班同步.gs」內容；原有「程式碼.gs」與「假日午餐月結紀錄.gs」不要更動。";
   }catch(e){status.textContent="複製失敗："+e.message+"。請使用「查看同步程式」連結。";}
   finally{codeCopy.disabled=false;}
  });
- const info=el("p","helper","安裝修正版（解決 6 分鐘執行逾時）：① 按「複製 Google 同步程式」，只替換既有「業務加班同步.gs」內容，勿動其他程式檔。② Apps Script 左側齒輪「專案設定」→「指令碼屬性」→「新增指令碼屬性」，名稱填 BUSINESS_OVERTIME_SYNC_TOKEN、值貼上管理員版產生的授權碼，儲存。③ 回程式編輯器選 installBusinessOvertimeSync → 執行，同意 Google 授權。新版不會跳出等待輸入的對話框；成功後每 5 分鐘同步一次。");
+ const info=el("p","helper","V1.1.20 升級步驟：① 按「複製 Google 同步程式」，只替換現有「業務加班同步.gs」內容，保留其他程式檔與原本的 BUSINESS_OVERTIME_SYNC_TOKEN。② 儲存後，在 Apps Script 執行 installBusinessOvertimeSync，會以 1 分鐘觸發器取代原有 5 分鐘觸發器。③ 點右上角「部署 → 新增部署 → 網頁應用程式」，執行身分選「我」、存取權選「所有人」，完成 Google 授權。④ 回編輯器執行 registerBusinessOvertimeInstantWebhook，登記 Google /exec 網址。⑤ 回本頁按「檢查 Google 同步狀態」。不需要重新產生授權碼或輸入舊式 OAuth。");
  const button=el("button","primary-btn","建立 Google 同步授權碼");
  button.type="button";button.id="overtimeBridgePairButton";
  const status=el("p","helper","管理員登入後可建立此試算表專用的同步授權碼。");
@@ -58,6 +58,11 @@ function init(){
    else health.textContent="Google 同步器已回報連線，最近連線："+
     new Date(data.last_seen_at).toLocaleString("zh-TW",{timeZone:"Asia/Taipei"})+
     "。此狀態只證明橋接器連線，並不代表正式工時已驗收。";
+   if(data.paired){
+    if(!data.instant_configured)health.textContent+=" 即時通知尚未登記，請依上方步驟部署；既有定時補同步不受影響。";
+    else if(data.instant_last_result==="accepted")health.textContent+=" 即時通知最近已成功送達 Google，正式工時仍以讀回驗證為準。";
+    else health.textContent+=" 即時通知網址已登記，尚無成功送達的紀錄，請使用一筆已授權申請驗證。";
+   }
   }catch(e){health.textContent="檢查失敗："+e.message;}
   finally{healthCheck.disabled=false;}
  }
