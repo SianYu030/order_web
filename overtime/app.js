@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.27 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.29 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -62,6 +62,8 @@
     $("receiptHours").textContent=formatHours(record.hours===undefined?entry.hours:record.hours);
     $("receiptReason").textContent=String(record.reason||entry.reason);
     $("receiptLocalWarning").classList.toggle("hidden",saved);
+    // 僅在查詢憑證未保存時顯示申請編號，正常成功頁保持簡潔。
+    $("receiptNumberBox").classList.toggle("hidden",!!saved);
     $("receiptRefreshed").textContent="";
     displayReceiptStatus(record.status);
     switchView("receipt");
@@ -86,11 +88,13 @@
       var status=String(response.record.status||"待同步");
       displayReceiptStatus(status);
       var important=["同步失敗","需人工核對","已駁回"].includes(status);
+      if(important) $("receiptNumberBox").classList.remove("hidden");
       if(!automatic||important){
         var label=["待同步","同步中"].includes(status)?"已收件，處理中":status;
         $("receiptRefreshed").textContent="申請狀態："+label+"。"+receiptStage(status).text;
       }
     }catch(e){
+      $("receiptNumberBox").classList.remove("hidden");
       $("receiptRefreshed").textContent="狀態查詢未完成："+e.message+"。申請已送出，請勿重複提交。";
     }finally{button.disabled=false;button.textContent="更新申請狀態";}
   }
