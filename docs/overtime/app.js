@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.26 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.27 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -62,15 +62,18 @@
     $("receiptHours").textContent=formatHours(record.hours===undefined?entry.hours:record.hours);
     $("receiptReason").textContent=String(record.reason||entry.reason);
     $("receiptLocalWarning").classList.toggle("hidden",saved);
+    $("receiptRefreshed").textContent="";
     displayReceiptStatus(record.status);
     switchView("receipt");
     $("receiptHeading").focus({preventScroll:true});
-    // 立即再核對一次後端，避免只顯示送出當下的「待同步」狀態。
-    void refreshReceiptStatus();
+    // 自動核對後端，但不在申請成功畫面顯示中間同步階段。
+    void refreshReceiptStatus(true);
   }
-  async function refreshReceiptStatus(){
+  async function refreshReceiptStatus(silent){
+    // 自動查詢只在真正的異常／駁回時提醒；手動查詢才顯示簡短進度。
+    var automatic=silent===true;
     if(!latestReceipt||!latestReceipt.token){
-      $("receiptProgress").textContent="目前沒有可用的查詢憑證，請回查詢頁或聯絡管理員。";
+      if(!automatic) $("receiptRefreshed").textContent="目前沒有可用的查詢憑證，請回查詢頁或聯絡管理員。";
       return;
     }
     var button=$("receiptRefresh");
@@ -80,10 +83,15 @@
       var response=await window.OvertimeApi.receipt(latestReceipt.id,latestReceipt.token);
       if(!response.record||response.record.id!==latestReceipt.id)
         throw Error("伺服器回傳的申請編號不一致，請聯絡管理員");
-      displayReceiptStatus(response.record.status);
-      $("receiptRefreshed").textContent="最新狀態已核對："+new Date().toLocaleTimeString("zh-TW",{timeZone:"Asia/Taipei",hour:"2-digit",minute:"2-digit"});
+      var status=String(response.record.status||"待同步");
+      displayReceiptStatus(status);
+      var important=["同步失敗","需人工核對","已駁回"].includes(status);
+      if(!automatic||important){
+        var label=["待同步","同步中"].includes(status)?"已收件，處理中":status;
+        $("receiptRefreshed").textContent="申請狀態："+label+"。"+receiptStage(status).text;
+      }
     }catch(e){
-      $("receiptRefreshed").textContent="查詢未完成："+e.message+"。原申請已送出，請勿重複提交。";
+      $("receiptRefreshed").textContent="狀態查詢未完成："+e.message+"。申請已送出，請勿重複提交。";
     }finally{button.disabled=false;button.textContent="更新申請狀態";}
   }
   function newReceiptEntry(){
