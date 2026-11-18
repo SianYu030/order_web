@@ -125,10 +125,11 @@ ctx.ContentService={
  MimeType:{JSON:"application/json"}
 };
 let callCount=0;
-ctx.CacheService={getScriptCache:()=>{
- const cache=new Map();
- return {get:k=>cache.get(k)||null,put:(k,v)=>cache.set(k,v)};
-}};
+const wakeCache=new Map();
+ctx.CacheService={getScriptCache:()=>({
+ get:k=>wakeCache.get(k)||null,
+ put:(k,v)=>wakeCache.set(k,v)
+})};
 ctx.runBusinessOvertimeSync=()=>{callCount++;return {ok:true,processed:0};};
 const webhookId="00000000-0000-4000-8000-000000000000";
 const timestamp=Date.now();
