@@ -6,10 +6,10 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班管理｜系統櫃廠</title>
-  <link rel="stylesheet" href="../style.css?v=1.1.21">
+  <link rel="stylesheet" href="../style.css?v=1.1.32">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="../app.js?v=1.1.17" defer></script>
-  <script src="../supervisor-auth.js?v=1.1.23" defer></script>
+  <script src="../supervisor-auth.js?v=1.1.32" defer></script>
   <script src="../bridge-admin.js?v=1.1.29" defer></script>
 </head>
 <body>
@@ -77,6 +77,9 @@
           <form id="supervisorAddForm" class="supervisor-form">
             <label class="field"><span>新增主管帳號</span>
               <input id="supervisorAddName" autocomplete="off" maxlength="32" placeholder="英數字帳號" required>
+            </label>
+            <label class="field"><span>主管姓名 <em>*</em></span>
+              <input id="supervisorAddDisplayName" type="text" autocomplete="name" maxlength="40" placeholder="輸入主管真實姓名" required>
             </label>
             <label class="field"><span>初始密碼（至少 4 碼，可用 1234）</span>
               <input id="supervisorAddPassword" type="password" autocomplete="new-password" minlength="4" required>

@@ -1,0 +1,24 @@
+// Read-only contract for supervisor name field; no permanent account edits.
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const api=readFileSync("integrations/overtime-supabase/overtime-auth/index.ts","utf8");
+const js=readFileSync("overtime/supervisor-auth.js","utf8");
+const admin=readFileSync("overtime/admin/index.html","utf8");
+const migration=readFileSync("integrations/overtime-supabase/add-supervisor-display-name.sql","utf8");
+assert(api.includes('select("username,display_name,role,enabled,must_change")'));
+assert(api.includes('select("id,username,display_name,role,must_change,enabled")'));
+assert(api.includes('if(action==="rename")'));
+assert(api.includes('if(user.role!=="admin")'),"supervisor cannot edit other names");
+assert(api.includes('target.role!=="supervisor"'),"admin account cannot be renamed via supervisor actions");
+assert(api.includes('validDisplayName(display_name)'));
+assert(api.includes('display_name:display_name||null'),"new accounts must persist names");
+assert(api.includes('await log(user.id,"rename-supervisor",username)'),"edit action must be audited");
+assert(js.includes('name.textContent=entry.display_name?"姓名："+entry.display_name:"姓名：尚未設定"'),"no invented existing names");
+assert(js.includes('call("rename",{username:entry.username,display_name:name})'));
+assert(js.includes('call("add",{username,password,display_name:displayName})'));
+assert(js.includes('user.display_name?" · "+user.display_name:""'));
+assert(admin.includes('id="supervisorAddDisplayName"'));
+assert(admin.includes('maxlength="40" placeholder="輸入主管真實姓名" required'));
+assert(migration.includes('overtime_accounts_display_name_length'));
+assert(admin.includes('supervisor-auth.js?v=1.1.32'));
+console.log("PASS supervisor display name add/edit permission, legacy empty names, and audit contract");

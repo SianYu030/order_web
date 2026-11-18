@@ -34,7 +34,7 @@
     // Compact only on the signed-in supervisor site; admin and login pages retain full controls.
     $("supervisorAccess")?.classList.toggle("supervisor-compact",PORTAL==="supervisor"&&signed&&!user.must_change);
     if(!signed){syncPanel();return;}
-    $("supervisorSignedName").textContent=user.username+" · "+(user.role==="admin"?"系統管理員":"主管");
+    $("supervisorSignedName").textContent=user.username+(user.display_name?" · "+user.display_name:"")+" · "+(user.role==="admin"?"系統管理員":"主管");
     $("supervisorRolePill").textContent=user.role==="admin"?"管理員":"主管";
     show("supervisorChangePrompt",!!user.must_change);
     show("supervisorChangeForm",!!user.must_change);
@@ -77,10 +77,39 @@
     for(const entry of result.users||[]){
       const card=document.createElement("div");
       card.className="supervisor-user-row";
+      const identity=document.createElement("div");
+      identity.className="supervisor-user-identity";
       const label=document.createElement("span");
       label.textContent=entry.username+" · "+(entry.role==="admin"?"管理員":"主管")+" · "+(entry.enabled?"啟用":"停用")+(entry.must_change?" · 待改密碼":"");
-      card.append(label);
+      identity.append(label);
       if(entry.role==="supervisor"){
+        const name=document.createElement("small");
+        name.className="supervisor-display-name";
+        name.textContent=entry.display_name?"姓名："+entry.display_name:"姓名：尚未設定";
+        identity.append(name);
+      }
+      card.append(identity);
+      if(entry.role==="supervisor"){
+        const actions=document.createElement("div");
+        actions.className="supervisor-user-actions";
+        const editName=document.createElement("button");
+        editName.className="secondary-btn";
+        editName.type="button";
+        editName.textContent="編輯姓名";
+        editName.addEventListener("click",async()=>{
+          const next=prompt("請輸入主管 "+entry.username+" 的姓名（1～40字）：",entry.display_name||"");
+          if(next===null)return;
+          const name=next.trim();
+          if(name.length<1||name.length>40||/[\u0000-\u001f\u007f]/.test(name)){
+            msg("主管姓名需為1至40字且不可包含換行",true);return;
+          }
+          try{
+            setBusy(true);
+            const result=await call("rename",{username:entry.username,display_name:name});
+            await loadUsers();msg(result.message);
+          }catch(e){msg(e.message,true);}
+          finally{setBusy(false);}
+        });
         const toggle=document.createElement("button");
         toggle.className="secondary-btn";
         toggle.type="button";
@@ -122,7 +151,8 @@
           }catch(e){msg(e.message,true);}
           finally{setBusy(false);}
         });
-        card.append(toggle,reset,remove);
+        actions.append(editName,toggle,reset,remove);
+        card.append(actions);
       }
       box.append(card);
     }
@@ -164,19 +194,22 @@
   }
   async function addUser(e){
     e.preventDefault();
-    const username=value("supervisorAddName").trim(),password=value("supervisorAddPassword");
+    const username=value("supervisorAddName").trim(),displayName=value("supervisorAddDisplayName").trim(),password=value("supervisorAddPassword");
     try{
       setBusy(true);
       if(!/^[A-Za-z0-9_-]{2,32}$/.test(username)){
         msg("帳號需為2至32碼英文字母、數字、底線或連字號",true);return;
       }
+      if(displayName.length<1||displayName.length>40||/[\u0000-\u001f\u007f]/.test(displayName)){
+        msg("請填寫1至40字的主管姓名",true);return;
+      }
       if(password.length<4||password.length>72){
         msg("初始密碼需為4至72碼，可先使用1234，日後自行修改",true);return;
       }
-      await call("add",{username,password});
+      await call("add",{username,password,display_name:displayName});
       $("supervisorAddForm").reset();
       await loadUsers();
-      msg("主管 "+username+" 新增成功，可直接用初始密碼登入；日後從「修改我的密碼」自行更改。");
+      msg("主管 "+displayName+"（"+username+"）新增成功，可用初始密碼登入，日後可自行改密碼。");
     }catch(e){msg(e.message,true);}finally{setBusy(false);}
   }
   async function init(){

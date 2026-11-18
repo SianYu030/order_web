@@ -297,3 +297,15 @@ html[data-portal="supervisor"] .supervisor-compact #supervisorChangeForm:not(.hi
   min-height:35px;padding:7px 8px;font-size:12px
  }
 }
+
+/* V1.1.32：管理員主管姓名顯示與修改；帳號列及行動按鈕在桌面、手機不重疊。 */
+.supervisor-user-row .supervisor-user-identity{flex:1 1 160px;min-width:110px;display:flex;flex-direction:column;gap:3px}
+.supervisor-user-row .supervisor-user-identity span{display:block;flex:none;font-weight:750;line-height:1.5}
+.supervisor-user-row .supervisor-display-name{font-size:12px;line-height:1.5;color:#536782;overflow-wrap:anywhere}
+.supervisor-user-actions{display:flex;justify-content:flex-end;align-items:center;gap:7px;flex-wrap:wrap}
+.supervisor-user-row .supervisor-user-actions button{min-width:68px;flex:none;margin:0}
+@media(max-width:540px){
+ .supervisor-user-row .supervisor-user-identity{flex-basis:100%}
+ .supervisor-user-row .supervisor-user-actions{width:100%;justify-content:flex-start}
+ .supervisor-user-row .supervisor-user-actions button{flex:1 1 auto;min-width:68px}
+}

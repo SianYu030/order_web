@@ -64,9 +64,9 @@ let alignedSupervisorPublished=false;
 for(let i=0;i<18;i++){
  const compactSupervisorPage=await fetchText(BASE+"supervisor/?compact=v1.1.31&attempt="+i);
  if(compactSupervisorPage.includes('class="supervisor-profile-actions"')&&
-    compactSupervisorPage.includes('supervisor-auth.js?v=1.1.30')&&
-    compactSupervisorPage.includes('style.css?v=1.1.31')){
-  const alignedCSS=await fetchText(BASE+"style.css?v=1.1.31&attempt="+i);
+    compactSupervisorPage.includes('supervisor-auth.js?v=1.1.32')&&
+    compactSupervisorPage.includes('style.css?v=1.1.32')){
+  const alignedCSS=await fetchText(BASE+"style.css?v=1.1.32&attempt="+i);
   if(alignedCSS.includes("width:100%;max-width:none;margin:0 0 12px;padding:10px 15px")){
    alignedSupervisorPublished=true;break;
   }
@@ -74,9 +74,22 @@ for(let i=0;i<18;i++){
  if(i<17)await new Promise(resolve=>setTimeout(resolve,5000));
 }
 assert(alignedSupervisorPublished,"full-width supervisor toolbar not yet published by GitHub Pages");
-const compactAuth=await fetchText(BASE+"supervisor-auth.js?v=1.1.30");
+const compactAuth=await fetchText(BASE+"supervisor-auth.js?v=1.1.32");
 assert(compactAuth.includes('PORTAL==="supervisor"&&signed&&!user.must_change'),"compact must apply only to authenticated supervisor");
 console.log("PASS aligned full-width signed-in supervisor bar published without changing login or admin behavior");
+let supervisorNamesPublished=false;
+for(let i=0;i<16;i++){
+ const adminNamePage=await fetchText(BASE+"admin/?supervisor-name=v1.1.32&attempt="+i);
+ const authNameScript=await fetchText(BASE+"supervisor-auth.js?v=1.1.32&attempt="+i);
+ if(adminNamePage.includes('id="supervisorAddDisplayName"')&&
+    adminNamePage.includes('supervisor-auth.js?v=1.1.32')&&
+    authNameScript.includes('call("rename",{username:entry.username,display_name:name})')){
+   supervisorNamesPublished=true;break;
+ }
+ if(i<15)await new Promise(resolve=>setTimeout(resolve,5000));
+}
+assert(supervisorNamesPublished,"supervisor name input and edit-name action not published");
+console.log("PASS add and edit supervisor display names on admin page");
 const client=await fetchText(BASE+"overtime-client.js?v=1.1.29");
 assert(client.includes("overtime-requests")&&client.includes("receipt_token"));
 console.log("PASS public frontend API client");

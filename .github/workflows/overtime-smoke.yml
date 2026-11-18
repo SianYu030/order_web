@@ -13,6 +13,7 @@ on:
       - 'scripts/overtime-receipt-contract.mjs'
       - 'scripts/overtime-supervisor-review-contract.mjs'
       - 'scripts/overtime-rejection-contract.mjs'
+      - 'scripts/overtime-supervisor-name-contract.mjs'
       - '.github/workflows/overtime-smoke.yml'
   workflow_dispatch:
   schedule:
@@ -44,5 +45,7 @@ jobs:
         run: node scripts/overtime-supervisor-review-contract.mjs
       - name: Verify Google-confirmed supervisor rejection safety (no real writes)
         run: node scripts/overtime-rejection-contract.mjs
+      - name: Verify supervisor name add/edit and admin-only controls
+        run: node scripts/overtime-supervisor-name-contract.mjs
       - name: Verify public webpages, live Edge roster and access control (no real writes)
         run: node scripts/overtime-smoke.mjs

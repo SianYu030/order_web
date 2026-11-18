@@ -27,7 +27,7 @@ assert(front.includes('if(!confirm(warning))return;')&&front.includes('if(!confi
 console.log("PASS supervisor approval/rejection controls, Google source guard, deep links, auto-refresh and obsolete OAuth warning hidden");
 
 assert(html.includes('class="supervisor-profile-actions"'),"signed-in account actions must be inline");
-assert(html.includes('supervisor-auth.js?v=1.1.30')&&html.includes('style.css?v=1.1.31'),"cache bust aligned supervisor UI");
+assert(html.includes('supervisor-auth.js?v=1.1.32')&&html.includes('style.css?v=1.1.32'),"cache bust aligned supervisor UI");
 assert(css.includes('#supervisorAccess.supervisor-compact'),"only signed-in supervisor card should shrink");
 assert(css.includes('.supervisor-compact .supervisor-heading{display:none}'),"redundant login heading should be hidden");
 assert(css.includes('.supervisor-compact > .helper.small{display:none}'),"redundant Google description should be hidden when signed in");

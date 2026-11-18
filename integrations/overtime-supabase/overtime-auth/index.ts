@@ -49,11 +49,12 @@ async function getSession(token:string) {
   const hash=await hashToken(token);
   const {data:session,error}=await db.from("overtime_sessions").select("account_id,expires_at").eq("token_hash",hash).maybeSingle();
   if(error||!session||Date.parse(session.expires_at)<=Date.now())return null;
-  const {data:user}=await db.from("overtime_accounts").select("id,username,role,must_change,enabled").eq("id",session.account_id).maybeSingle();
+  const {data:user}=await db.from("overtime_accounts").select("id,username,display_name,role,must_change,enabled").eq("id",session.account_id).maybeSingle();
   if(!user?.enabled)return null;
   return {user,hash};
 }
-function cleanUser(u:any){return {username:u.username,role:u.role,must_change:u.must_change};}
+function cleanUser(u:any){return {username:u.username,display_name:u.display_name||null,role:u.role,must_change:u.must_change};}
+function validDisplayName(name:string){return name.length>=1&&name.length<=40&&!/[\u0000-\u001f\u007f]/u.test(name);}
 function validPass(p:any){return typeof p==="string"&&p.length>=4&&p.length<=72&&p!=="1234";}
 function validTemporaryPass(p:any){return typeof p==="string"&&p.length>=4&&p.length<=72;}
 async function safeJson(req:Request) {try{return await req.json()}catch{return null}}
@@ -125,12 +126,14 @@ Deno.serve(async(req:Request)=>{
     if(action==="review-access")return answer({ok:true,user:cleanUser(user),access:"supervisor"},200,origin);
     if(user.role!=="admin")return answer({ok:false,error:"只有系統管理員能管理帳號",code:"FORBIDDEN"},403,origin);
     if(action==="users"){
-      const {data,error}=await db.from("overtime_accounts").select("username,role,enabled,must_change").order("username");
+      const {data,error}=await db.from("overtime_accounts").select("username,display_name,role,enabled,must_change").order("username");
       if(error)throw error;
       return answer({ok:true,users:data},200,origin);
     }
     if(action==="add"){
       const username=String(body.username||"").trim(),password=String(body.password||"");
+      const display_name=typeof body.display_name==="string"?body.display_name.trim():"";
+      if(display_name&&!validDisplayName(display_name))return answer({ok:false,error:"主管姓名需在1至40字內，且不得包含換行或控制字元"},400,origin);
       if(!/^[A-Za-z0-9_-]{2,32}$/.test(username))
         return answer({ok:false,error:"帳號需為2至32碼英文字母、數字、底線或連字號"},400,origin);
       if(!validTemporaryPass(password))
@@ -142,7 +145,7 @@ Deno.serve(async(req:Request)=>{
       if(existing)return answer({ok:false,error:"此帳號目前已存在；請使用重設密碼，或刪除後重新新增"},409,origin);
       const salt=bytesToB64(crypto.getRandomValues(new Uint8Array(16)));
       const hash=bytesToB64(await derive(password,salt));
-      const {error}=await db.from("overtime_accounts").insert({username,role:"supervisor",salt_b64:salt,hash_b64:hash,iterations:ITERATIONS,must_change:false});
+      const {error}=await db.from("overtime_accounts").insert({username,display_name:display_name||null,role:"supervisor",salt_b64:salt,hash_b64:hash,iterations:ITERATIONS,must_change:false});
       if(error){
         if(error.code==="23505")return answer({ok:false,error:"此帳號目前已存在；請使用重設密碼，或刪除後重新新增"},409,origin);
         throw error;
@@ -150,6 +153,28 @@ Deno.serve(async(req:Request)=>{
       // Supervisors may sign in with an administrator-created initial password immediately. They can change it manually later.
       await log(user.id,"add-user",username);
       return answer({ok:true,message:"主管帳號建立成功，可直接使用初始密碼登入，日後可在「修改我的密碼」變更。"},200,origin);
+    }
+    if(action==="rename"){
+      const username=String(body.username||"").trim();
+      const display_name=typeof body.display_name==="string"?body.display_name.trim():"";
+      if(!/^[A-Za-z0-9_-]{2,32}$/.test(username)||!validDisplayName(display_name))
+        return answer({ok:false,error:"主管帳號或姓名不正確；姓名需為1至40字且不能包含換行"},400,origin);
+      // Only an authenticated admin may edit the display name, and never the administrator account.
+      const {data:target,error:lookupError}=await db.from("overtime_accounts")
+        .select("id,role,display_name").ilike("username",username).maybeSingle();
+      if(lookupError)throw lookupError;
+      if(!target||target.role!=="supervisor")
+        return answer({ok:false,error:"只能修改主管帳號的姓名"},403,origin);
+      if(target.display_name===display_name)
+        return answer({ok:true,message:"姓名沒有變更",display_name},200,origin);
+      const {data:saved,error:saveError}=await db.from("overtime_accounts")
+        .update({display_name,updated_at:new Date().toISOString()})
+        .eq("id",target.id).eq("role","supervisor")
+        .select("id").maybeSingle();
+      if(saveError)throw saveError;
+      if(!saved)return answer({ok:false,error:"主管帳號狀態已改變，請重新整理"},409,origin);
+      await log(user.id,"rename-supervisor",username);
+      return answer({ok:true,display_name,message:"已更新主管 "+username+" 的姓名"},200,origin);
     }
     if(action==="delete"){
       // A verified admin session is already required above; only supervisor accounts may be removed.
