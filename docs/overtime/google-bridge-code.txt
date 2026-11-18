@@ -16,7 +16,7 @@ var OT_BRIDGE={
 };
 /** 先到『專案設定 → 指令碼屬性』保存 BUSINESS_OVERTIME_SYNC_TOKEN；再從編輯器執行本函式。 */
 function installBusinessOvertimeSync(){
- // 從編輯器執行時禁止使用 SpreadsheetApp.getUi().prompt/alert，避免等不到輸入而六分鐘逾時。
+ // 安裝過程不得開啟阻塞式視窗，避免編輯器等待六分鐘逾時。
  var ss=SpreadsheetApp.getActiveSpreadsheet();
  if(!ss||ss.getId()!==OT_BRIDGE.SPREADSHEET_ID)
   throw Error("請從正式加班試算表的擴充功能開啟此 Apps Script 專案，拒絕安裝到其他試算表。");
