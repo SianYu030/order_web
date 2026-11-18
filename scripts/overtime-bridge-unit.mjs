@@ -72,28 +72,85 @@ const installerSource=source.slice(source.indexOf("function installBusinessOvert
 assert(!installerSource.includes("getUi("),"installer must not show Spreadsheet UI");
 assert(!installerSource.includes(".prompt(")&&!installerSource.includes(".alert("),"installer must not wait for a dialog");
 const originalBridge=ctx.otBridgeApi_;
-let bridgeCalls=0, triggerCreations=0, token="A".repeat(48), triggerSet=[];
+let bridgeCalls=0, triggerCreations=0, triggerDeletes=0, token="A".repeat(48),
+ triggerSeq=0, scriptProperties={};
+function fakeTrigger(id){
+ return {getHandlerFunction:()=> "runBusinessOvertimeSync",getUniqueId:()=>id};
+}
+let triggerSet=[fakeTrigger("old-five-minute")];
 ctx.SpreadsheetApp={getActiveSpreadsheet:()=>({getId:()=>ctx.OT_BRIDGE.SPREADSHEET_ID})};
-ctx.PropertiesService={getScriptProperties:()=>({getProperty:()=>token})};
+ctx.PropertiesService={getScriptProperties:()=>({
+ getProperty:(key)=>key==="BUSINESS_OVERTIME_SYNC_TOKEN"?token:(scriptProperties[key]||null),
+ setProperty:(key,value)=>{scriptProperties[key]=value;}
+})};
 ctx.ScriptApp={
  getProjectTriggers:()=>triggerSet,
+ deleteTrigger:(old)=>{triggerDeletes++;triggerSet=triggerSet.filter(x=>x!==old);},
  newTrigger:(name)=>{assert.equal(name,"runBusinessOvertimeSync");return {
   timeBased(){return this;},
-  everyMinutes(x){assert.equal(x,5);return this;},
-  create(){triggerCreations++;triggerSet.push({getHandlerFunction:()=>name});return this;}
- };}
+  everyMinutes(x){assert.equal(x,1,"the backup must run every minute");return this;},
+  create(){triggerCreations++;const t=fakeTrigger("new-"+(++triggerSeq));triggerSet.push(t);return t;}
+ }}
 };
 ctx.Logger={log:()=>{}};
 ctx.otBridgeApi_=(action,data)=>{assert.equal(action,"pull");bridgeCalls++;return {ok:true,records:[]};};
 const installed=ctx.installBusinessOvertimeSync();
 assert.equal(installed.ok,true);
 assert.equal(installed.triggers,1);
+assert.equal(installed.interval_minutes,1);
 assert.equal(triggerCreations,1);
+assert.equal(triggerDeletes,1,"old five-minute trigger must be removed");
+assert.equal(triggerSet.length,1);
+assert.equal(triggerSet[0].getUniqueId(),"new-1");
+assert.equal(scriptProperties.BUSINESS_OT_TRIGGER_MINUTES,"1");
 assert.equal(bridgeCalls,1);
 ctx.installBusinessOvertimeSync();
-assert.equal(triggerCreations,1,"second install must not duplicate triggers");
+assert.equal(triggerCreations,1,"second install must not duplicate one-minute trigger");
 token="";
 assert.throws(()=>ctx.installBusinessOvertimeSync(),/BUSINESS_OVERTIME_SYNC_TOKEN/);
 assert.equal(triggerCreations,1);
+console.log("PASS replace existing five-minute trigger with exactly one one-minute trigger");
+
+// Webhook must reject forgery, stale timestamps and invalid events without touching a sheet.
+// Signed notifications may only invoke the same audited Google polling routine.
+import {createHash,createHmac} from "node:crypto";
+token="A".repeat(48);
+ctx.Utilities.DigestAlgorithm={SHA_256:"sha256"};
+ctx.Utilities.Charset={UTF_8:"utf8"};
+const signedBytes=(buffer)=>Array.from(buffer).map(n=>n>127?n-256:n);
+ctx.Utilities.computeDigest=(algorithm,value)=>signedBytes(createHash("sha256").update(value,"utf8").digest());
+ctx.Utilities.computeHmacSha256Signature=(message,key)=>signedBytes(createHmac("sha256",key).update(message,"utf8").digest());
+ctx.ContentService={
+ createTextOutput:(payload)=>({payload,setMimeType(){return this;}}),
+ MimeType:{JSON:"application/json"}
+};
+let callCount=0;
+ctx.CacheService={getScriptCache:()=>{
+ const cache=new Map();
+ return {get:k=>cache.get(k)||null,put:(k,v)=>cache.set(k,v)};
+}};
+ctx.runBusinessOvertimeSync=()=>{callCount++;return {ok:true,processed:0};};
+const webhookId="00000000-0000-4000-8000-000000000000";
+const timestamp=Date.now();
+const makePost=(body)=>({postData:{contents:JSON.stringify(body)}});
+const readResult=(res)=>JSON.parse(res.payload);
+const canonical=timestamp+"."+webhookId+".submit";
+const signature=ctx.otWakeSignature_(canonical);
+assert.match(signature,/^[a-f0-9]{64}$/);
+assert.equal(readResult(ctx.doPost(makePost({ts:timestamp,id:webhookId,event:"submit",signature:"0".repeat(64)}))).ok,false);
+assert.equal(readResult(ctx.doPost(makePost({ts:timestamp-500000,id:webhookId,event:"submit",signature}))).ok,false);
+assert.equal(readResult(ctx.doPost(makePost({ts:timestamp,id:webhookId,event:"forged",signature}))).ok,false);
+assert.equal(callCount,0,"forged notifications must not wake Google");
+assert.equal(readResult(ctx.doPost(makePost({ts:timestamp,id:webhookId,event:"submit",signature}))).ok,true);
+assert.equal(callCount,1);
+assert.equal(readResult(ctx.doPost(makePost({ts:timestamp,id:webhookId,event:"submit",signature}))).duplicate,true);
+assert.equal(callCount,1,"replayed webhook must not re-enter synchronization");
+ctx.ScriptApp.getService=()=>({getUrl:()=>"https://script.google.com/macros/s/"+"A".repeat(80)+"/exec"});
+ctx.otBridgeApi_=(action,payload)=>{
+ assert.equal(action,"register_webhook");
+ assert.equal(payload.url,"https://script.google.com/macros/s/"+"A".repeat(80)+"/exec");
+ return {ok:true,registered:true};
+};
+assert.equal(ctx.registerBusinessOvertimeInstantWebhook().registered,true);
 ctx.otBridgeApi_=originalBridge;
-console.log("PASS installer no UI prompts, one sync trigger, second run idempotent, missing token rejected");
+console.log("PASS signed webhook, time window, replay guard and installation URL validation");
