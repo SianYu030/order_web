@@ -249,14 +249,14 @@ function otRegister_(ss,r){
  var now=otTaiwanDateSerial_(new Date());
  var values=[r.request_no,otSerial_(r.date),Number(r.date.slice(0,4)),
   Number(r.date.slice(5,7)),r.department,String(r.employee_id),
-  r.employee_name,r.hours,r.reason,"待核准",target.name,target.a1,now,now,
+  r.employee_name,r.hours,r.reason,"待同步",target.name,target.a1,now,now,
   "Supabase員工網站","待核准","",""];
  otGoogleBatch_([{updateCells:{
   start:{sheetId:OT_BRIDGE.SOURCE_ID,rowIndex:empty-1,columnIndex:0},
   rows:[{values:values.map(otRequest_)}],fields:"userEnteredValue"
  }}]);
  var verify=source.getRange(empty,1,1,18).getValues()[0];
- if(!otMatches_(verify,r,target)||String(verify[15])!=="待核准")
+ if(!otMatches_(verify,r,target)||String(verify[9])!=="待同步"||String(verify[15])!=="待核准")
   throw Error("Google 來源表寫入後讀回不一致，禁止標示同步成功。");
  return {row:empty};
 }

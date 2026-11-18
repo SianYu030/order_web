@@ -50,8 +50,14 @@ assert.equal(target.col,13);
 assert.equal(target.a1,"M20");
 assert.equal(target.name,"11月份E4");
 const expectedSource=[person.request_no,46328,2026,11,"E4","3045","潘詠升",2,"假日支援",
- "待核准","11月份E4","M20",0,0,"Supabase員工網站","待核准","",""];
+ "待同步","11月份E4","M20",0,0,"Supabase員工網站","待核准","",""];
 assert.equal(ctx.otMatches_(expectedSource,person,target),true);
+assert(scriptSourceValid_());
+function scriptSourceValid_(){
+  assert.match(source,/r\.employee_name,r\.hours,r\.reason,"待同步",target\.name/,"source J status must be a valid dropdown value");
+  assert.match(source,/String\(verify\[9\]\)==="待同步"/,"source status must be checked after write");
+  return true;
+}
 assert.equal(ctx.otSourceFind_([expectedSource],person).row,2);
 assert.throws(()=>ctx.otSourceFind_([expectedSource,expectedSource],person),/重複/);
 const modified=[...expectedSource];modified[7]=4;
