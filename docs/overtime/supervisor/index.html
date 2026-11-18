@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班審核｜系統櫃廠</title>
-  <link rel="stylesheet" href="../style.css?v=1.1.21">
+  <link rel="stylesheet" href="../style.css?v=1.1.26">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="../app.js?v=1.1.17" defer></script>
+  <script src="../app.js?v=1.1.26" defer></script>
   <script src="../supervisor-auth.js?v=1.1.23" defer></script>
-  <script src="../overtime-client.js?v=1.1.17" defer></script>
+  <script src="../overtime-client.js?v=1.1.26" defer></script>
 </head>
 <body>
 <div class="app">
@@ -85,7 +85,7 @@
         </div>
       </div>
       <p id="supervisorMessage" class="helper" role="status" aria-live="polite">主管操作須登入；新增帳號可先使用初始密碼，日後自行修改。</p>
-      <p class="helper small">主管登入與 Google 試算表連線分開管理；正式工時核准需另完成 Google 存取授權。</p>
+      <p class="helper small">主管登入後可直接查看後端審核清單，不需另做瀏覽器 Google OAuth。Google 表單同步與工時寫入由廠務室帳號的 Apps Script 執行；只有 Google 登記成功的申請才可核准。</p>
     </section>
 
     <section id="view-entry" class="view hidden">
@@ -165,12 +165,12 @@
     </section>
 
     <section id="view-batch" class="view">
-      <div class="section-heading"><div><h2>主管批次核准／駁回</h2>
+      <div class="section-heading legacy-google-batch"><div><h2>主管批次核准／駁回</h2>
         <p>勾選多筆待核准申請，核准才寫入對應 E4／E5 月表。</p></div></div>
       <div class="notice warning" id="batchState" role="status" aria-live="polite">
         尚未連線主管 Google 帳號。未授權前無法核准或駁回。
       </div>
-      <section class="panel">
+      <section class="panel legacy-google-batch">
         <div class="batch-topline">
           <strong id="batchCount">待核准 0 筆</strong>
           <button type="button" class="secondary-btn" id="batchRefresh">重新讀取</button>
@@ -179,7 +179,7 @@
           <span>全選目前待核准申請</span><span id="batchSelectedCount">已選 0 筆</span>
         </label>
         <div id="batchList" class="batch-list" aria-live="polite">
-          <div class="empty">連線並驗證主管身分後顯示待核准清單。</div>
+          <div class="empty">舊版 Google OAuth 清單已停用，改用上方公司後端審核清單。</div>
         </div>
         <div class="batch-actions">
           <button type="button" id="batchApproveBtn" class="primary-btn" disabled>核准並寫入（0）</button>
@@ -236,7 +236,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班審核 · V1.1.23 <a class="footer-supervisor-link" id="supervisorPortal" href="../">業務假日或臨時加班登記</a></footer>
+  <footer class="footer">業務假日或臨時加班審核 · V1.1.26 <a class="footer-supervisor-link" id="supervisorPortal" href="../">業務假日或臨時加班登記</a></footer>
 </div>
 
 <dialog id="confirmDialog">

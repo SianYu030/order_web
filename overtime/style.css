@@ -242,3 +242,6 @@ body.employee-receipt .tabs{display:none}
  .receipt-actions{grid-template-columns:1fr}
  .receipt-actions .receipt-new-btn{grid-column:auto}
 }
+
+/* V1.1.26：主管使用 Supabase 後端單一審核清單；舊 Google OAuth 批次介面仍保留於 DOM，避免既有初始化事件失敗，但不可操作。 */
+html[data-portal="supervisor"] .legacy-google-batch{display:none!important}

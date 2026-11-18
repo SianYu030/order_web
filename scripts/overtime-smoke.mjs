@@ -19,7 +19,7 @@ for(const [slug,title] of expected){
  let pass=false;
  for(let i=0;i<12;i++){
   const html=await fetchText(BASE+slug+"?smoke=v1.1.25&attempt="+i);
-  if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v="+(slug===""?"1.1.25":"1.1.17"))){
+  if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v="+(slug===""?"1.1.25":slug==="supervisor/"?"1.1.26":"1.1.17"))){
     pass=true;break;
   }
   if(i<11)await new Promise(resolve=>setTimeout(resolve,5000));
@@ -42,6 +42,19 @@ assert(receiptPublished,"mobile receipt screen must be published with matching a
 assert(completeApp.includes('switchView("receipt")')&&completeApp.includes('state.editKey=""'),"post-submit must hide form and reset duplicate action");
 assert(completeApp.includes('receiptPoller=window.setInterval(')&&completeApp.includes('window.clearInterval(receiptPoller)'),"receipt must auto-refresh without background polling after leaving");
 console.log("PASS mobile completion screen, single-submit path and live status refresh code deployed");
+let supervisorPageUpdated=false;
+for(let i=0;i<15;i++){
+ const page=await fetchText(BASE+"supervisor/?admin-review=v1.1.26&attempt="+i);
+ if(page.includes('app.js?v=1.1.26')&&page.includes('overtime-client.js?v=1.1.26')&&page.includes("不需另做瀏覽器 Google OAuth")){
+  const liveClient=await fetchText(BASE+"overtime-client.js?v=1.1.26&attempt="+i);
+  if(liveClient.includes("主管加班審核清單")&&liveClient.includes("不要重新提交同日申請。")){
+   supervisorPageUpdated=true;break;
+  }
+ }
+ if(i<14)await new Promise(resolve=>setTimeout(resolve,4000));
+}
+assert(supervisorPageUpdated,"supervisor backend-only queue not yet published");
+console.log("PASS supervisor no obsolete Google OAuth approval gate, true backend error displayed");
 const client=await fetchText(BASE+"overtime-client.js?v=1.1.17");
 assert(client.includes("overtime-requests")&&client.includes("receipt_token"));
 console.log("PASS public frontend API client");

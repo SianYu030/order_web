@@ -1,4 +1,4 @@
-/* V1.1.17 - Supabase 收件及 Google Apps Script 橋接狀態顯示；正式工時以雙向讀回為準。 */
+/* V1.1.26 - 主管只用後端審核清單；Google 寫入由 Apps Script 驗證。 */
 (function(){
 "use strict";
 const URL="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-requests";
@@ -48,11 +48,11 @@ function init(){
  if(!parent)return;
  panel=element("section","panel overtime-backend-panel");
  const heading=element("div","overtime-backend-heading");
- heading.append(element("h3","","後端已收到的申請"));
+ heading.append(element("h3","","主管加班審核清單"));
  refresh=element("button","secondary-btn","更新收件清單");
  refresh.type="button";refresh.addEventListener("click",load);
  heading.append(refresh);panel.append(heading);
- status=element("p","helper","主管登入後顯示已送達後端的申請。");
+ status=element("p","helper","主管帳號登入後，從公司後端查詢申請；不需要另行 Google OAuth。");
  panel.append(status);
  content=element("div","overtime-backend-list");panel.append(content);
  parent.insertBefore(panel,parent.firstChild);
@@ -70,8 +70,11 @@ async function load(){
   const result=await api.queue();
   content.replaceChildren();
   const rows=result.records||[];
-  status.textContent="目前待辦 "+rows.length+" 筆。主管核准後會標為「核准待同步」，正式工時與註解只有 Google 寫入並讀回驗證通過後才算完成。";
-  if(!rows.length){content.append(element("div","empty","目前沒有未處理的後端申請。"));return;}
+  const approvable=rows.filter(x=>x.status==="待核准"&&x.source_sheet==="業務假日或臨時加班登記"&&/^A([2-9]|[1-9][0-9]{1,3}):R\\1$/.test(x.source_range||"")).length;
+  const manual=rows.filter(x=>x.status==="需人工核對").length;
+  status.textContent="後端待辦 "+rows.length+" 筆，其中可核准 "+approvable+" 筆"+
+   (manual?"、需人工核對 "+manual+" 筆":"")+"。只有 Google 來源登記完成後才能核准；核准後需待 Google 寫入及讀回驗證。";
+  if(!rows.length){content.append(element("div","empty","目前沒有未處理的後端申請，Google 寫入由 Apps Script 處理。"));return;}
   for(const x of rows){
    const card=element("div","overtime-backend-item");
    const top=element("div","overtime-backend-top");
@@ -110,7 +113,7 @@ async function load(){
    }else if(x.status==="核准待同步"){
     card.append(element("p","helper small","主管已核准；正式 Google 工時及註解尚待同步核對，不會重複核准。"));
    }else if(x.status==="需人工核對"){
-    card.append(element("p","helper small","Google 儲存格或資料有衝突，已停止自動寫入，須由管理員核對。"));
+    card.append(element("p","helper small","Google 同步失敗或資料檢核未通過，系統已停止此筆自動寫入。尚未完成主管核准，請管理員查明錯誤並確認 Google 來源表，再安全恢復同步；不要重新提交同日申請。"));
    }else{
     card.append(element("p","helper small","目前狀態不允許再次處理。"));
    }
