@@ -18,8 +18,8 @@ const expected=[
 for(const [slug,title] of expected){
  let pass=false;
  for(let i=0;i<12;i++){
-  const html=await fetchText(BASE+slug+"?smoke=v1.1.24&attempt="+i);
-  if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v="+(slug===""?"1.1.24":"1.1.17"))){
+  const html=await fetchText(BASE+slug+"?smoke=v1.1.25&attempt="+i);
+  if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v="+(slug===""?"1.1.25":"1.1.17"))){
     pass=true;break;
   }
   if(i<11)await new Promise(resolve=>setTimeout(resolve,5000));
@@ -29,9 +29,9 @@ for(const [slug,title] of expected){
 }
 let completePage="",completeApp="",receiptPublished=false;
 for(let i=0;i<16;i++){
- completePage=await fetchText(BASE+"?receipt-ui=1.1.24&attempt="+i);
- if(completePage.includes('id="view-receipt"')&&completePage.includes('id="receiptRefresh"')&&completePage.includes('app.js?v=1.1.24')){
-  completeApp=await fetchText(BASE+"app.js?v=1.1.24&attempt="+i);
+ completePage=await fetchText(BASE+"?receipt-ui=1.1.25&attempt="+i);
+ if(completePage.includes('id="view-receipt"')&&completePage.includes('id="receiptRefresh"')&&completePage.includes('app.js?v=1.1.25')){
+  completeApp=await fetchText(BASE+"app.js?v=1.1.25&attempt="+i);
   if(completeApp.includes('showReceiptPage(result.record,entry,saved,')&&completeApp.includes('window.OvertimeApi.receipt(latestReceipt.id,latestReceipt.token)')){
    receiptPublished=true;break;
   }

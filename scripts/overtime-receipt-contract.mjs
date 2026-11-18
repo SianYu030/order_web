@@ -20,5 +20,5 @@ assert(app.includes('state.editKey="";'));
 assert(app.includes('window.OvertimeApi.receipt(latestReceipt.id,latestReceipt.token)'),"refresh must query the exact receipt token");
 assert(app.includes('case "需人工核對"')&&app.includes('case "已核准"'),"verified failure and approved states need distinct presentation");
 assert(css.includes('body.employee-receipt .tabs{display:none}'),"navigation must be hidden after submission");
-assert(html.includes('app.js?v=1.1.24')&&html.includes('style.css?v=1.1.24'),"cache-busted UI must load");
+assert(html.includes('app.js?v=1.1.25')&&html.includes('style.css?v=1.1.24'),"cache-busted UI must load");
 console.log("PASS standalone mobile receipt, safe state refresh, error state, hidden duplicate-submit form");
