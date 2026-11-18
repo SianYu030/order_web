@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.8（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.9（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -473,6 +473,11 @@ function otCellReadApi_(target){
  }
  throw Error("原工時格值／公式／Note 讀取失敗（HTTP "+failures.join(",")+"），禁止寫入。");
 }
+/**
+ * V1.9：工時格 Note 只顯示申請人的加班原因。
+ * 工單編號放在隱藏來源表 A 欄及 Supabase，避免顯示 BUS-SYNC。
+ * 為防重複核准，正式工時與來源表 J 欄在同一個 batchUpdate 內原子寫入。
+ */
 function otApprove_(ss,r){
  if(!r.manager_name||!r.manager_time)throw Error("後端沒有主管核准人或核准時間。");
  var src=otRegisteredSource_(ss,r),values=src.values,target=src.target;
@@ -480,21 +485,29 @@ function otApprove_(ss,r){
   throw Error("來源表已駁回或狀態異常。");
  if(String(values[15])==="已核准"&&String(values[16])!==String(r.manager_name))
   throw Error("Google 核准人與後端不符。");
- var expectedNote="BUS-SYNC: "+r.request_no+"\n"+r.reason;
+ var expectedNote=String(r.reason);
  var before=otCellReadApi_(target);
- // 同一工單的工時與唯一 Note 已存在時採冪等讀回，禁止重複加時數。
+ // 來源必須由同一申請編號找到對應列。已同步標記與工時格必須同時吻合。
+ var sourceSynced=String(values[9])==="已同步";
  var already=before.kind==="number"&&Number(before.number)===Number(r.hours)&&
-  before.note===expectedNote&&before.formula==="";
+  before.note===expectedNote&&before.formula===""&&sourceSynced;
  if(!already){
   if(before.kind!=="blank"||before.note!=="")
-   throw Error("原工時格已有工時／公式／註解，禁止覆蓋。");
+   throw Error("原工時格已有工時／公式／註解，禁止覆蓋或重複加時數。");
+  if(sourceSynced||String(values[9])!=="待同步")
+   throw Error("Google 來源同步狀態與空白工時格不一致，禁止重複寫入。");
   var update={updateCells:{
    start:{sheetId:target.sheetId,rowIndex:target.row-1,columnIndex:target.col-1},
    rows:[{values:[{userEnteredValue:{numberValue:r.hours},note:expectedNote}]}],
    fields:"userEnteredValue,note"
   }};
-  // 不讀寫 Google Comment。只使用正式 Google Note 作為同格原因與工單識別。
-  otGoogleBatch_([update]);
+  // 同一 Google batchUpdate 內同步寫入原工時與來源 J/K/L，成功才有冪等依據。
+  var status={updateCells:{
+   start:{sheetId:OT_BRIDGE.SOURCE_ID,rowIndex:src.row-1,columnIndex:9},
+   rows:[{values:["已同步",target.name,target.a1].map(otRequest_)}],
+   fields:"userEnteredValue"
+  }};
+  otGoogleBatch_([update,status]);
  }
  var checked=null;
  for(var attempt=0;attempt<3;attempt++){
@@ -505,20 +518,21 @@ function otApprove_(ss,r){
  }
  if(checked.kind!=="number"||Number(checked.number)!==Number(r.hours)||
     checked.formula!==""||checked.note!==expectedNote)
-  throw Error("正式工時與同格 Note 讀回不一致，禁止標示已核准。");
- // 確認原工時＋Note 成功後，才將 Google 來源表標記已核准，後端 ACK 最後執行。
+  throw Error("正式工時與加班原因 Note 讀回不一致，禁止標示已核准。");
+ // 核准前再次驗證來源表已同步及申請編號、目的儲存格相符。
+ var afterHours=otSourceReadApi_(src.row);
+ if(String(afterHours[0])!==String(r.request_no)||
+    String(afterHours[9])!=="已同步"||
+    String(afterHours[10])!==target.name||
+    String(afterHours[11])!==target.a1)
+  throw Error("正式工時與 Google 來源表的同步標記不一致，禁止標示已核准。");
  if(String(values[15])!=="已核准"){
-  var status={updateCells:{
-   start:{sheetId:OT_BRIDGE.SOURCE_ID,rowIndex:src.row-1,columnIndex:9},
-   rows:[{values:["已同步",target.name,target.a1].map(otRequest_)}],
-   fields:"userEnteredValue"
-  }};
   var approve={updateCells:{
    start:{sheetId:OT_BRIDGE.SOURCE_ID,rowIndex:src.row-1,columnIndex:15},
    rows:[{values:["已核准",r.manager_name,otTaiwanDateSerial_(r.manager_time)].map(otRequest_)}],
    fields:"userEnteredValue"
   }};
-  otGoogleBatch_([status,approve]);
+  otGoogleBatch_([approve]);
  }
  var after=otSourceReadApi_(src.row);
  if(String(after[15])!=="已核准"||String(after[16])!==String(r.manager_name)||
