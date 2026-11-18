@@ -312,3 +312,9 @@ html[data-portal="supervisor"] .supervisor-compact #supervisorChangeForm:not(.hi
 
 /* V1.1.28：申請送出成功時不為空白狀態通知保留高度。*/
 .receipt-refresh-note:empty{display:none}
+
+/* V1.1.29 申請成功頁：僅保留確認、明細及返回登記；異常情況才顯示編號和提醒。 */
+.receipt-view .receipt-panel{padding-bottom:24px}
+.receipt-view .receipt-details{margin-top:12px}
+.receipt-view .receipt-actions{margin-top:20px}
+.receipt-view .receipt-actions #receiptNew{width:100%;min-height:44px}
