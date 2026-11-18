@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.7.1（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.8（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -492,46 +492,85 @@ function otComments_(target){
  }
  throw Error("Google 原儲存格留言服務讀取失敗（"+faults.join("; ").slice(0,230)+"），仍禁止寫入工時。");
 }
+/**
+ * 正式工時單格唯讀：由 Sheets API 讀回值、公式與 Note，避開 SpreadsheetApp 快取。
+ * Google Comment（討論留言）不納入正式加班備註，且永不修改既有 Comment。
+ */
+function otCellReadApi_(target){
+ var range="'"+target.name.replace(/'/g,"''")+"'!"+target.a1;
+ var fields="spreadsheetId,sheets(properties(sheetId),data(startRow,startColumn,rowData(values(userEnteredValue,note))))";
+ var url="https://sheets.googleapis.com/v4/spreadsheets/"+OT_BRIDGE.SPREADSHEET_ID+
+  "?ranges="+encodeURIComponent(range)+"&fields="+encodeURIComponent(fields);
+ var failures=[];
+ for(var attempt=1;attempt<=3;attempt++){
+  var resp=UrlFetchApp.fetch(url,{method:"get",muteHttpExceptions:true,
+   headers:{"Authorization":"Bearer "+ScriptApp.getOAuthToken()}});
+  var code=resp.getResponseCode();
+  if(code===200){
+   var data;
+   try{data=JSON.parse(resp.getContentText());}
+   catch(e){throw Error("原工時格資料回應不是 JSON，禁止寫入。");}
+   if(data.spreadsheetId!==OT_BRIDGE.SPREADSHEET_ID)
+    throw Error("原工時格資料回應試算表 ID 不符，禁止寫入。");
+   var matches=(data.sheets||[]).filter(function(s){
+    return s.properties&&s.properties.sheetId===target.sheetId;
+   });
+   if(matches.length!==1)throw Error("原工時格來源分頁 ID 不符，禁止寫入。");
+   var blocks=(matches[0].data||[]).filter(function(x){
+    return x.startRow===target.row-1&&x.startColumn===target.col-1;
+   });
+   if(blocks.length!==1)
+    throw Error("原工時格資料缺少預期的唯一座標，禁止寫入。");
+   var row=blocks[0].rowData||[],cell=(row[0]&&row[0].values||[])[0]||{};
+   var v=cell.userEnteredValue||{};
+   var kind=Object.prototype.hasOwnProperty.call(v,"formulaValue")?"formula":
+    Object.prototype.hasOwnProperty.call(v,"numberValue")?"number":
+    Object.prototype.hasOwnProperty.call(v,"stringValue")?"string":
+    Object.prototype.hasOwnProperty.call(v,"boolValue")?"bool":"blank";
+   return {kind:kind,number:kind==="number"?v.numberValue:null,
+    formula:kind==="formula"?String(v.formulaValue):"",
+    note:String(cell.note||"")};
+  }
+  failures.push(code);
+  if([429,500,502,503,504].indexOf(code)<0||attempt===3)break;
+  Utilities.sleep(400*attempt);
+ }
+ throw Error("原工時格值／公式／Note 讀取失敗（HTTP "+failures.join(",")+"），禁止寫入。");
+}
 function otApprove_(ss,r){
  if(!r.manager_name||!r.manager_time)throw Error("後端沒有主管核准人或核准時間。");
  var src=otRegisteredSource_(ss,r),values=src.values,target=src.target;
  if(!["待核准","已核准"].includes(String(values[15])))
   throw Error("來源表已駁回或狀態異常。");
- if(String(values[15])==="已核准"&&
-   String(values[16])!==String(r.manager_name))throw Error("Google 核准人與後端不符。");
- var cell=target.sheet.getRange(target.row,target.col),old=cell.getValue(),
-   formula=cell.getFormula(),note=cell.getNote();
- var expectedNote="BUS-SYNC: "+r.request_no+"\n"+r.reason,
-   expectedComment=r.reason+OT_BRIDGE.COMMENT_TAG;
- var comments=otComments_(target);
- var our=comments.filter(function(c){return c.headPost&&c.headPost.content===expectedComment;});
- // 防止部分寫入造成重複工時：有唯一標記＋時數＋唯一留言才可視為先前完成。
- var already=Number(old)===r.hours && formula==="" && note===expectedNote && our.length===1 &&
-  comments.length===1;
+ if(String(values[15])==="已核准"&&String(values[16])!==String(r.manager_name))
+  throw Error("Google 核准人與後端不符。");
+ var expectedNote="BUS-SYNC: "+r.request_no+"\n"+r.reason;
+ var before=otCellReadApi_(target);
+ // 同一工單的工時與唯一 Note 已存在時採冪等讀回，禁止重複加時數。
+ var already=before.kind==="number"&&Number(before.number)===Number(r.hours)&&
+  before.note===expectedNote&&before.formula==="";
  if(!already){
-  if(formula||note||comments.length||
-    (old!==""&&old!==null&&old!==undefined&&Number(old)!==0))
-   throw Error("原工時格已有資料／公式／留言，或部分寫入不完整，停止自動覆蓋。");
+  if(before.kind!=="blank"||before.note!=="")
+   throw Error("原工時格已有工時／公式／註解，禁止覆蓋。");
   var update={updateCells:{
    start:{sheetId:target.sheetId,rowIndex:target.row-1,columnIndex:target.col-1},
    rows:[{values:[{userEnteredValue:{numberValue:r.hours},note:expectedNote}]}],
    fields:"userEnteredValue,note"
   }};
-  var comment={insertComment:{content:expectedComment,coordinate:{
-   sheetId:target.sheetId,rowIndex:target.row-1,columnIndex:target.col-1
-  }}};
-  var batch=otGoogleBatch_([update,comment]);
-  if(batch.commentUpdateState&&batch.commentUpdateState!=="ALL_SAVED")
-   throw Error("Google 留言不是全部保存狀態，拒絕完成同步。");
+  // 不讀寫 Google Comment。只使用正式 Google Note 作為同格原因與工單識別。
+  otGoogleBatch_([update]);
  }
- SpreadsheetApp.flush();
- if(cell.getFormula()||Number(cell.getValue())!==r.hours||
-    cell.getNote()!==expectedNote)throw Error("正式工時／安全註記讀回失敗。");
- var checked=otComments_(target);
- if(checked.length!==1||!checked[0].headPost||
-    checked[0].headPost.content!==expectedComment)
-  throw Error("原工時格留言讀回失敗，需人工查核。");
- // 只有正式工時和留言都經過讀回驗證後，才標記來源表已核准。
+ var checked=null;
+ for(var attempt=0;attempt<3;attempt++){
+  checked=otCellReadApi_(target);
+  if(checked.kind==="number"&&Number(checked.number)===Number(r.hours)&&
+     checked.formula===""&&checked.note===expectedNote)break;
+  if(attempt<2)Utilities.sleep(350*(attempt+1));
+ }
+ if(checked.kind!=="number"||Number(checked.number)!==Number(r.hours)||
+    checked.formula!==""||checked.note!==expectedNote)
+  throw Error("正式工時與同格 Note 讀回不一致，禁止標示已核准。");
+ // 確認原工時＋Note 成功後，才將 Google 來源表標記已核准，後端 ACK 最後執行。
  if(String(values[15])!=="已核准"){
   var status={updateCells:{
    start:{sheetId:OT_BRIDGE.SOURCE_ID,rowIndex:src.row-1,columnIndex:9},
@@ -577,6 +616,10 @@ function otReject_(ss,r){
  * 不寫入任何儲存格、不調整 Supabase 工單狀態、不執行主管核准。
  * 用途：復原 BUS-20261118-E4-3045-B23FB6D7 前進行安全確認。
  */
+/**
+ * 唯讀診斷：不會寫入正式月表、申請狀態或授權資訊。
+ * 工時與同格 Note 由 Google REST API 讀回，不再依賴留言 API。
+ */
 function diagnoseBusinessOvertimeCO20(){
  var ss=SpreadsheetApp.getActiveSpreadsheet();
  if(!ss||ss.getId()!==OT_BRIDGE.SPREADSHEET_ID)
@@ -584,23 +627,20 @@ function diagnoseBusinessOvertimeCO20(){
  var sheet=ss.getSheetByName("11月份E4");
  if(!sheet||sheet.getSheetId()!==546352969)
   throw Error("正式 11月份E4 分頁 ID 不符，停止診斷。");
- var c=sheet.getRange("CO20"),value=c.getValue();
+ var target={sheetId:sheet.getSheetId(),name:sheet.getName(),
+  row:20,col:93,a1:"CO20"};
  var result={ok:false,read_only:true,request_no:"BUS-20261118-E4-3045-B23FB6D7",
-  target:"11月份E4!CO20",value_empty:value===""||value===null,
-  formula_empty:c.getFormula()==="",note_empty:c.getNote()==="",
-  comments_verified:false,comment_count:null};
+  target:"11月份E4!CO20",note_only_mode:true,
+  comments_untouched:true,comments_verified:false,safe_for_note_only:false};
  try{
-  var comments=otComments_({sheetId:sheet.getSheetId(),name:sheet.getName(),
-   row:20,col:93,a1:"CO20"});
-  result.comments_verified=true;
-  result.comment_count=comments.length;
+  var cell=otCellReadApi_(target);
+  result.value_empty=cell.kind==="blank";
+  result.formula_empty=cell.formula==="";
+  result.note_empty=cell.note==="";
   result.ok=true;
-  result.safe_to_reconcile=result.value_empty&&result.formula_empty&&
-   result.note_empty&&comments.length===0;
- }catch(e){
-  result.error=String(e);
-  result.safe_to_reconcile=false;
- }
+  result.safe_for_note_only=result.value_empty&&result.formula_empty&&result.note_empty;
+  result.existing_kind=cell.kind;
+ }catch(e){result.error=String(e);}
  Logger.log(JSON.stringify(result));
  return result;
 }
