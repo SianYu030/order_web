@@ -87,55 +87,21 @@
     }).finally(()=>{preflightPromise=null});
     return preflightPromise;
   }
-  // Private-stage diagnostics only. Never writes or creates a repair ticket.
-  function installPrivateQaStatus(){
-    const card=$('issueCard');
-    const anchor=card&&card.querySelector('.photo-actions');
-    if(!anchor)return;
-    const panel=document.createElement('section');
-    panel.id='v4PrivateReceiverCheck';
-    panel.style.cssText='margin:10px 0;padding:12px;border:1px solid #bdd4e6;border-radius:12px;background:#f5fafe;color:#24455b;font-size:14px;line-height:1.5';
-    const head=document.createElement('strong');
-    head.textContent='☁️ MR 私人 Google 接收器｜連線測試';
-    const note=document.createElement('div');
-    note.textContent='只檢查授權與版本，不建立工單、不上傳照片影片。此測試入口不能當成正式報修。';
-    note.style.cssText='font-size:12px;margin:6px 0;color:#526b7b';
-    const button=document.createElement('button');
-    button.type='button';
-    button.id='v4PrivateCheckButton';
-    button.className='smallbtn';
-    button.style.cssText='display:block;width:100%;min-height:48px';
-    button.textContent='重新檢查連線';
-    button.hidden=true;
-    const status=document.createElement('div');
-    status.id='v4PrivateCheckStatus';
-    status.setAttribute('role','status');
-    status.setAttribute('aria-live','polite');
-    status.style.cssText='margin-top:6px;overflow-wrap:anywhere;font-size:13px';
-    status.textContent='🔄 正在自動確認 Google 接收器連線與授權…';
-    let checking=false;
-    async function checkConnection(){
-      if(checking)return;
-      checking=true;
-      button.disabled=true;
-      button.hidden=true;
-      status.textContent='🔄 正在自動確認 Google 接收器連線與授權…';
-      try{
-        const result=await preflight();
-        status.textContent='✅ 私人接收器健康檢查通過（V'+result.version+'）。網頁實際 POST 上傳尚未驗收，員工權限尚未開放。';
-      }catch(err){
-        status.textContent='❌ 接收器連線或授權失敗：'+String(err?.message||err)+'。本頁不會建立正式工單。';
-        button.hidden=false;
-      }finally{checking=false;button.disabled=false;}
-    }
-    button.addEventListener('click',checkConnection);
-    panel.append(head,note,status,button);
-    anchor.insertAdjacentElement('beforebegin',panel);
-    // A single read-only check starts automatically when the test page opens.
-    // This never grants OAuth access and never submits an upload or work order.
-    void checkConnection();
-  }
-  installPrivateQaStatus();
+  // Test mode only: silently perform one read-only private health check.
+  // Never show the receiver, connection button, or internal Google account to staff.
+  // A successful health check does NOT confer upload permission.
+  const receiverStatus={
+    state:'checking',checkedAt:null,version:null
+  };
+  window.repairDirectV4=receiverStatus;
+  void preflight().then(result=>{
+    receiverStatus.state='healthy';
+    receiverStatus.version=result.version;
+  }).catch(()=>{
+    receiverStatus.state='unavailable';
+  }).finally(()=>{
+    receiverStatus.checkedAt=Date.now();
+  });
   // This diagnostic link must NEVER post a live report or save/complete
   // a real repair order. It is intentionally read-only, even if healthy.
   document.addEventListener('click',event=>{
