@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.1（修復 6 分鐘安裝逾時）
+ * 正道業務加班 Google 同步器 V1.2（每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -27,24 +27,38 @@ function installBusinessOvertimeSync(){
  var result=otBridgeApi_("pull",{});
  if(result.ok!==true||!Array.isArray(result.records))
   throw Error("Supabase 驗證失敗；未建立同步排程，正式工時未修改。");
- var triggers=ScriptApp.getProjectTriggers().filter(function(t){
-  return t.getHandlerFunction()==="runBusinessOvertimeSync";
- });
- // 保留既有正常觸發器，不重複新增，避免多個任務同時處理同一工單。
- if(triggers.length===0){
-  ScriptApp.newTrigger("runBusinessOvertimeSync").timeBased().everyMinutes(5).create();
-  Logger.log("已建立每 5 分鐘一次的 Google 同步觸發器。");
- }else{
-  Logger.log("找到 "+triggers.length+" 個既有同步觸發器，未重複建立。");
- }
- var verified=ScriptApp.getProjectTriggers().filter(function(t){
-  return t.getHandlerFunction()==="runBusinessOvertimeSync";
- });
- if(verified.length!==1)
-  throw Error("應有恰好 1 個同步觸發器，目前 "+verified.length+" 個。請先檢查 Apps Script 左側『觸發條件』，不要重複安裝。");
- Logger.log("安裝完成：同步授權已驗證、觸發器已存在；目前後端待處理 "+result.records.length+" 筆。");
+ var interval=otEnsureOneMinuteTrigger_();
+ Logger.log("同步觸發器現在為每 "+interval+" 分鐘執行。");
+ Logger.log("安裝完成：同步授權已驗證、每 1 分鐘補同步觸發器已存在；目前後端待處理 "+result.records.length+" 筆。");
  Logger.log("請回管理員網站按『檢查 Google 同步狀態』核對最近連線。");
- return {ok:true,triggers:verified.length,pending:result.records.length};
+ return {ok:true,triggers:1,interval_minutes:interval,pending:result.records.length};
+}
+/** 執行 installBusinessOvertimeSync 即可將舊的 5 分鐘排程安全更換成 1 分鐘。 */
+function otEnsureOneMinuteTrigger_(){
+ var key="BUSINESS_OT_TRIGGER_MINUTES";
+ var props=PropertiesService.getScriptProperties();
+ var old=ScriptApp.getProjectTriggers().filter(function(t){
+  return t.getHandlerFunction()==="runBusinessOvertimeSync";
+ });
+ if(old.length===1 && props.getProperty(key)==="1"){
+  return 1;
+ }
+ // 先建立新觸發器，確定建立成功才移除原觸發器。
+ var next=ScriptApp.newTrigger("runBusinessOvertimeSync").timeBased().everyMinutes(1).create();
+ try{
+  old.forEach(function(t){ScriptApp.deleteTrigger(t);});
+ }catch(e){
+  // 移除舊排程失敗時，先撤回新的，避免雙重排程。
+  try{ScriptApp.deleteTrigger(next);}catch(ignore){}
+  throw Error("舊排程移除失敗，請到 Apps Script 左側觸發條件檢查："+String(e));
+ }
+ var active=ScriptApp.getProjectTriggers().filter(function(t){
+  return t.getHandlerFunction()==="runBusinessOvertimeSync";
+ });
+ if(active.length!==1||active[0].getUniqueId()!==next.getUniqueId())
+  throw Error("同步觸發器數量或識別碼不一致，請人工檢查，不可繼續建立更多排程。");
+ props.setProperty(key,"1");
+ return 1;
 }
 function testBusinessOvertimeSync(){
  var result=otBridgeApi_("pull",{});
