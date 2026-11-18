@@ -77,7 +77,7 @@ assert.equal(noStatus.status,401,"bridge connection diagnostics must require adm
 console.log("PASS Google sync status diagnostics require administrator login");
 let bridgeAdmin="";
 for(let i=0;i<12;i++){
- const js=await fetchText(BASE+"bridge-admin.js?v=1.1.17b&attempt="+i);
+ const js=await fetchText(BASE+"bridge-admin.js?v=1.1.19&attempt="+i);
  if(js.includes('action:"pair"')&&js.includes('action:"status"')&&js.includes("最近連線")){
   bridgeAdmin=js;break;
  }
@@ -88,8 +88,10 @@ assert(bridgeAdmin.includes('action:"pair"')&&bridgeAdmin.includes("isAdmin"));
 console.log("PASS administrator pairing client deployed");
 assert(bridgeAdmin.includes("管理員身分已確認"),"paired admin must not display stale login-required instruction");
 console.log("PASS admin authenticated state guidance is accurate");
-const adminHTML=await fetchText(BASE+"admin/?bridge-ui=1.1.18");
-assert(adminHTML.includes("legacyGoogleOAuthPanel")&&adminHTML.includes("bridge-admin.js?v=1.1.18"),
+assert(bridgeAdmin.includes("指令碼屬性")&&bridgeAdmin.includes("BUSINESS_OVERTIME_SYNC_TOKEN"),"admin must show no-dialog installation guidance");
+console.log("PASS Google script property instructions displayed");
+const adminHTML=await fetchText(BASE+"admin/?bridge-ui=1.1.19");
+assert(adminHTML.includes("legacyGoogleOAuthPanel")&&adminHTML.includes("bridge-admin.js?v=1.1.19"),
  "legacy OAuth must be collapsed and latest bridge guidance loaded");
 console.log("PASS Google OAuth legacy fallback collapsed by default");
 let installerCopied=false;
