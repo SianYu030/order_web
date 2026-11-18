@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.24">
+  <link rel="stylesheet" href="./style.css?v=1.1.28">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.27" defer></script>
+  <script src="./app.js?v=1.1.28" defer></script>
   <script src="./overtime-client.js?v=1.1.17" defer></script>
 
 </head>
@@ -97,7 +97,7 @@
         <div class="receipt-mark" aria-hidden="true">✓</div>
         <h2 id="receiptHeading" tabindex="-1">申請已送出</h2>
         <p class="receipt-lede">公司後端已收到這筆加班申請。</p>
-        <p class="receipt-subtitle">尚未代表主管核准，也不代表工時已寫入 Google。</p>
+        
 
         <div class="receipt-stage hidden" aria-hidden="true">
           <span class="receipt-stage-label">目前申請狀態</span>
@@ -127,14 +127,14 @@
           <button id="receiptHistory" type="button" class="secondary-btn">查詢／修改紀錄</button>
           <button id="receiptNew" type="button" class="receipt-new-btn">新增另一筆申請</button>
         </div>
-        <p class="receipt-footnote">同一位員工、同一天只需申請一次。尚未確認後端狀態前，請勿重複送出。</p>
+        
       </div>
     </section>
 
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.27</span>
+        <span class="version">V1.1.28</span>
       </div>
 
       <form id="entryForm" novalidate>
