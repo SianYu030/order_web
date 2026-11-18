@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.2（每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.3（簽章即時通知＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -72,9 +72,13 @@ function runBusinessOvertimeSync(){
   return;
  }
  try{
-  var ss=otOpen_();
   var result=otBridgeApi_("pull",{});
   var rows=result.records||[],success=0,failed=0;
+  if(rows.length===0){
+   Logger.log("Google 業務加班補同步：目前無待處理申請。");
+   return {ok:true,processed:0,failed:0};
+  }
+  var ss=otOpen_();
   for(var i=0;i<rows.length&&i<20;i++){
    var r=rows[i];
    try{
@@ -108,7 +112,76 @@ function runBusinessOvertimeSync(){
    }
   }
   Logger.log("Google 業務加班同步，本次成功="+success+"，異常="+failed);
+  return {ok:failed===0,processed:success,failed:failed};
  }finally{lock.releaseLock();}
+}
+/** Apps Script 網頁應用程式接收簽章通知後，才喚醒既有的安全同步流程。
+ * 必須部署為「以我身分執行／所有人」，公開網址不可直接帶有工時更新參數。
+ * 同步憑證只存在私人 ScriptProperties，絕不暴露給訪客。
+ */
+function otWakeHex_(bytes){
+ return Array.prototype.map.call(bytes,function(x){
+  return ("0"+(x&255).toString(16)).slice(-2);
+ }).join("");
+}
+function otWakeSignature_(canonical){
+ var raw=(PropertiesService.getScriptProperties().getProperty(OT_BRIDGE.TOKEN_KEY)||"").trim();
+ if(!/^[A-Za-z0-9_-]{40,100}$/.test(raw))throw Error("未設定 Google 同步授權。");
+ var hash=otWakeHex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,raw,Utilities.Charset.UTF_8));
+ return otWakeHex_(Utilities.computeHmacSha256Signature(canonical,hash));
+}
+function otWakeEqual_(a,b){
+ if(typeof a!=="string"||typeof b!=="string"||a.length!==64||b.length!==64)return false;
+ var diff=0;
+ for(var i=0;i<64;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);
+ return diff===0;
+}
+function otWakeReply_(data){
+ return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+function doPost(e){
+ try{
+  var raw=String(e&&e.postData&&e.postData.contents||"");
+  if(raw.length>1024)return otWakeReply_({ok:false,error:"Invalid payload"});
+  var data=JSON.parse(raw);
+  var ts=data.ts,id=String(data.id||""),event=String(data.event||""),
+      signature=String(data.signature||"");
+  if(typeof ts!=="number"||!Number.isSafeInteger(ts)||Math.abs(Date.now()-ts)>120000||
+    !/^[0-9a-f-]{36}$/i.test(id)||["submit","approve","update"].indexOf(event)<0||
+    !/^[a-f0-9]{64}$/.test(signature))
+   return otWakeReply_({ok:false,error:"Invalid wake-up request"});
+  var expected=otWakeSignature_(ts+"."+id+"."+event);
+  if(!otWakeEqual_(signature,expected))
+   return otWakeReply_({ok:false,error:"Invalid signature"});
+  // 重複通知只可喚醒同步，不能直接指定任何工時／日期／儲存格。
+  var cache=CacheService.getScriptCache(),cacheKey="OT_WAKE_"+id+"_"+ts;
+  if(cache.get(cacheKey))return otWakeReply_({ok:true,duplicate:true});
+  cache.put(cacheKey,"1",150);
+  var result=runBusinessOvertimeSync();
+  return otWakeReply_({ok:true,accepted:true,processed:result&&result.processed||0});
+ }catch(err){
+  Logger.log("Google 即時同步通知處理失敗："+String(err).slice(0,200));
+  return otWakeReply_({ok:false,error:"Wake-up temporarily unavailable"});
+ }
+}
+/** 將這個專案部署為 Google 網頁應用程式後，從 Apps Script 編輯器執行一次。
+ * 只向 Supabase 儲存 Google 部署網址，不修改正式工時。
+ */
+function registerBusinessOvertimeInstantWebhook(){
+ var url=String(ScriptApp.getService().getUrl()||"").trim();
+ if(!/^https:\/\/script[.]google[.]com\/macros\/s\/[A-Za-z0-9_-]{30,256}\/exec$/.test(url))
+  throw Error("尚未部署正式 Google 網頁應用程式（/exec），請用「部署→新增部署→網頁應用程式」先部署。");
+ // 同步授權存在 Apps Script 私有設定；此操作不須再次產生授權碼。
+ var result=otBridgeApi_("register_webhook",{url:url});
+ if(!result.ok||!result.registered)throw Error("Supabase 即時通知網址登記失敗。");
+ Logger.log("已建立即時通知管道；每 1 分鐘補同步排程仍保留。");
+ return {ok:true,registered:true,backup_minutes:1};
+}
+/** 停用即時通知但保留每 1 分鐘補同步，提供安全回復路徑。 */
+function disableBusinessOvertimeInstantWebhook(){
+ var result=otBridgeApi_("unregister_webhook",{});
+ Logger.log("即時通知已停用，定時補同步仍保持啟用。");
+ return result;
 }
 function otBridgeApi_(action,data){
  var token=PropertiesService.getScriptProperties().getProperty(OT_BRIDGE.TOKEN_KEY);
