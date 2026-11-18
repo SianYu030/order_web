@@ -86,6 +86,12 @@ for(let i=0;i<12;i++){
 assert(bridgeAdmin,"published bridge-admin.js is stale");
 assert(bridgeAdmin.includes('action:"pair"')&&bridgeAdmin.includes("isAdmin"));
 console.log("PASS administrator pairing client deployed");
+assert(bridgeAdmin.includes("管理員身分已確認"),"paired admin must not display stale login-required instruction");
+console.log("PASS admin authenticated state guidance is accurate");
+const adminHTML=await fetchText(BASE+"admin/?bridge-ui=1.1.18");
+assert(adminHTML.includes("legacyGoogleOAuthPanel")&&adminHTML.includes("bridge-admin.js?v=1.1.18"),
+ "legacy OAuth must be collapsed and latest bridge guidance loaded");
+console.log("PASS Google OAuth legacy fallback collapsed by default");
 let installerCopied=false;
 for(let i=0;i<10;i++){
  const script=await fetchText(BASE+"google-bridge-code.txt?smoke=1.1.17&attempt="+i);

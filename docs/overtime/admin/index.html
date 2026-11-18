@@ -10,7 +10,7 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="../app.js?v=1.1.17" defer></script>
   <script src="../supervisor-auth.js?v=1.1.17" defer></script>
-  <script src="../bridge-admin.js?v=1.1.17b" defer></script>
+  <script src="../bridge-admin.js?v=1.1.18" defer></script>
 </head>
 <body>
 <div class="app">
@@ -207,9 +207,11 @@
     </section>
 
     <section id="view-settings" class="view">
-      <div class="section-heading"><div><h2>Google 試算表連線</h2><p>網站由 GitHub Pages 提供，不使用 Apps Script 架設網站。</p></div></div>
-      <section class="panel">
-        <h3>舊式 Google OAuth 手動連線（備援）</h3>
+      <div class="section-heading"><div><h2>Google 連線設定</h2><p>上方為正式自動同步設定。下面的舊式 OAuth 僅供備援，平常不用設定。</p></div></div>
+      <details class="panel" id="legacyGoogleOAuthPanel">
+        <summary style="cursor:pointer;font-weight:700;">進階備援：舊式 Google OAuth 手動連線（一般不需操作）</summary>
+        <div style="margin-top:12px;">
+          <h3>舊式 Google OAuth 手動連線</h3>
         <p class="helper">此處保留原有 Google OAuth 手動操作設定。正式自動同步改由上方 Apps Script 執行，不需要在此建立 OAuth 用戶端 ID。既有權杖只留在目前頁面記憶體，不存入 GitHub。</p>
         <label class="field"><span>Google OAuth 網頁用戶端 ID</span>
           <input id="clientId" type="text" spellcheck="false" autocomplete="off" placeholder="xxxxxxxx.apps.googleusercontent.com">
@@ -220,7 +222,8 @@
           <button type="button" id="disconnectBtn" class="secondary-btn">登出連線</button>
         </div>
         <p id="settingsState" class="helper">尚未連接 Google。</p>
-      </section>
+        </div>
+      </details>
       <section class="panel">
         <h3>來源試算表</h3>
         <div class="settings-meta"><span>原始文件</span><strong>2026-加班及請假時數登記表</strong></div>
@@ -236,7 +239,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班管理 · V1.1.17 <a class="footer-supervisor-link" id="supervisorPortal" href="../supervisor/">業務假日或臨時加班審核</a> <a class="footer-supervisor-link" href="../">業務假日或臨時加班登記</a></footer>
+  <footer class="footer">業務假日或臨時加班管理 · V1.1.18 <a class="footer-supervisor-link" id="supervisorPortal" href="../supervisor/">業務假日或臨時加班審核</a> <a class="footer-supervisor-link" href="../">業務假日或臨時加班登記</a></footer>
 </div>
 
 <dialog id="confirmDialog">

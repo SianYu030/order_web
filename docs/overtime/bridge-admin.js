@@ -1,4 +1,4 @@
-/* V1.1.17：正式 Google Apps Script 同步授權管理。只有後端驗證通過的管理員可產生授權碼。 */
+/* V1.1.18：正式 Google Apps Script 同步授權管理。只有後端驗證通過的管理員可產生授權碼。 */
 (function(){
 "use strict";
 const ROOT="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-sheet-bridge";
@@ -23,7 +23,7 @@ function init(){
  codeCopy.addEventListener("click",async()=>{
   codeCopy.disabled=true;
   try{
-   const resp=await fetch(COPYABLE_CODE+"?v=1.1.17",{cache:"no-store"});
+   const resp=await fetch(COPYABLE_CODE+"?v=1.1.18",{cache:"no-store"});
    if(!resp.ok)throw Error("讀取同步程式失敗 HTTP "+resp.status);
    const script=await resp.text();
    if(!script.includes("function installBusinessOvertimeSync()")||!script.includes("function runBusinessOvertimeSync()"))
@@ -88,7 +88,12 @@ function init(){
    tokenInput.value="";secretBox.classList.add("hidden");
    status.textContent="需以管理員帳號登入後才能設定 Google 同步。";
    health.textContent="需登入管理員才能查看 Google 同步連線狀態。";
-  }else{fetchHealth();}
+  }else{
+   if(!tokenInput.value){
+    status.textContent="管理員身分已確認。請按「建立 Google 同步授權碼」，再將授權碼填入正式試算表的 Apps Script 安裝畫面。";
+   }
+   fetchHealth();
+  }
  }
  button.addEventListener("click",async()=>{
   if(!window.SupervisorAuth?.isAdmin())return;
