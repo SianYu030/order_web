@@ -82,14 +82,14 @@
       const label=document.createElement("span");
       label.textContent=entry.username+" · "+(entry.role==="admin"?"管理員":"主管")+" · "+(entry.enabled?"啟用":"停用")+(entry.must_change?" · 待改密碼":"");
       identity.append(label);
-      if(entry.role==="supervisor"){
+      if(entry.role==="supervisor"||entry.role==="admin"){
         const name=document.createElement("small");
         name.className="supervisor-display-name";
         name.textContent=entry.display_name?"姓名："+entry.display_name:"姓名：尚未設定";
         identity.append(name);
       }
       card.append(identity);
-      if(entry.role==="supervisor"){
+      if(entry.role==="supervisor"||(entry.role==="admin"&&entry.username===user.username)){
         const actions=document.createElement("div");
         actions.className="supervisor-user-actions";
         const editName=document.createElement("button");
@@ -97,15 +97,16 @@
         editName.type="button";
         editName.textContent="編輯姓名";
         editName.addEventListener("click",async()=>{
-          const next=prompt("請輸入主管 "+entry.username+" 的姓名（1～40字）：",entry.display_name||"");
+          const next=prompt("請輸入"+(entry.role==="admin"?"管理員 ":"主管 ")+entry.username+" 的姓名（1～40字）：",entry.display_name||"");
           if(next===null)return;
           const name=next.trim();
           if(name.length<1||name.length>40||/[\u0000-\u001f\u007f]/.test(name)){
-            msg("主管姓名需為1至40字且不可包含換行",true);return;
+            msg("姓名需為1至40字且不可包含換行",true);return;
           }
           try{
             setBusy(true);
             const result=await call("rename",{username:entry.username,display_name:name});
+            if(entry.role==="admin"&&entry.username===user.username){user={...user,display_name:result.display_name};render();changed();}
             await loadUsers();msg(result.message);
           }catch(e){msg(e.message,true);}
           finally{setBusy(false);}
@@ -151,7 +152,8 @@
           }catch(e){msg(e.message,true);}
           finally{setBusy(false);}
         });
-        actions.append(editName,toggle,reset,remove);
+        actions.append(editName);
+        if(entry.role==="supervisor")actions.append(toggle,reset,remove);
         card.append(actions);
       }
       box.append(card);
