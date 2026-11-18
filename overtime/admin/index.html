@@ -6,10 +6,10 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班管理｜系統櫃廠</title>
-  <link rel="stylesheet" href="../style.css?v=1.1.17">
+  <link rel="stylesheet" href="../style.css?v=1.1.21">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="../app.js?v=1.1.17" defer></script>
-  <script src="../supervisor-auth.js?v=1.1.17" defer></script>
+  <script src="../supervisor-auth.js?v=1.1.21" defer></script>
   <script src="../bridge-admin.js?v=1.1.20" defer></script>
 </head>
 <body>
@@ -72,6 +72,7 @@
         </form>
         <div id="supervisorAdminBox" class="hidden">
           <h3 class="admin-title">主管帳號管理</h3>
+          <p class="helper small">只有管理員可刪除主管帳號。刪除前必須二次確認；原有加班核准及工時紀錄不會刪除。</p>
           <div id="supervisorUsersList" class="supervisor-users"></div>
           <form id="supervisorAddForm" class="supervisor-form">
             <label class="field"><span>新增主管帳號</span>
@@ -239,7 +240,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班管理 · V1.1.20 <a class="footer-supervisor-link" id="supervisorPortal" href="../supervisor/">業務假日或臨時加班審核</a> <a class="footer-supervisor-link" href="../">業務假日或臨時加班登記</a></footer>
+  <footer class="footer">業務假日或臨時加班管理 · V1.1.21 <a class="footer-supervisor-link" id="supervisorPortal" href="../supervisor/">業務假日或臨時加班審核</a> <a class="footer-supervisor-link" href="../">業務假日或臨時加班登記</a></footer>
 </div>
 
 <dialog id="confirmDialog">

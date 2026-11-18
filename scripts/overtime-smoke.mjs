@@ -78,6 +78,16 @@ console.log("PASS forged bridge key rejected");
 const noStatus=await fetch(BRIDGE,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io"},body:JSON.stringify({action:"status"})});
 assert.equal(noStatus.status,401,"bridge connection diagnostics must require administrator login");
 console.log("PASS Google sync status diagnostics require administrator login");
+const AUTH="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-auth";
+const unauthDelete=await fetch(AUTH,{method:"POST",headers:{"Content-Type":"application/json","Origin":"https://sianyu030.github.io"},
+ body:JSON.stringify({action:"delete",username:"1494",confirm_username:"1494"})});
+assert.equal(unauthDelete.status,401,"supervisor deletion must require a logged-in admin");
+console.log("PASS unauthenticated supervisor deletion blocked");
+const authClient=await fetchText(BASE+"supervisor-auth.js?v=1.1.21");
+assert(authClient.includes('call("delete"')&&authClient.includes('confirm_username:typed')&&authClient.includes("delete-account-btn"),"admin deletion requires confirmation and UI button");
+const adminPage=await fetchText(BASE+"admin/?delete-test=v1.1.21");
+assert(adminPage.includes("supervisor-auth.js?v=1.1.21")&&adminPage.includes("只有管理員可刪除主管帳號"),"admin page must publish account deletion controls");
+console.log("PASS administrator delete button and two-stage confirmation deployed");
 let bridgeAdmin="";
 for(let i=0;i<12;i++){
  const js=await fetchText(BASE+"bridge-admin.js?v=1.1.20&attempt="+i);

@@ -193,3 +193,9 @@ html[data-portal="admin"] body.portal-authorized #view-settings{max-width:100%}
 .overtime-backend-item .helper{margin:6px 0}
 .overtime-backend-item button{margin:7px 0 2px}
 @media(max-width:420px){.overtime-backend-heading h3{font-size:17px}.overtime-backend-item{padding:11px}.overtime-backend-top{align-items:flex-start}}
+
+/* V1.1.21：只有系統管理員看得見的主管帳號刪除操作。 */
+.supervisor-user-row .delete-account-btn{color:#a92e2b;border-color:#e1b1ac;background:#fff8f6}
+.supervisor-user-row .delete-account-btn:hover{background:#ffebe7}
+.supervisor-user-row .delete-account-btn:focus-visible{outline:3px solid #c5473b;outline-offset:2px}
+@media(max-width:420px){.supervisor-user-row .delete-account-btn{min-width:72px}}

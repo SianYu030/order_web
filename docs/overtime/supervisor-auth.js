@@ -99,7 +99,28 @@
           try{setBusy(true);await call("reset",{username:entry.username,password:pw});await loadUsers();msg("已重設 "+entry.username+" 密碼，原工作階段已失效。");}
           catch(e){msg(e.message,true);}finally{setBusy(false);}
         });
-        card.append(toggle,reset);
+        const remove=document.createElement("button");
+        remove.className="secondary-btn delete-account-btn";
+        remove.type="button";
+        remove.textContent="刪除";
+        remove.setAttribute("aria-label","刪除主管帳號 "+entry.username);
+        remove.title="永久刪除帳號，保留過往核准與工時紀錄";
+        remove.addEventListener("click",async()=>{
+          const name=entry.username;
+          const warning="確定永久刪除主管帳號「"+name+"」？\n\n此操作會立即取消該帳號的登入權限與所有工作階段，無法復原。原有核准、工時與稽核紀錄會保留。\n\n如果只是暫時不讓他登入，請使用「停用」。";
+          if(!confirm(warning))return;
+          const typed=prompt("為避免誤刪，請輸入要刪除的完整帳號："+name);
+          if(typed===null)return;
+          if(typed!==name){msg("帳號確認不一致，沒有刪除任何資料。",true);return;}
+          try{
+            setBusy(true);
+            const result=await call("delete",{username:name,confirm_username:typed});
+            await loadUsers();
+            msg(result.message||("主管帳號 "+name+" 已刪除，歷史資料保留。"));
+          }catch(e){msg(e.message,true);}
+          finally{setBusy(false);}
+        });
+        card.append(toggle,reset,remove);
       }
       box.append(card);
     }
