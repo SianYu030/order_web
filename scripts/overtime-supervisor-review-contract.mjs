@@ -27,7 +27,7 @@ assert(front.includes('if(!confirm(warning))return;')&&front.includes('if(!confi
 console.log("PASS supervisor approval/rejection controls, Google source guard, deep links, auto-refresh and obsolete OAuth warning hidden");
 
 assert(html.includes('class="supervisor-profile-actions"'),"signed-in account actions must be inline");
-assert(html.includes('supervisor-auth.js?v=1.1.30')&&html.includes('style.css?v=1.1.30'),"cache bust compact supervisor UI");
+assert(html.includes('supervisor-auth.js?v=1.1.30')&&html.includes('style.css?v=1.1.31'),"cache bust aligned supervisor UI");
 assert(css.includes('#supervisorAccess.supervisor-compact'),"only signed-in supervisor card should shrink");
 assert(css.includes('.supervisor-compact .supervisor-heading{display:none}'),"redundant login heading should be hidden");
 assert(css.includes('.supervisor-compact > .helper.small{display:none}'),"redundant Google description should be hidden when signed in");
@@ -36,3 +36,10 @@ assert(auth.includes('PORTAL==="supervisor"&&signed&&!user.must_change'),"must n
 assert(auth.includes('e.classList.toggle("is-alert",!!fail)'),"errors must remain visible in compact state");
 assert(html.includes('id="supervisorLogoutBtn"')&&html.includes('id="supervisorTogglePasswordBtn"')&&html.includes('id="supervisorChangeForm"'),"logout and password update must remain available");
 console.log("PASS compact signed-in supervisor bar retains logout, password change and error visibility");
+
+const matchAligned=css.match(/html\[data-portal="supervisor"\] #supervisorAccess\.supervisor-compact\{([^}]+)\}/);
+assert(matchAligned&&matchAligned[1].includes("width:100%")&&matchAligned[1].includes("max-width:none"),"signed-in account bar must fill the same parent width as review panel");
+assert(!matchAligned[1].includes("margin:0 0 12px auto"),"account bar must not be pushed to the right");
+assert(matchAligned[1].includes("box-sizing:border-box"),"account bar should not overflow parent when padded");
+assert(css.includes(".supervisor-compact .supervisor-profile-actions"),"account and actions remain aligned on a single row");
+console.log("PASS full-width signed-in supervisor bar aligns with review panel on desktop and mobile");

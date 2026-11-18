@@ -256,10 +256,10 @@ html[data-portal="supervisor"] .legacy-google-batch{display:none!important}
 @media(max-width:460px){.overtime-backend-actions{flex-direction:column}.overtime-backend-actions button{width:100%;flex:none}}
 
 
-/* V1.1.30: 已登入主管改為精簡帳號列，完整登入與變更密碼表單保留。 */
+/* V1.1.31: 已登入主管與審核清單等寬對齊，完整登入與變更密碼表單保留。 */
 html[data-portal="supervisor"] #supervisorAccess.supervisor-compact{
- max-width:490px;margin:0 0 12px auto;padding:10px 13px;
- border-color:#e0e6f0;box-shadow:none;border-radius:12px
+ width:100%;max-width:none;margin:0 0 12px;padding:10px 15px;
+ box-sizing:border-box;border-color:#e0e6f0;box-shadow:none;border-radius:12px
 }
 html[data-portal="supervisor"] .supervisor-compact .supervisor-heading{display:none}
 html[data-portal="supervisor"] .supervisor-compact #supervisorSignedBox .supervisor-profile{

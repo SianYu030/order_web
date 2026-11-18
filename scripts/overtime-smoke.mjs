@@ -60,14 +60,16 @@ assert(supervisorV29.includes("overtime-client.js?v=1.1.29")&&supervisorV29.incl
 const supervisorActions=await fetchText(BASE+"overtime-client.js?v=1.1.29");
 assert(supervisorActions.includes("駁回刪除（移出月檢視）")&&supervisorActions.includes('api.reject(x.id)')&&supervisorActions.includes('api.approve(x.id)'),"both actions must be available for verified pending request");
 console.log("PASS two supervisor actions and old OAuth warning hidden");
-const compactSupervisorPage=await fetchText(BASE+"supervisor/?compact=v1.1.30");
+const compactSupervisorPage=await fetchText(BASE+"supervisor/?compact=v1.1.31");
 assert(compactSupervisorPage.includes('class="supervisor-profile-actions"') &&
  compactSupervisorPage.includes('supervisor-auth.js?v=1.1.30') &&
- compactSupervisorPage.includes('style.css?v=1.1.30'),
+ compactSupervisorPage.includes('style.css?v=1.1.31'),
  "compact logged-in supervisor card not deployed");
 const compactAuth=await fetchText(BASE+"supervisor-auth.js?v=1.1.30");
 assert(compactAuth.includes('PORTAL==="supervisor"&&signed&&!user.must_change'),"compact must apply only to authenticated supervisor");
-console.log("PASS compact signed-in supervisor card published without changing login or admin behavior");
+const alignedCSS=await fetchText(BASE+"style.css?v=1.1.31");
+assert(alignedCSS.includes("width:100%;max-width:none;margin:0 0 12px;padding:10px 15px"),"supervisor card must align with full-width review panel");
+console.log("PASS aligned full-width signed-in supervisor bar published without changing login or admin behavior");
 const client=await fetchText(BASE+"overtime-client.js?v=1.1.29");
 assert(client.includes("overtime-requests")&&client.includes("receipt_token"));
 console.log("PASS public frontend API client");
