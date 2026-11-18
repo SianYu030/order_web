@@ -123,7 +123,7 @@ assert(authClient.includes("可直接用初始密碼登入"),"client must allow 
 console.log("PASS newly added supervisor accounts can sign in immediately; voluntary change available");
 let bridgeAdmin="";
 for(let i=0;i<12;i++){
- const js=await fetchText(BASE+"bridge-admin.js?v=1.1.27&attempt="+i);
+ const js=await fetchText(BASE+"bridge-admin.js?v=1.1.28&attempt="+i);
  if(js.includes('action:"pair"')&&js.includes('action:"status"')&&js.includes("最近連線")){
   bridgeAdmin=js;break;
  }
@@ -136,14 +136,14 @@ assert(bridgeAdmin.includes("管理員身分已確認"),"paired admin must not d
 console.log("PASS admin authenticated state guidance is accurate");
 assert(bridgeAdmin.includes("installBusinessOvertimeSync")&&bridgeAdmin.includes("registerBusinessOvertimeInstantWebhook"),"admin must show minute backup and instant webhook setup");
 console.log("PASS Google script property instructions displayed");
-const adminHTML=await fetchText(BASE+"admin/?bridge-ui=1.1.27");
-assert(adminHTML.includes("legacyGoogleOAuthPanel")&&adminHTML.includes("bridge-admin.js?v=1.1.27"),
+const adminHTML=await fetchText(BASE+"admin/?bridge-ui=1.1.28");
+assert(adminHTML.includes("legacyGoogleOAuthPanel")&&adminHTML.includes("bridge-admin.js?v=1.1.28"),
  "legacy OAuth must be collapsed and latest bridge guidance loaded");
 console.log("PASS Google OAuth legacy fallback collapsed by default");
 let installerCopied=false;
 for(let i=0;i<10;i++){
- const script=await fetchText(BASE+"google-bridge-code.txt?smoke=1.4&attempt="+i);
- if(script.includes("function testBusinessOvertimeSheetsApi()")&&script.includes("read_only:true")&&script.includes("function installBusinessOvertimeSync()")&&script.includes("function doPost(e)")&&script.includes("registerBusinessOvertimeInstantWebhook")&&script.includes("everyMinutes(1)")&&script.length>18000){
+ const script=await fetchText(BASE+"google-bridge-code.txt?smoke=1.5&attempt="+i);
+ if(script.includes("function otSourceReadApi_(row)")&&script.includes("var verify=otSourceReadApi_(empty);")&&script.includes("function testBusinessOvertimeSheetsApi()")&&script.includes("read_only:true")&&script.includes("function installBusinessOvertimeSync()")&&script.includes("function doPost(e)")&&script.includes("registerBusinessOvertimeInstantWebhook")&&script.includes("everyMinutes(1)")&&script.length>18000){
   installerCopied=true;break;
  }
  if(i<9)await new Promise(resolve=>setTimeout(resolve,5000));
