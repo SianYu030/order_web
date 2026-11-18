@@ -55,7 +55,7 @@ assert.equal(ctx.otMatches_(expectedSource,person,target),true);
 assert(scriptSourceValid_());
 function scriptSourceValid_(){
   assert.match(source,/r\.employee_name,r\.hours,r\.reason,"待同步",target\.name/,"source J status must be a valid dropdown value");
-  assert.match(source,/String\(verify\[9\]\)==="待同步"/,"source status must be checked after write");
+  assert.match(source,/String\(verify\[9\]\)!=="待同步"/,"source status must be checked after write");
   return true;
 }
 assert.equal(ctx.otSourceFind_([expectedSource],person).row,2);
