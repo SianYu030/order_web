@@ -8,6 +8,7 @@ on:
       - 'integrations/overtime-google/**'
       - 'scripts/overtime-smoke.mjs'
       - 'scripts/overtime-bridge-unit.mjs'
+      - 'scripts/overtime-delete-contract.mjs'
       - '.github/workflows/overtime-smoke.yml'
   workflow_dispatch:
   schedule:
@@ -28,5 +29,7 @@ jobs:
           node --check /tmp/overtime-google-bridge.js
       - name: Verify Google worker mapping and read-only safety checks
         run: node scripts/overtime-bridge-unit.mjs
+      - name: Verify supervisor deletion safeguards (no account changes)
+        run: node scripts/overtime-delete-contract.mjs
       - name: Verify public webpages, live Edge roster and access control (no real writes)
         run: node scripts/overtime-smoke.mjs
