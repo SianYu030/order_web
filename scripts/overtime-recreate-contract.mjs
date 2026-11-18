@@ -20,7 +20,7 @@ assert(source.includes('role:"supervisor",salt_b64:salt,hash_b64:hash,iterations
 assert(source.includes('hash_b64:hash,iterations:ITERATIONS,must_change:false,updated_at:'),"Reset supervisor must be able to sign in without forced password change");
 assert(source.includes('if(existing)return answer({ok:false,error:"此帳號目前已存在'),"Existing accounts must not be recreated");
 assert(!source.includes("deleted_usernames")&&!source.includes("blacklist"),"Deleted account names must not be permanently denied");
-assert(source.includes('return answer({ok:true,message:"已建立主管帳號'),"Success should explain temporary password rule");
+assert(source.includes('return answer({ok:true,message:"主管帳號建立成功，可直接使用初始密碼登入'),"Success must explain immediate access and optional later password change");
 assert(source.includes('if(action==="change-password")'),"Voluntary password change must remain available");
 assert(source.includes('if(!validPass(next))'),"Changing password must still reject 1234 as permanent new password");
 console.log("PASS deleted account reuse, default login without mandatory change, voluntary password update");
