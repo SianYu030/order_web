@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="../style.css?v=1.1.21">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="../app.js?v=1.1.17" defer></script>
-  <script src="../supervisor-auth.js?v=1.1.22" defer></script>
+  <script src="../supervisor-auth.js?v=1.1.23" defer></script>
   <script src="../bridge-admin.js?v=1.1.20" defer></script>
 </head>
 <body>
@@ -56,7 +56,7 @@
           <strong id="supervisorSignedName">未登入</strong>
           <button type="button" id="supervisorLogoutBtn" class="secondary-btn">登出</button>
         </div>
-        <div id="supervisorChangePrompt" class="notice warning hidden">首次登入必須先修改密碼。</div>
+        <div id="supervisorChangePrompt" class="notice warning hidden">此帳號需修改密碼才能繼續。</div>
         <button type="button" id="supervisorTogglePasswordBtn" class="secondary-btn">修改我的密碼</button>
         <form id="supervisorChangeForm" class="hidden supervisor-form">
           <label class="field"><span>目前密碼</span>
@@ -81,12 +81,12 @@
             <label class="field"><span>初始密碼（至少 4 碼，可用 1234）</span>
               <input id="supervisorAddPassword" type="password" autocomplete="new-password" minlength="4" required>
             </label>
-            <p class="helper small">刪除的主管帳號可以重新建立相同名稱。初始密碼 1234 只限首次登入，登入後必須設定新密碼。</p>
+            <p class="helper small">刪除的主管帳號可以重新建立相同名稱。新增後可用初始密碼直接登入，日後於「修改我的密碼」自行更改。1234 容易被猜到，正式使用建議盡快換掉。</p>
             <button type="submit" class="secondary-btn">新增主管</button>
           </form>
         </div>
       </div>
-      <p id="supervisorMessage" class="helper" role="status" aria-live="polite">管理員操作須登入；首次登入需修改初始密碼。</p>
+      <p id="supervisorMessage" class="helper" role="status" aria-live="polite">管理員操作須登入；新增帳號可先使用初始密碼，日後自行修改。</p>
       <p class="helper small">管理員登入與 Google 試算表連線分開管理；正式工時核准需另完成 Google 存取授權。</p>
     </section>
 
@@ -241,7 +241,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班管理 · V1.1.22 <a class="footer-supervisor-link" id="supervisorPortal" href="../supervisor/">業務假日或臨時加班審核</a> <a class="footer-supervisor-link" href="../">業務假日或臨時加班登記</a></footer>
+  <footer class="footer">業務假日或臨時加班管理 · V1.1.23 <a class="footer-supervisor-link" id="supervisorPortal" href="../supervisor/">業務假日或臨時加班審核</a> <a class="footer-supervisor-link" href="../">業務假日或臨時加班登記</a></footer>
 </div>
 
 <dialog id="confirmDialog">

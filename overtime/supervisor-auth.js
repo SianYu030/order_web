@@ -38,7 +38,7 @@
     show("supervisorChangeForm",!!user.must_change);
     show("supervisorTogglePasswordBtn",!user.must_change);
     show("supervisorAdminBox",PORTAL==="admin"&&user.role==="admin"&&!user.must_change&&isView("settings"));
-    if(user.must_change)msg("初次登入必須先修改密碼，完成後才會開放"+ROLE_LABEL+"功能。");
+    if(user.must_change)msg("這個既有帳號目前仍設有強制改密碼限制，請先修改密碼。");
     else msg("已登入"+ROLE_LABEL+"系統。主管核准會進入 Google 待同步佇列，正式工時以 Google 讀回驗證成功為準。");
     syncPanel();
   }
@@ -93,10 +93,10 @@
         reset.type="button";
         reset.textContent="重設密碼";
         reset.addEventListener("click",async()=>{
-          const pw=prompt("設定 "+entry.username+" 的新暫時密碼（至少4碼，可用1234），首次登入必須更改：");
+          const pw=prompt("設定 "+entry.username+" 的登入密碼（至少4碼，可用1234，日後可由本人修改）：");
           if(pw===null)return;
-          if(pw.length<4||pw.length>72){msg("暫時密碼需為4至72碼，可用1234，首次登入須更改",true);return;}
-          try{setBusy(true);await call("reset",{username:entry.username,password:pw});await loadUsers();msg("已重設 "+entry.username+" 密碼，原工作階段已失效。");}
+          if(pw.length<4||pw.length>72){msg("密碼需為4至72碼，可先使用1234，之後自行修改",true);return;}
+          try{setBusy(true);await call("reset",{username:entry.username,password:pw});await loadUsers();msg("已重設 "+entry.username+" 密碼，原登入已失效；新密碼可直接登入，日後可自行修改。");}
           catch(e){msg(e.message,true);}finally{setBusy(false);}
         });
         const remove=document.createElement("button");
@@ -169,12 +169,12 @@
         msg("帳號需為2至32碼英文字母、數字、底線或連字號",true);return;
       }
       if(password.length<4||password.length>72){
-        msg("初始密碼需為4至72碼，可暫用1234；首次登入必須改密碼",true);return;
+        msg("初始密碼需為4至72碼，可先使用1234，日後自行修改",true);return;
       }
       await call("add",{username,password});
       $("supervisorAddForm").reset();
       await loadUsers();
-      msg("已新增主管 "+username+"，原帳號刪除後可以重新申請相同帳號；初始密碼僅限首次登入，須立即修改。");
+      msg("主管 "+username+" 新增成功，可直接用初始密碼登入；日後從「修改我的密碼」自行更改。");
     }catch(e){msg(e.message,true);}finally{setBusy(false);}
   }
   async function init(){

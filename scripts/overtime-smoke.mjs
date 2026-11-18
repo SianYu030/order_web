@@ -83,13 +83,16 @@ const unauthDelete=await fetch(AUTH,{method:"POST",headers:{"Content-Type":"appl
  body:JSON.stringify({action:"delete",username:"1494",confirm_username:"1494"})});
 assert.equal(unauthDelete.status,401,"supervisor deletion must require a logged-in admin");
 console.log("PASS unauthenticated supervisor deletion blocked");
-const authClient=await fetchText(BASE+"supervisor-auth.js?v=1.1.22");
+const authClient=await fetchText(BASE+"supervisor-auth.js?v=1.1.23");
 assert(authClient.includes('call("delete"')&&authClient.includes('confirm_username:typed')&&authClient.includes("delete-account-btn"),"admin deletion requires confirmation and UI button");
 const adminPage=await fetchText(BASE+"admin/?delete-test=v1.1.21");
-assert(adminPage.includes("supervisor-auth.js?v=1.1.22")&&adminPage.includes("只有管理員可刪除主管帳號"),"admin page must publish account deletion controls");
+assert(adminPage.includes("supervisor-auth.js?v=1.1.23")&&adminPage.includes("只有管理員可刪除主管帳號"),"admin page must publish account deletion controls");
 console.log("PASS administrator delete button and two-stage confirmation deployed");
 assert(adminPage.includes("初始密碼（至少 4 碼，可用 1234）")&&adminPage.includes("刪除的主管帳號可以重新建立相同名稱"),"re-adding deleted accounts and temporary 1234 guidance must be visible");
 console.log("PASS deleted username reuse and temporary password guidance deployed");
+assert(adminPage.includes("日後於「修改我的密碼」自行更改"),"admin must explain voluntary password change");
+assert(authClient.includes("可直接用初始密碼登入"),"client must allow login before voluntary password change");
+console.log("PASS newly added supervisor accounts can sign in immediately; voluntary change available");
 let bridgeAdmin="";
 for(let i=0;i<12;i++){
  const js=await fetchText(BASE+"bridge-admin.js?v=1.1.20&attempt="+i);

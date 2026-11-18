@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="../style.css?v=1.1.21">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="../app.js?v=1.1.17" defer></script>
-  <script src="../supervisor-auth.js?v=1.1.22" defer></script>
+  <script src="../supervisor-auth.js?v=1.1.23" defer></script>
   <script src="../overtime-client.js?v=1.1.17" defer></script>
 </head>
 <body>
@@ -56,7 +56,7 @@
           <strong id="supervisorSignedName">未登入</strong>
           <button type="button" id="supervisorLogoutBtn" class="secondary-btn">登出</button>
         </div>
-        <div id="supervisorChangePrompt" class="notice warning hidden">首次登入必須先修改密碼。</div>
+        <div id="supervisorChangePrompt" class="notice warning hidden">此帳號需修改密碼才能繼續。</div>
         <button type="button" id="supervisorTogglePasswordBtn" class="secondary-btn">修改我的密碼</button>
         <form id="supervisorChangeForm" class="hidden supervisor-form">
           <label class="field"><span>目前密碼</span>
@@ -84,7 +84,7 @@
           </form>
         </div>
       </div>
-      <p id="supervisorMessage" class="helper" role="status" aria-live="polite">主管操作須登入；首次登入需修改初始密碼。</p>
+      <p id="supervisorMessage" class="helper" role="status" aria-live="polite">主管操作須登入；新增帳號可先使用初始密碼，日後自行修改。</p>
       <p class="helper small">主管登入與 Google 試算表連線分開管理；正式工時核准需另完成 Google 存取授權。</p>
     </section>
 
@@ -236,7 +236,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班審核 · V1.1.22 <a class="footer-supervisor-link" id="supervisorPortal" href="../">業務假日或臨時加班登記</a></footer>
+  <footer class="footer">業務假日或臨時加班審核 · V1.1.23 <a class="footer-supervisor-link" id="supervisorPortal" href="../">業務假日或臨時加班登記</a></footer>
 </div>
 
 <dialog id="confirmDialog">
