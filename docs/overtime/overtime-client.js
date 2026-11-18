@@ -70,7 +70,7 @@ async function load(){
   const result=await api.queue();
   content.replaceChildren();
   const rows=result.records||[];
-  const approvable=rows.filter(x=>x.status==="待核准"&&x.source_sheet==="業務假日或臨時加班登記"&&/^A([2-9]|[1-9][0-9]{1,3}):R\\1$/.test(x.source_range||"")).length;
+  const approvable=rows.filter(x=>x.status==="待核准"&&x.source_sheet==="業務假日或臨時加班登記"&&/^A([2-9]|[1-9][0-9]{1,3}):R\1$/.test(x.source_range||"")).length;
   const manual=rows.filter(x=>x.status==="需人工核對").length;
   status.textContent="後端待辦 "+rows.length+" 筆，其中可核准 "+approvable+" 筆"+
    (manual?"、需人工核對 "+manual+" 筆":"")+"。只有 Google 來源登記完成後才能核准；核准後需待 Google 寫入及讀回驗證。";
