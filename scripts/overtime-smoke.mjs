@@ -27,6 +27,12 @@ for(const [slug,title] of expected){
  assert(pass,"published GitHub Pages wrong version / title: "+slug);
  console.log("PASS public webpage",slug||"employee",title);
 }
+const completePage=await fetchText(BASE+"?receipt-ui=1.1.24");
+assert(completePage.includes('id="view-receipt"')&&completePage.includes('id="receiptRefresh"')&&completePage.includes('app.js?v=1.1.24'),"mobile receipt screen must be deployed");
+const completeApp=await fetchText(BASE+"app.js?v=1.1.24");
+assert(completeApp.includes('showReceiptPage(result.record,entry,saved,')&&completeApp.includes('window.OvertimeApi.receipt(latestReceipt.id,latestReceipt.token)'),"receipt must appear only after backend ack and support status lookup");
+assert(completeApp.includes('switchView("receipt")')&&completeApp.includes('state.editKey=""'),"post-submit must hide form and reset duplicate action");
+console.log("PASS mobile completion screen, single-submit path and live status refresh code deployed");
 const client=await fetchText(BASE+"overtime-client.js?v=1.1.17");
 assert(client.includes("overtime-requests")&&client.includes("receipt_token"));
 console.log("PASS public frontend API client");

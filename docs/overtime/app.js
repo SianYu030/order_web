@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.17 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.24 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -28,6 +28,72 @@
     kind: "加班", month: null, monthKey: "", loadId: 0, busy: false, editKey: ""
   };
   var $ = function (id) { return document.getElementById(id); };
+  var latestReceipt = null;
+
+  function receiptStage(status){
+    switch(String(status||"")){
+      case "待同步": return {text:"公司已收件，正在等待 Google 同步，尚未送主管核准。",tone:"waiting"};
+      case "同步中": return {text:"Google 正在處理此申請，請稍後更新狀態。",tone:"waiting"};
+      case "同步失敗": return {text:"同步暫時失敗，系統會補同步；請勿重複提交同一筆申請。",tone:"attention"};
+      case "待核准": return {text:"已進入 Google 待核准清單，等待主管審核。",tone:"waiting"};
+      case "核准待同步": return {text:"主管已核准，正在等待 Google 寫入正式工時並完成驗證。",tone:"waiting"};
+      case "已核准": return {text:"主管已核准，Google 正式工時與註解已完成讀回驗證。",tone:"done"};
+      case "已駁回": return {text:"主管已駁回此筆申請，正式工時不會因這筆申請寫入。",tone:"attention"};
+      case "需人工核對": return {text:"公司已收件，但 Google 同步發生異常，需由管理員核對處理。請勿再送出同一天的申請。",tone:"attention"};
+      default: return {text:"後端已收到申請；目前尚未確認 Google 同步與主管核准。",tone:"waiting"};
+    }
+  }
+  function displayReceiptStatus(status){
+    var current=String(status||"待同步"),stage=receiptStage(current);
+    $("receiptStatus").textContent=current;
+    $("receiptStatus").className="receipt-status receipt-"+stage.tone;
+    $("receiptProgress").textContent=stage.text;
+    $("receiptProgress").className="receipt-progress receipt-"+stage.tone;
+  }
+  function showReceiptPage(record,entry,saved,receiptToken){
+    if(PORTAL!=="employee"||!record||!record.request_no||!record.id)
+      throw Error("申請收據缺少必要資料，請到查詢頁核對是否已送出。");
+    latestReceipt={id:record.id,token:receiptToken||null};
+    $("receiptNo").textContent=record.request_no;
+    $("receiptDate").textContent=String(record.date||entry.date).replace(/-/g,"/");
+    $("receiptEmployee").textContent=String(record.employee_name||entry.person.name);
+    $("receiptDept").textContent=DEPT_LABEL[record.department||entry.department]||entry.department;
+    $("receiptHours").textContent=formatHours(record.hours===undefined?entry.hours:record.hours);
+    $("receiptReason").textContent=String(record.reason||entry.reason);
+    $("receiptLocalWarning").classList.toggle("hidden",saved);
+    displayReceiptStatus(record.status);
+    switchView("receipt");
+    $("receiptHeading").focus({preventScroll:true});
+  }
+  async function refreshReceiptStatus(){
+    if(!latestReceipt||!latestReceipt.token){
+      $("receiptProgress").textContent="目前沒有可用的查詢憑證，請回查詢頁或聯絡管理員。";
+      return;
+    }
+    var button=$("receiptRefresh");
+    button.disabled=true;button.textContent="查詢中…";
+    try{
+      var response=await window.OvertimeApi.receipt(latestReceipt.id,latestReceipt.token);
+      if(!response.record||response.record.id!==latestReceipt.id)
+        throw Error("伺服器回傳的申請編號不一致，請聯絡管理員");
+      displayReceiptStatus(response.record.status);
+      $("receiptRefreshed").textContent="已向公司後端重新取得最新狀態";
+    }catch(e){
+      $("receiptRefreshed").textContent="查詢未完成："+e.message+"。原申請已送出，請勿重複提交。";
+    }finally{button.disabled=false;button.textContent="更新申請狀態";}
+  }
+  function newReceiptEntry(){
+    latestReceipt=null;
+    state.editKey="";
+    $("employee").value="";
+    $("hours").value="3";
+    $("reason").value="";
+    $("receiptRefreshed").textContent="";
+    updatePreview();
+    switchView("entry");
+    $("employee").focus({preventScroll:true});
+  }
+
 
   function message(text, type) {
     var el = $("banner");
@@ -203,9 +269,10 @@
   }
   function switchView(name) {
     // 三個網址具有獨立的入口與頁面；真實寫入仍須經後端及 Google 權限驗證。
-    if(PORTAL==="employee"&&!["entry","history"].includes(name))return;
+    if(PORTAL==="employee"&&!["entry","history","receipt"].includes(name))return;
     if(PORTAL==="supervisor"&&!["batch","approval"].includes(name))return;
     if(PORTAL==="admin"&&name!=="settings")return;
+    document.body.classList.toggle("employee-receipt",PORTAL==="employee"&&name==="receipt");
     document.querySelectorAll(".tab").forEach(function (btn) {
       var yes = btn.dataset.view === name;
       btn.classList.toggle("is-active", yes);
@@ -814,8 +881,7 @@
             employee_name:entry.person.name,date:entry.date,hours:entry.hours,reason:entry.reason});
         const saved=receipt ? true : window.OvertimeApi.save(result.record,result.receipt_token,entry.person.id);
         state.editKey="";
-        message("後端收件成功："+result.record.request_no+"，狀態「"+result.record.status+
-          "」。請至查詢頁確認 Google 同步及主管核准狀態。"+(saved?"":" 這台裝置無法保存查詢憑證，請記下申請編號並通知管理員。"),"success");
+        showReceiptPage(result.record,entry,saved,receipt?receipt.receipt_token:result.receipt_token);
         return;
       }
       if (!hasGoogle()) {
@@ -1011,6 +1077,21 @@
     $("employee").addEventListener("change", updatePreview);
     $("hours").addEventListener("input", updatePreview);
     $("entryForm").addEventListener("submit", submitEntry);
+    if(PORTAL==="employee"){
+      $("receiptRefresh").addEventListener("click",refreshReceiptStatus);
+      $("receiptHistory").addEventListener("click",function(){switchView("history");});
+      $("receiptNew").addEventListener("click",newReceiptEntry);
+      $("receiptCopy").addEventListener("click",async function(){
+        var value=$("receiptNo").textContent;
+        try{
+          if(!navigator.clipboard||!navigator.clipboard.writeText)throw Error("Clipboard unavailable");
+          await navigator.clipboard.writeText(value);
+          $("receiptRefreshed").textContent="申請編號已複製。";
+        }catch(e){
+          window.prompt("請複製申請編號：",value);
+        }
+      });
+    }
     $("refreshHistory").addEventListener("click", refreshHistory);
     document.addEventListener("supervisor-auth-change",function(){
       if(approvalId)loadApprovalRequest();

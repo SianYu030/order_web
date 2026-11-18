@@ -199,3 +199,46 @@ html[data-portal="admin"] body.portal-authorized #view-settings{max-width:100%}
 .supervisor-user-row .delete-account-btn:hover{background:#ffebe7}
 .supervisor-user-row .delete-account-btn:focus-visible{outline:3px solid #c5473b;outline-offset:2px}
 @media(max-width:420px){.supervisor-user-row .delete-account-btn{min-width:72px}}
+
+/* V1.1.24 - 手機申請完成後改顯示獨立收據，不顯示舊登記表及固定送出鍵。 */
+body.employee-receipt .tabs{display:none}
+.receipt-view{max-width:660px;margin:6px auto 0}
+.receipt-panel{text-align:center;padding:29px 25px 25px;border-color:#d9e5f2}
+.receipt-mark{height:58px;width:58px;border-radius:50%;background:#e5f7ed;color:#18794b;font-size:34px;line-height:58px;font-weight:800;margin:2px auto 13px}
+.receipt-panel h2{font-size:25px;margin:0 0 8px;line-height:1.35}
+.receipt-panel h2:focus{outline:none}
+.receipt-lede{font-size:16px;font-weight:750;margin:0 0 3px}
+.receipt-subtitle{font-size:13px;color:#586b7e;line-height:1.65;margin:0 auto 20px}
+.receipt-stage{text-align:left;border:1px solid #d7e6f7;border-radius:12px;background:#f5f9ff;padding:14px 16px;margin-bottom:19px}
+.receipt-stage-label{font-size:13px;color:#536983;font-weight:700;margin-right:8px}
+.receipt-status{font-size:15px;font-weight:850;display:inline-block;padding:4px 10px;border-radius:99px}
+.receipt-status.receipt-waiting{background:#fff0c9;color:#765410}
+.receipt-status.receipt-done{background:#dbf6e9;color:#11683b}
+.receipt-status.receipt-attention{background:#ffe2df;color:#a52726}
+.receipt-progress{margin:8px 0 0;font-size:14px;line-height:1.65;color:#3c5269}
+.receipt-progress.receipt-attention{color:#9d2928;font-weight:700}
+.receipt-details{margin:0;text-align:left}
+.receipt-details>div{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:10px 2px;border-bottom:1px solid #edf0f5}
+.receipt-details dt{font-size:13px;color:#6b7b8d;flex:none}
+.receipt-details dd{margin:0;font-size:15px;font-weight:750;text-align:right;overflow-wrap:anywhere}
+.receipt-details .receipt-reason-row dd{white-space:pre-wrap;max-width:69%}
+.receipt-number{background:#f5f7fb;border-radius:12px;padding:13px 14px;text-align:left;margin:18px 0 12px}
+.receipt-number>span{display:block;color:#6a788c;font-size:12px;margin-bottom:8px}
+.receipt-number-line{display:flex;gap:9px;align-items:center}
+.receipt-number code{font-size:12px;font-weight:700;overflow-wrap:anywhere;word-break:break-all;flex:1;min-width:0}
+.receipt-number .secondary-btn{flex:none;min-width:65px;padding:9px 11px}
+.receipt-warning{background:#fff2ed;color:#9c342e;border:1px solid #ebc4b5;border-radius:9px;padding:10px;font-size:13px;line-height:1.6;text-align:left}
+.receipt-refresh-note{min-height:0;font-size:13px;color:#426080;text-align:left;line-height:1.6}
+.receipt-refresh-note:not(:empty){margin:10px 0}
+.receipt-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 0}
+.receipt-actions button{min-height:48px;width:100%;border-radius:11px;font-size:14px;font-weight:750}
+.receipt-actions .receipt-new-btn{grid-column:1/-1;background:#fff;border:1px solid #cad7ea;color:#315786}
+.receipt-footnote{font-size:12px;color:#718197;margin:15px 0 0;line-height:1.55}
+@media(max-width:460px){
+ .receipt-panel{padding:24px 16px}
+ .receipt-panel h2{font-size:24px}
+ .receipt-stage{padding:12px}
+ .receipt-number{padding:12px}
+ .receipt-actions{grid-template-columns:1fr}
+ .receipt-actions .receipt-new-btn{grid-column:auto}
+}
