@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="../style.css?v=1.1.21">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="../app.js?v=1.1.17" defer></script>
-  <script src="../supervisor-auth.js?v=1.1.21" defer></script>
+  <script src="../supervisor-auth.js?v=1.1.22" defer></script>
   <script src="../bridge-admin.js?v=1.1.20" defer></script>
 </head>
 <body>
@@ -78,9 +78,10 @@
             <label class="field"><span>新增主管帳號</span>
               <input id="supervisorAddName" autocomplete="off" maxlength="32" placeholder="英數字帳號" required>
             </label>
-            <label class="field"><span>初始密碼（至少 4 碼）</span>
+            <label class="field"><span>初始密碼（至少 4 碼，可用 1234）</span>
               <input id="supervisorAddPassword" type="password" autocomplete="new-password" minlength="4" required>
             </label>
+            <p class="helper small">刪除的主管帳號可以重新建立相同名稱。初始密碼 1234 只限首次登入，登入後必須設定新密碼。</p>
             <button type="submit" class="secondary-btn">新增主管</button>
           </form>
         </div>
@@ -240,7 +241,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班管理 · V1.1.21 <a class="footer-supervisor-link" id="supervisorPortal" href="../supervisor/">業務假日或臨時加班審核</a> <a class="footer-supervisor-link" href="../">業務假日或臨時加班登記</a></footer>
+  <footer class="footer">業務假日或臨時加班管理 · V1.1.22 <a class="footer-supervisor-link" id="supervisorPortal" href="../supervisor/">業務假日或臨時加班審核</a> <a class="footer-supervisor-link" href="../">業務假日或臨時加班登記</a></footer>
 </div>
 
 <dialog id="confirmDialog">

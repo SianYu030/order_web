@@ -93,9 +93,9 @@
         reset.type="button";
         reset.textContent="重設密碼";
         reset.addEventListener("click",async()=>{
-          const pw=prompt("設定 "+entry.username+" 的新暫時密碼（至少4碼），主管首次登入必須更改：");
+          const pw=prompt("設定 "+entry.username+" 的新暫時密碼（至少4碼，可用1234），首次登入必須更改：");
           if(pw===null)return;
-          if(pw.length<4){msg("新密碼至少4碼",true);return;}
+          if(pw.length<4||pw.length>72){msg("暫時密碼需為4至72碼，可用1234，首次登入須更改",true);return;}
           try{setBusy(true);await call("reset",{username:entry.username,password:pw});await loadUsers();msg("已重設 "+entry.username+" 密碼，原工作階段已失效。");}
           catch(e){msg(e.message,true);}finally{setBusy(false);}
         });
@@ -165,10 +165,16 @@
     const username=value("supervisorAddName").trim(),password=value("supervisorAddPassword");
     try{
       setBusy(true);
+      if(!/^[A-Za-z0-9_-]{2,32}$/.test(username)){
+        msg("帳號需為2至32碼英文字母、數字、底線或連字號",true);return;
+      }
+      if(password.length<4||password.length>72){
+        msg("初始密碼需為4至72碼，可暫用1234；首次登入必須改密碼",true);return;
+      }
       await call("add",{username,password});
       $("supervisorAddForm").reset();
       await loadUsers();
-      msg("已新增主管 "+username+"，首次登入需修改密碼。");
+      msg("已新增主管 "+username+"，原帳號刪除後可以重新申請相同帳號；初始密碼僅限首次登入，須立即修改。");
     }catch(e){msg(e.message,true);}finally{setBusy(false);}
   }
   async function init(){

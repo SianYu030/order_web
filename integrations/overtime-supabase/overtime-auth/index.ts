@@ -55,6 +55,7 @@ async function getSession(token:string) {
 }
 function cleanUser(u:any){return {username:u.username,role:u.role,must_change:u.must_change};}
 function validPass(p:any){return typeof p==="string"&&p.length>=4&&p.length<=72&&p!=="1234";}
+function validTemporaryPass(p:any){return typeof p==="string"&&p.length>=4&&p.length<=72;}
 async function safeJson(req:Request) {try{return await req.json()}catch{return null}}
 Deno.serve(async(req:Request)=>{
   const origin=req.headers.get("origin");
@@ -130,14 +131,25 @@ Deno.serve(async(req:Request)=>{
     }
     if(action==="add"){
       const username=String(body.username||"").trim(),password=String(body.password||"");
-      if(!/^[A-Za-z0-9_-]{2,32}$/.test(username)||!validPass(password))
-        return answer({ok:false,error:"帳號格式錯誤或密碼不足4碼"},400,origin);
+      if(!/^[A-Za-z0-9_-]{2,32}$/.test(username))
+        return answer({ok:false,error:"帳號需為2至32碼英文字母、數字、底線或連字號"},400,origin);
+      if(!validTemporaryPass(password))
+        return answer({ok:false,error:"初始密碼需為4至72碼，可暫用1234；首次登入後必須更換"},400,origin);
+      // Deletion releases the username; never keep a denylist of previously deleted accounts.
+      const {data:existing,error:lookupError}=await db.from("overtime_accounts")
+        .select("id").ilike("username",username).maybeSingle();
+      if(lookupError)throw lookupError;
+      if(existing)return answer({ok:false,error:"此帳號目前已存在；請使用重設密碼，或刪除後重新新增"},409,origin);
       const salt=bytesToB64(crypto.getRandomValues(new Uint8Array(16)));
       const hash=bytesToB64(await derive(password,salt));
       const {error}=await db.from("overtime_accounts").insert({username,role:"supervisor",salt_b64:salt,hash_b64:hash,iterations:ITERATIONS,must_change:true});
-      if(error)return answer({ok:false,error:"新增失敗，請檢查帳號是否重複"},400,origin);
+      if(error){
+        if(error.code==="23505")return answer({ok:false,error:"此帳號目前已存在；請使用重設密碼，或刪除後重新新增"},409,origin);
+        throw error;
+      }
+      // must_change=true is mandatory for both newly created and reset temporary passwords.
       await log(user.id,"add-user",username);
-      return answer({ok:true},200,origin);
+      return answer({ok:true,message:"已建立主管帳號，可使用初始密碼登入；首次登入後必須修改密碼。"},200,origin);
     }
     if(action==="delete"){
       // A verified admin session is already required above; only supervisor accounts may be removed.
@@ -171,7 +183,7 @@ Deno.serve(async(req:Request)=>{
         return answer({ok:true},200,origin);
       }
       const password=String(body.password||"");
-      if(!validPass(password))return answer({ok:false,error:"重設密碼需至少4碼"},400,origin);
+      if(!validTemporaryPass(password))return answer({ok:false,error:"暫時密碼需為4至72碼，可暫用1234；登入後必須更換"},400,origin);
       const salt=bytesToB64(crypto.getRandomValues(new Uint8Array(16)));
       const hash=bytesToB64(await derive(password,salt));
       const {error}=await db.from("overtime_accounts").update({

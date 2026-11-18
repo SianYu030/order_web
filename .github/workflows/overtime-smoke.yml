@@ -9,6 +9,7 @@ on:
       - 'scripts/overtime-smoke.mjs'
       - 'scripts/overtime-bridge-unit.mjs'
       - 'scripts/overtime-delete-contract.mjs'
+      - 'scripts/overtime-recreate-contract.mjs'
       - '.github/workflows/overtime-smoke.yml'
   workflow_dispatch:
   schedule:
@@ -25,11 +26,14 @@ jobs:
         run: |
           node --check overtime/overtime-client.js
           node --check overtime/bridge-admin.js
+          node --check overtime/supervisor-auth.js
           cp integrations/overtime-google/Code.gs /tmp/overtime-google-bridge.js
           node --check /tmp/overtime-google-bridge.js
       - name: Verify Google worker mapping and read-only safety checks
         run: node scripts/overtime-bridge-unit.mjs
       - name: Verify supervisor deletion safeguards (no account changes)
         run: node scripts/overtime-delete-contract.mjs
+      - name: Verify account recreation and temporary password rules
+        run: node scripts/overtime-recreate-contract.mjs
       - name: Verify public webpages, live Edge roster and access control (no real writes)
         run: node scripts/overtime-smoke.mjs
