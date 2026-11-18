@@ -105,25 +105,35 @@
     button.id='v4PrivateCheckButton';
     button.className='smallbtn';
     button.style.cssText='display:block;width:100%;min-height:48px';
-    button.textContent='檢查 Google 接收器連線';
+    button.textContent='重新檢查連線';
+    button.hidden=true;
     const status=document.createElement('div');
     status.id='v4PrivateCheckStatus';
     status.setAttribute('role','status');
     status.setAttribute('aria-live','polite');
     status.style.cssText='margin-top:6px;overflow-wrap:anywhere;font-size:13px';
-    status.textContent='尚未檢查。只有已取得 MR 專用 Google 帳號授權的使用者可能通過。';
-    button.addEventListener('click',async()=>{
+    status.textContent='🔄 正在自動確認 Google 接收器連線與授權…';
+    let checking=false;
+    async function checkConnection(){
+      if(checking)return;
+      checking=true;
       button.disabled=true;
-      status.textContent='正在確認 Google 接收器的身分授權與版本…';
+      button.hidden=true;
+      status.textContent='🔄 正在自動確認 Google 接收器連線與授權…';
       try{
         const result=await preflight();
-        status.textContent='✅ 私人接收器健康檢查通過（V'+result.version+'），但尚未證實網頁可 POST 上傳，也尚未開放員工使用。';
+        status.textContent='✅ 私人接收器健康檢查通過（V'+result.version+'）。網頁實際 POST 上傳尚未驗收，員工權限尚未開放。';
       }catch(err){
-        status.textContent='❌ 網站端尚未連上私人接收器：'+String(err?.message||err)+'。請勿在本頁測試正式送單。';
-      }finally{button.disabled=false}
-    });
-    panel.append(head,note,button,status);
+        status.textContent='❌ 接收器連線或授權失敗：'+String(err?.message||err)+'。本頁不會建立正式工單。';
+        button.hidden=false;
+      }finally{checking=false;button.disabled=false;}
+    }
+    button.addEventListener('click',checkConnection);
+    panel.append(head,note,status,button);
     anchor.insertAdjacentElement('beforebegin',panel);
+    // A single read-only check starts automatically when the test page opens.
+    // This never grants OAuth access and never submits an upload or work order.
+    void checkConnection();
   }
   installPrivateQaStatus();
   // This diagnostic link must NEVER post a live report or save/complete
