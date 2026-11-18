@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.7（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.7.1（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -570,4 +570,37 @@ function otReject_(ss,r){
  var after=otSourceReadApi_(src.row);
  if(after[15]!=="已駁回"||after[9]!=="不需同步")throw Error("駁回寫入讀回失敗。");
  return {row:src.row};
+}
+
+/**
+ * 讀取測試：只核對 11月份E4!CO20 的工時、註解、留言。
+ * 不寫入任何儲存格、不調整 Supabase 工單狀態、不執行主管核准。
+ * 用途：復原 BUS-20261118-E4-3045-B23FB6D7 前進行安全確認。
+ */
+function diagnoseBusinessOvertimeCO20(){
+ var ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss||ss.getId()!==OT_BRIDGE.SPREADSHEET_ID)
+  throw Error("請從正式 2026 加班試算表開啟此 Apps Script。");
+ var sheet=ss.getSheetByName("11月份E4");
+ if(!sheet||sheet.getSheetId()!==546352969)
+  throw Error("正式 11月份E4 分頁 ID 不符，停止診斷。");
+ var c=sheet.getRange("CO20"),value=c.getValue();
+ var result={ok:false,read_only:true,request_no:"BUS-20261118-E4-3045-B23FB6D7",
+  target:"11月份E4!CO20",value_empty:value===""||value===null,
+  formula_empty:c.getFormula()==="",note_empty:c.getNote()==="",
+  comments_verified:false,comment_count:null};
+ try{
+  var comments=otComments_({sheetId:sheet.getSheetId(),name:sheet.getName(),
+   row:20,col:93,a1:"CO20"});
+  result.comments_verified=true;
+  result.comment_count=comments.length;
+  result.ok=true;
+  result.safe_to_reconcile=result.value_empty&&result.formula_empty&&
+   result.note_empty&&comments.length===0;
+ }catch(e){
+  result.error=String(e);
+  result.safe_to_reconcile=false;
+ }
+ Logger.log(JSON.stringify(result));
+ return result;
 }
