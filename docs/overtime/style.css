@@ -309,3 +309,6 @@ html[data-portal="supervisor"] .supervisor-compact #supervisorChangeForm:not(.hi
  .supervisor-user-row .supervisor-user-actions{width:100%;justify-content:flex-start}
  .supervisor-user-row .supervisor-user-actions button{flex:1 1 auto;min-width:68px}
 }
+
+/* V1.1.28：申請送出成功時不為空白狀態通知保留高度。*/
+.receipt-refresh-note:empty{display:none}
