@@ -194,6 +194,8 @@
     }
   }).catch(err=>{
     receiverStatus.state='unavailable';
+    if(!qaMode && window.repairVideoTestBridge?.showUnavailable)
+      window.repairVideoTestBridge.showUnavailable();
     if(invite)pairingToast('手機配對未完成：'+String(err?.message||err)+
       '。請重新掃描有效的配對 QR Code。',false);
   }).finally(()=>{
