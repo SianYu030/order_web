@@ -20,5 +20,5 @@ assert(js.includes('user.display_name?" · "+user.display_name:""'));
 assert(admin.includes('id="supervisorAddDisplayName"'));
 assert(admin.includes('maxlength="40" placeholder="輸入主管真實姓名" required'));
 assert(migration.includes('overtime_accounts_display_name_length'));
-assert(admin.includes('supervisor-auth.js?v=1.1.32'));
+assert(/supervisor-auth\.js\?v=\d+\.\d+\.\d+/.test(admin),"admin must version its supervisor auth client");
 console.log("PASS supervisor display name add/edit permission, legacy empty names, and audit contract");

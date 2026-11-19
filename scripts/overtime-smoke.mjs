@@ -1,5 +1,9 @@
 // Read-only GitHub Pages + Supabase Edge API smoke checks. No real overtime submissions.
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const EMPLOYEE_VERSION=readFileSync("overtime/index.html","utf8").match(/app\.js\?v=(\d+\.\d+\.\d+)/)?.[1];
+const ADMIN_AUTH_VERSION=readFileSync("overtime/admin/index.html","utf8").match(/supervisor-auth\.js\?v=(\d+\.\d+\.\d+)/)?.[1];
+assert(EMPLOYEE_VERSION&&ADMIN_AUTH_VERSION,"source asset versions must be declared");
 const BASE="https://sianyu030.github.io/order_web/overtime/";
 const EDGE="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-requests";
 async function fetchText(url){
@@ -18,8 +22,8 @@ const expected=[
 for(const [slug,title] of expected){
  let pass=false;
  for(let i=0;i<12;i++){
-  const html=await fetchText(BASE+slug+"?smoke=v1.1.25&attempt="+i);
-  if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v="+(slug===""?"1.1.25":slug==="supervisor/"?"1.1.26":"1.1.17"))){
+  const html=await fetchText(BASE+slug+"?smoke=v"+EMPLOYEE_VERSION+"&attempt="+i);
+  if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v="+(slug===""?EMPLOYEE_VERSION:slug==="supervisor/"?"1.1.26":"1.1.17"))){
     pass=true;break;
   }
   if(i<11)await new Promise(resolve=>setTimeout(resolve,5000));
@@ -29,9 +33,9 @@ for(const [slug,title] of expected){
 }
 let completePage="",completeApp="",receiptPublished=false;
 for(let i=0;i<16;i++){
- completePage=await fetchText(BASE+"?receipt-ui=1.1.25&attempt="+i);
- if(completePage.includes('id="view-receipt"')&&completePage.includes('id="receiptRefresh"')&&completePage.includes('app.js?v=1.1.25')){
-  completeApp=await fetchText(BASE+"app.js?v=1.1.25&attempt="+i);
+ completePage=await fetchText(BASE+"?receipt-ui="+EMPLOYEE_VERSION+"&attempt="+i);
+ if(completePage.includes('id="view-receipt"')&&completePage.includes('id="receiptRefresh"')&&completePage.includes('app.js?v='+EMPLOYEE_VERSION)){
+  completeApp=await fetchText(BASE+"app.js?v="+EMPLOYEE_VERSION+"&attempt="+i);
   if(completeApp.includes('showReceiptPage(result.record,entry,saved,')&&completeApp.includes('window.OvertimeApi.receipt(latestReceipt.id,latestReceipt.token)')){
    receiptPublished=true;break;
   }
@@ -80,9 +84,9 @@ console.log("PASS aligned full-width signed-in supervisor bar published without 
 let supervisorNamesPublished=false;
 for(let i=0;i<16;i++){
  const adminNamePage=await fetchText(BASE+"admin/?supervisor-name=v1.1.32&attempt="+i);
- const authNameScript=await fetchText(BASE+"supervisor-auth.js?v=1.1.32&attempt="+i);
+ const authNameScript=await fetchText(BASE+"supervisor-auth.js?v="+ADMIN_AUTH_VERSION+"&attempt="+i);
  if(adminNamePage.includes('id="supervisorAddDisplayName"')&&
-    adminNamePage.includes('supervisor-auth.js?v=1.1.32')&&
+    adminNamePage.includes('supervisor-auth.js?v='+ADMIN_AUTH_VERSION)&&
     authNameScript.includes('call("rename",{username:entry.username,display_name:name})')){
    supervisorNamesPublished=true;break;
  }
@@ -153,8 +157,8 @@ console.log("PASS unauthenticated supervisor rename blocked");
 let authClient="",adminPage="",accountManagerPublished=false;
 for(let i=0;i<18;i++){
  const liveAdmin=await fetchText(BASE+"admin/?accounts=v1.1.32&attempt="+i);
- const liveAuth=await fetchText(BASE+"supervisor-auth.js?v=1.1.32&attempt="+i);
- if(liveAdmin.includes('supervisor-auth.js?v=1.1.32')&&liveAdmin.includes("只有管理員可刪除主管帳號")&&
+ const liveAuth=await fetchText(BASE+"supervisor-auth.js?v="+ADMIN_AUTH_VERSION+"&attempt="+i);
+ if(liveAdmin.includes('supervisor-auth.js?v='+ADMIN_AUTH_VERSION)&&liveAdmin.includes("只有管理員可刪除主管帳號")&&
     liveAdmin.includes('id="supervisorAddDisplayName"')&&liveAuth.includes("delete-account-btn")&&
     liveAuth.includes('call("rename",{username:entry.username,display_name:name})')){
     adminPage=liveAdmin;authClient=liveAuth;accountManagerPublished=true;break;
