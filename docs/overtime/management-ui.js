@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班｜員工自助取消、主管已核准取消、管理員人員名冊 V1.2.1 */
+/* 業務假日或臨時加班｜員工自助取消、主管已核准取消、管理員人員名冊 V1.2.2 */
 (function(){
 "use strict";
 const ROOT="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-management";
@@ -38,7 +38,7 @@ function styleForm(form){
 function renderRoster(){
  const target=$("view-settings");if(!target)return;
  const box=block("員工名冊管理",target);
- const desc=hint(box,"新增只填工號、姓名與分類；資料先進入待驗證，Google 主檔和當月工時表都吻合才會啟用。停用不會刪除歷史工單。");
+ const desc=hint(box,"新增只填工號、姓名與分類；Google 主檔和當月工時表驗證通過才會啟用。停用可保留在名冊；刪除會從名冊隱藏，但所有歷史加班與核准紀錄保留。");
  const form=node("form");styleForm(form);const id=textField("工號","text",15),name=textField("姓名","text",40),teamWrap=node("label",undefined,"field"),teamLabel=node("span","分類");
  const team=node("select");for(const t of ["業務","業助","審圖"]){const o=node("option",t);o.value=t;team.append(o);}teamWrap.append(teamLabel,team);
  const submit=btn("新增人員",()=>{},"primary-btn");submit.type="submit";form.append(id.wrap,name.wrap,teamWrap,submit);box.append(form);
@@ -79,6 +79,19 @@ function renderRoster(){
      });
      row.append(re);
     }
+    const remove=btn("刪除",async()=>{
+     const identity=p.employee_id+" · "+p.employee_name;
+     if(!confirm("確定從員工名冊刪除「"+identity+"」？\n這會立即停用該員工，並從管理員清單移除。\n過去的加班、核准及 Google 正式工時紀錄均會保留。"))return;
+     if(!confirm("最後確認：刪除「"+identity+"」的名冊資料？\n這個動作不會刪除正式人員主檔或過去工時。"))return;
+     remove.disabled=true;
+     try{
+      const r=await api("roster_delete",{employee_id:p.employee_id,employee_name:p.employee_name,team:p.team});
+      await loadForce();
+      state.textContent=r.message;
+     }catch(e){state.textContent="刪除失敗："+e.message;remove.disabled=false;}
+    },"secondary-btn");
+    remove.style.borderColor="#f4b4b4";remove.style.color="#b42323";remove.style.background="#fff8f8";
+    row.append(remove);
     list.append(row);
    }
   }catch(e){state.textContent="名冊讀取失敗："+e.message;}
