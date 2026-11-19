@@ -1,5 +1,5 @@
-/* V4.0 Direct media upload for the ORIGINAL repair center.
- * Only active in explicit testing mode (?drive_direct_test=1&receiver_exec=...).
+/* V6 public attachment-only upload for the ORIGINAL repair center.
+ * Normal repair page accepts any phone without QR or Google login.
  * No OAuth dialog, no Google iframe embedded for HtmlService; POST via native
  * cross-site form, confirmations via readonly JSONP receipts.
  * The Apps Script project MUST BE ISOLATED from all deletion/management code.
@@ -29,11 +29,23 @@
     if(parsed && /^[a-f0-9]{32}$/.test(parsed.deviceId)
       && /^[a-f0-9]{64}$/.test(parsed.deviceSecret))credentials=parsed;
   }catch(_){}
-  if(!qaMode&&!credentials&&!invite)return;
+  // On the official site every mobile browser uses an anonymous, session-bound
+  // attachment channel. Old one-time device pairing is preserved in QA mode.
+  const publicGuest=!qaMode;
+  let guestSecret=null;
+  if(publicGuest){
+    try{guestSecret=localStorage.getItem('mrGuestUploadV6')}catch(_){}
+    if(!/^[a-f0-9]{64}$/.test(guestSecret||'')){
+      const bytes=new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      guestSecret=Array.from(bytes,x=>x.toString(16).padStart(2,'0')).join('');
+      try{localStorage.setItem('mrGuestUploadV6',guestSecret)}catch(_){}
+    }
+  }
   // Only accept the audited company's deployment ID. Do NOT trust an URL
   // parameter from a forwarded link, or files could be sent to another script.
   // The fixed /exec is filled in only after deployment and IT approval.
-  const endpoint='https://script.google.com/macros/s/AKfycbxlu57dWVzIstwdPrj1srXXzgB3v55DL9N7SaQRoT5VtGGmWMenN6hQwSXjzPQ0Ove7/exec';
+  const endpoint='https://script.google.com/macros/s/AKfycbxzVVN6BetMJ_d3o025IUhqJKSCkZF9nV2eyCczCwzGZyBQPtSj-DKM0HW05MQ95jCG/exec';
   const VALID=/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint);
   if(!VALID) {
     window.repairDirectV4={configured:false,reason:'V4 獨立附件接收器尚未部署；正式報修流程仍維持原狀'};
@@ -50,8 +62,8 @@
     },true);
     return;
   }
-  const MB=1048576, CHUNK=2*MB, MAX_PHOTO=100*MB, MAX_VIDEO=500*MB;
-  const VIDEO=/\.(mp4|mov|m4v|webm)$/i, PHOTO=/\.(jpg|jpeg|png|webp|heic|heif)$/i;
+  const MB=1048576, CHUNK=2*MB, MAX_PHOTO=(publicGuest?15:100)*MB, MAX_VIDEO=(publicGuest?100:500)*MB;
+  const VIDEO=/\.(mp4|mov|m4v|3gp|webm|mkv)$/i, PHOTO=/\.(jpg|jpeg|png|webp|heic|heif)$/i;
   const files={report:null,repair:null},preview={report:null,repair:null};
   const $=id=>document.getElementById(id);
   let uploading=false,preflightPromise=null;
@@ -103,9 +115,17 @@
     if(!VALID)throw new Error('V4 免登入附件接收器尚未設定，不能宣稱附件已備份');
     if(preflightPromise)return preflightPromise;
     preflightPromise=jsonp('health').then(r=>{
-      if(!r||r.ok!==true||r.version!=='5.0'||r.testOnly!==false||r.chunkBytes!==CHUNK)
+      if(!r||r.ok!==true||r.version!=='6.0'||r.testOnly!==false||r.chunkBytes!==CHUNK)
         throw new Error('MR 接收器版本不符或 Google Drive 尚無存取權');
-      if(!credentials)throw new Error('此裝置尚未取得上傳授權');
+      if(publicGuest){
+        if(r.guestAllowed!==true)throw new Error('公開附件上傳目前暫停');
+        return command('auth',{},60000).then(authState=>{
+          if(!authState?.guest||!authState.productionAllowed||authState.receiverVersion!=='6.0')
+            throw new Error('公開附件上傳通道沒有取得成功回執');
+          return {...r,...authState};
+        });
+      }
+      if(!credentials)throw new Error('此裝置尚未取得測試授權');
       return command('auth',{},60000).then(authState=>{
         if(!authState||!authState.authorized||authState.receiverVersion!=='5.0')
           throw new Error('無法確認裝置上傳授權');
@@ -189,10 +209,9 @@
     event.stopImmediatePropagation();
     alert('目前是 MR 接收器連線測試，不會建立或修改正式工單。真正報修請使用未帶測試參數的正式網址。');
   },true);
-  // Authorized devices never silently fall back to the legacy photo relay
-  // while receiver authorization is still loading or temporarily unavailable.
-  // Normal reports without media remain usable.
-  if(!qaMode && credentials){
+  // Every phone can use the same official URL. Preserve submit/cancel flow
+  // while the public media-only receiver performs its silent health check.
+  if(!qaMode){
     let replayingAuthorizedClick=false;
     document.addEventListener('click',event=>{
       if(replayingAuthorizedClick)return;
@@ -211,7 +230,7 @@
       button.disabled=true;
       button.textContent='確認附件上傳授權中…';
       void preflight().then(result=>{
-        if(!result.productionAllowed)throw new Error('裝置尚未獲得正式附件上傳授權');
+        if(!result.productionAllowed)throw new Error('公開附件接收器尚未就緒');
         // This is set again here to eliminate a race with the initial
         // preflight's asynchronous UI initialization.
         window.repairDrive={enabled:true,preflight,uploadFiles,videoFiles,clearVideo};
@@ -224,7 +243,7 @@
       }).catch(err=>{
         button.disabled=false;
         button.textContent=previousLabel;
-        alert('附件上傳授權無法確認，尚未送出工單：'+String(err?.message||err)+
+        alert('附件接收器目前無法連線，尚未送出工單：'+String(err?.message||err)+
           '。請確認網路，或移除附件後只送出文字報修。');
       });
     },true);
@@ -241,7 +260,9 @@
     const form=document.createElement('form');
     form.action=endpoint;form.method='POST';form.target=sink.name;form.enctype='application/x-www-form-urlencoded';
     form.style.display='none';
-    const fieldsToSend=Object.assign({rid,action},credentials||{},fields||{});
+    const guestActions={auth:'guestAuth',start:'guestStart',chunk:'guestChunk',query:'guestQuery'};
+    const actionToSend=publicGuest?(guestActions[action]||action):action;
+    const fieldsToSend=Object.assign({rid,action:actionToSend},publicGuest?{guestSecret}:credentials||{},fields||{});
     for(const [key,value] of Object.entries(fieldsToSend)){
       const input=document.createElement('input');
       input.type='hidden';input.name=key;input.value=String(value);
@@ -335,7 +356,7 @@
     try{
       const access=await preflight();
       if(!qaMode&&!access.productionAllowed)
-        throw new Error('此裝置沒有正式工單的上傳權限');
+        throw new Error('公開附件接收器沒有確認上傳權限');
       const list=[...(selected||[])],results=[];
       for(let i=0;i<list.length;i++){
         const f=list[i],kind=suffix(f,originalKind);
@@ -370,7 +391,7 @@
     if(!pilot||!input)continue;
     pilot.hidden=false;
     pilot.querySelector('.video-picker').firstChild.textContent='🎥 新增影片';
-    pilot.querySelector('.video-hint').textContent='影片會直接上傳到公司 Google Drive，NAS 另由 PhotoAgent 核對。';
+    pilot.querySelector('.video-hint').textContent='影片會上傳到公司 Google Drive，由 F 槽自動歸檔。';
     input.setAttribute('accept','video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm');
     input.addEventListener('change',()=>{
       const file=input.files&&input.files[0];
@@ -394,5 +415,5 @@
     const el=$(id);if(el)el.addEventListener('click',()=>clearVideo('report'));
   });
   // No visible connectivity panel or company Google password prompt.
-  // Without a server-approved device, the existing photo pathway remains active.
+  // On the normal website, this runs automatically for any phone; no QR or login.
 })();
