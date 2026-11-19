@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.41 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.43 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -361,7 +361,7 @@
   }
   function switchView(name) {
     // 三個網址具有獨立的入口與頁面；真實寫入仍須經後端及 Google 權限驗證。
-    if(PORTAL==="employee"&&!["entry","receipt"].includes(name))return;
+    if(PORTAL==="employee"&&!["entry","history","receipt"].includes(name))return;
     if(PORTAL==="supervisor"&&!["batch","approval"].includes(name))return;
     if(PORTAL==="admin"&&name!=="settings")return;
     document.body.classList.toggle("employee-receipt",PORTAL==="employee"&&name==="receipt");
@@ -374,6 +374,12 @@
         },60000);
       }
     }
+    document.querySelectorAll(".employee-tool").forEach(function(btn){
+      const selected=btn.dataset.view===(name==="receipt"?"entry":name);
+      btn.classList.toggle("is-active",selected);
+      btn.setAttribute("aria-pressed",String(selected));
+    });
+    if($("view-history"))$("view-history").setAttribute("aria-hidden",name==="history"?"false":"true");
     document.querySelectorAll(".tab").forEach(function (btn) {
       var yes = btn.dataset.view === name;
       btn.classList.toggle("is-active", yes);
@@ -1025,6 +1031,30 @@
       var detail = document.createElement("small");
       detail.textContent = (entry.status ? "【"+friendlyStatus(entry)+"】 " : "")+(entry.reason||"未填原因");
       left.append(heading, detail);
+      if(PORTAL==="employee"){
+        const status=document.createElement("span");
+        status.className="history-status";
+        status.textContent=friendlyStatus(entry)||"處理中";
+        left.append(status);
+        card.append(left);
+        if(entry.remoteId&&canEmployeeCancel(entry.status)){
+          const tokenRecord=window.OvertimeApi.localReceipts().find(x=>x.id===entry.remoteId);
+          if(tokenRecord&&tokenRecord.receipt_token){
+            const cancelBtn=document.createElement("button");
+            cancelBtn.type="button";
+            cancelBtn.textContent="取消申請";
+            cancelBtn.className="history-cancel";
+            cancelBtn.addEventListener("click",async function(){
+              cancelBtn.disabled=true;
+              try{await cancelOwnRequest(entry.remoteId,tokenRecord.receipt_token,entry.date,entry.employee_name||"");}
+              finally{cancelBtn.disabled=false;}
+            });
+            card.append(cancelBtn);
+          }
+        }
+        list.appendChild(card);
+        return;
+      }
       var btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = entry.status==="待同步"?"編輯":
@@ -1050,25 +1080,73 @@
       list.appendChild(card);
     });
   }
+  // The server-generated request_no embeds the real employee ID; public_key is a UUID.
+  // Only compare the ID AFTER the server has verified this browser's receipt token.
+  function employeeCodeFromRequestNo(requestNo){
+    const match=/^BUS-[0-9]{8}-(?:E4|E5)-(.+)-[0-9A-F]{8}$/i.exec(String(requestNo||""));
+    return match?match[1]:"";
+  }
+  var historyLookupCounter=0;
   async function refreshHistory() {
-    var person = chosenPerson(), p = dateParts();
-    if (!person) {
-      $("historyList").textContent = "請先回「登記」選擇員工。";
+    if(PORTAL==="employee"){
+      const sequence=++historyLookupCounter;
+      const code=String($("ownEmployeeId").value||"").trim();
+      const list=$("historyList"),summary=$("historySummary");
+      list.replaceChildren();
+      if(!code){
+        summary.textContent="請先輸入自己的工號查詢。";
+        return;
+      }
+      if(!window.OvertimeApi){
+        summary.textContent="網站查詢元件未載入，請重新整理頁面。";
+        return;
+      }
+      // Do not compare public_key to employee ID: public_key is a UUID, not a work number.
+      const saved=window.OvertimeApi.localReceipts().filter(x=>x.id&&x.receipt_token);
+      if(!saved.length){
+        summary.textContent="這台瀏覽器沒有保存加班申請憑證。這不代表公司沒有登記紀錄；請使用原申請裝置查詢。";
+        return;
+      }
+      const searchBtn=$("ownHistorySearch"),refreshBtn=$("refreshHistory");
+      searchBtn.disabled=true;refreshBtn.disabled=true;
+      summary.textContent="正在向公司後端核對本機加班申請…";
+      try{
+        const verified=[];
+        let failed=0;
+        // Batch reads prevent a busy shared device from sending 120 concurrent requests.
+        for(let offset=0;offset<saved.length;offset+=8){
+          const group=saved.slice(offset,offset+8);
+          const results=await Promise.allSettled(group.map(x=>
+            window.OvertimeApi.receipt(x.id,x.receipt_token)));
+          if(sequence!==historyLookupCounter||code!==String($("ownEmployeeId").value||"").trim())return;
+          results.forEach((result,i)=>{
+            if(result.status!=="fulfilled"||!result.value.record||
+               result.value.record.id!==group[i].id){failed++;return;}
+            const record=result.value.record;
+            const realId=employeeCodeFromRequestNo(record.request_no);
+            if(!realId||realId.toUpperCase()!==code.toUpperCase())return;
+            verified.push({
+              date:record.date,kind:"加班",hours:record.hours,reason:record.reason,
+              status:record.status,manager:record.manager,employee_name:record.employee_name,
+              remoteId:record.id
+            });
+          });
+        }
+        verified.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+        renderHistoryItems(verified,false);
+        summary.textContent=verified.length?"查詢完成，共 "+verified.length+" 筆加班申請。":
+          "這台瀏覽器沒有此工號可驗證的加班紀錄，請確認工號及原申請裝置。";
+        if(failed)summary.textContent+=" 部分本機憑證未能驗證，請稍後重新讀取。";
+      }catch(e){
+        if(sequence===historyLookupCounter)summary.textContent="查詢失敗："+e.message+"。請確認網路後重新讀取。";
+      }finally{
+        searchBtn.disabled=false;refreshBtn.disabled=false;
+      }
       return;
     }
-    if(PORTAL==="employee"){
-      $("historyList").textContent="正在核對後端收件狀態…";
-      try{
-        const month=String(p.y)+"-"+pad(p.m);
-        const receipts=window.OvertimeApi.find(person.id,backendDepartment($("department").value),month);
-        const verified=await Promise.all(receipts.map(x=>window.OvertimeApi.receipt(x.id,x.receipt_token)));
-        const rows=verified.map(x=>x.record).map(r=>({
-          date:r.date,id:person.id,department:r.department,kind:"加班",
-          hours:r.hours,reason:r.reason,status:r.status,manager:r.manager,employee_name:r.employee_name,remoteId:r.id
-        })).sort((a,b)=>b.date.localeCompare(a.date));
-        renderHistoryItems(rows,false);
-        if(!rows.length)$("historyList").textContent="這台裝置尚未保有此員工當月的後端收件憑證。";
-      }catch(e){$("historyList").textContent="查詢後端失敗："+e.message;}
+    var person = chosenPerson(), p = dateParts();
+    if(!person){
+      $("historyList").textContent="請先回「登記」選擇員工。";
       return;
     }
     if (!hasGoogle()) {
@@ -1232,7 +1310,18 @@
         }
       });
     }
-    $("refreshHistory").addEventListener("click", refreshHistory);
+    if(PORTAL==="employee"){
+      $("ownHistoryForm").addEventListener("submit",function(e){
+        e.preventDefault();
+        void refreshHistory();
+      });
+      $("ownEmployeeId").addEventListener("input",function(){
+        ++historyLookupCounter;
+        $("historyList").replaceChildren();
+        $("historySummary").textContent="請按「查詢紀錄」核對這個工號的申請。";
+      });
+    }
+    $("refreshHistory").addEventListener("click",refreshHistory);
     document.addEventListener("supervisor-auth-change",function(){
       if(approvalId)loadApprovalRequest();
       else if(!$("view-batch").classList.contains("hidden"))refreshBatchQueue();
