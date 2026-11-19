@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.9.2（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.9.3（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -301,18 +301,14 @@ function otVerifyPerson_(ss,r){
  var rows=master.getRange("A4:F503").getValues();
  var found=rows.filter(function(x){return String(x[0])===String(r.employee_id)&&String(x[1])===r.employee_name;});
  if(found.length!==1||String(found[0][5])!=="在職")throw Error("人員主檔無唯一在職員工。");
+ // 在職員工須同時存在 Supabase 授權名冊、Google 正式主檔與月份工時表。
+ // 此處不再硬編碼個別姓名／工號，新增相同職務的人員不必修改同步器。
  if(r.department==="E4"){
-  if(r.employee_name!=="潘詠升"||String(found[0][3])!=="E4"||
-     String(found[0][4])!=="E4櫃體股")throw Error("E4 員工主檔不符。");
- }else{
-  // E5 沿用原月份表；僅允許在職業務及這兩位已核對的審圖人員。
-  var isDrawingReviewer=(String(r.employee_id)==="2122"&&r.employee_name==="吳嘉偉")||
-   (String(r.employee_id)==="3283"&&r.employee_name==="蔡雲龍");
-  var validE5=String(found[0][3])==="內勤"&&
-   (String(found[0][4])==="業務"||
-    (isDrawingReviewer&&String(found[0][4])==="審圖"));
-  if(!validE5)throw Error("員工非 E5 業務或已授權的審圖人員。");
- }
+  if(String(found[0][3])!=="E4"||String(found[0][4])!=="E4櫃體股")
+   throw Error("E4 人員單位與主檔不符。");
+ }else if(String(found[0][3])!=="內勤"||
+    !["業務","審圖"].includes(String(found[0][4])))
+  throw Error("E5 人員非已開放的業務／審圖職務。");
 }
 function otTarget_(ss,r){
  otVerifyPerson_(ss,r);
