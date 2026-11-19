@@ -12,6 +12,7 @@
   // Consume a one-time, owner-issued pairing link from the URL fragment.
   // The secret never appears in an HTTP query parameter or public source.
   const hash=location.hash||'';
+  const invite=/^#mr-invite=([a-f0-9]{32})\.([a-f0-9]{64})$/i.exec(hash);
   const pair=/^#mr-v5=([a-f0-9]{32})\.([a-f0-9]{64})$/i.exec(hash);
   if(pair){
     try{
@@ -28,7 +29,7 @@
     if(parsed && /^[a-f0-9]{32}$/.test(parsed.deviceId)
       && /^[a-f0-9]{64}$/.test(parsed.deviceSecret))credentials=parsed;
   }catch(_){}
-  if(!qaMode&&!credentials)return;
+  if(!qaMode&&!credentials&&!invite)return;
   // Only accept the audited company's deployment ID. Do NOT trust an URL
   // parameter from a forwarded link, or files could be sent to another script.
   // The fixed /exec is filled in only after deployment and IT approval.
@@ -117,15 +118,52 @@
     }).finally(()=>{preflightPromise=null});
     return preflightPromise;
   }
-  // Test mode only: silently perform one read-only private health check.
-  // Never show the receiver, connection button, or internal Google account to staff.
-  // A successful health check does NOT confer upload permission.
+  async function claimOneTimeInvitation(){
+    if(!invite)return null;
+    const bytes=new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const secret=Array.from(bytes,x=>x.toString(16).padStart(2,'0')).join('');
+    const idBytes=new Uint8Array(16);
+    crypto.getRandomValues(idBytes);
+    const deviceId=Array.from(idBytes,x=>x.toString(16).padStart(2,'0')).join('');
+    const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(secret));
+    const deviceHash=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
+    const result=await command('claim',{
+      inviteId:invite[1].toLowerCase(),
+      inviteCode:invite[2].toLowerCase(),
+      newDeviceId:deviceId,
+      newDeviceHash:deviceHash
+    },65000);
+    if(!result?.paired||result.deviceId!==deviceId)
+      throw new Error('一次性手機配對沒有取得成功回執');
+    credentials={deviceId,deviceSecret:secret};
+    localStorage.setItem(AUTH_KEY,JSON.stringify(credentials));
+    history.replaceState(null,'',location.pathname+location.search);
+    return result;
+  }
+  function pairingToast(message,success){
+    if(!invite)return;
+    const el=document.createElement('div');
+    el.setAttribute('role','status');
+    el.style.cssText='position:fixed;z-index:9999;top:16px;left:16px;right:16px;max-width:520px;margin:auto;'+
+      'padding:14px 18px;background:#f8fafc;color:#123b57;border:1px solid #a5c9df;'+
+      'border-radius:12px;box-shadow:0 8px 24px #0002;font-size:16px;line-height:1.5';
+    el.textContent=(success?'✅ ':'⚠️ ')+message;
+    document.body.appendChild(el);
+    if(success)setTimeout(()=>el.remove(),8000);
+  }
+  // A receiver connection is checked in the background. Pairing displays a
+  // brief result once; normal repair pages never show test controls.
   const receiverStatus={
     state:'checking',checkedAt:null,version:null
   };
   window.repairDirectV4=receiverStatus;
-  void preflight().then(result=>{
+  void (async()=>{
+    if(invite)await claimOneTimeInvitation();
+    return await preflight();
+  })().then(result=>{
     receiverStatus.state='healthy';
+    if(invite)pairingToast('這台裝置已授權，現在可以在原網站上傳報修照片與影片。',true);
     receiverStatus.version=result.version;
     // Only the server can enable real uploads. QA authorization never enables
     // uploads in the formal, unflagged repair website.
@@ -134,8 +172,10 @@
       if(!qaMode && window.repairVideoTestBridge?.showAuthorized)
         window.repairVideoTestBridge.showAuthorized();
     }
-  }).catch(()=>{
+  }).catch(err=>{
     receiverStatus.state='unavailable';
+    if(invite)pairingToast('手機配對未完成：'+String(err?.message||err)+
+      '。請重新掃描有效的配對 QR Code。',false);
   }).finally(()=>{
     receiverStatus.checkedAt=Date.now();
   });
