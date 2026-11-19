@@ -343,3 +343,30 @@ html[data-portal="supervisor"] .supervisor-compact #supervisorChangeForm:not(.hi
 .history-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
 .history-card .history-cancel{border-color:#e3b3b3;color:#9b3838;background:#fff}
 @media(max-width:480px){.history-card{align-items:flex-start}.history-actions{flex-direction:column;align-items:stretch}.history-actions button{font-size:13px}}
+
+
+/* V1.1.42: independent employee requests page, mobile-first navigation. */
+.employee-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:3px 0 20px}
+.employee-tool{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:67px;padding:12px 8px;background:#fff;color:#284567;border:1px solid #cfdceb;border-radius:13px;text-align:center}
+.employee-tool span{font-size:15px;font-weight:850}
+.employee-tool small{font-size:12px;font-weight:500;color:#667b94}
+.employee-tool.is-active{background:#eef4ff;border-color:#245dc8;box-shadow:inset 0 0 0 1px #245dc8}
+.employee-tool:focus-visible{outline:3px solid #8aacff;outline-offset:2px}
+.own-lookup-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+.own-lookup-form .field{margin:0;min-width:0}
+.own-lookup-form .primary-btn{width:auto;min-width:113px;padding:10px 14px;min-height:49px}
+.history-refresh{margin-top:12px}
+.history-security-note{margin-top:16px}
+.history-status{display:inline-block;margin-top:7px;color:#345a88;background:#eaf1fa;border-radius:7px;padding:4px 8px;font-size:12px;font-weight:750}
+@media(max-width:470px){
+  .employee-tools{gap:8px}
+  .employee-tool{padding:10px 5px;min-height:66px}
+  .employee-tool span{font-size:14px}
+  .employee-tool small{font-size:11px}
+  .own-lookup-form{grid-template-columns:1fr}
+  .own-lookup-form .primary-btn{width:100%}
+  .history-card{align-items:flex-start;flex-wrap:wrap}
+}
+
+/* Keep successful submission receipt uncluttered. */
+body.employee-receipt .employee-tools{display:none}
