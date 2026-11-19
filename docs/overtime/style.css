@@ -33,13 +33,14 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #245dc81a}
 .date-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.date-grid .field{margin-bottom:3px}
 .date-legacy{display:none!important}
-.date-picker-layout{display:block;width:100%;max-width:380px;min-width:0}
-.date-picker-field{display:flex;flex-direction:column;gap:6px;margin:0}
-.date-picker-field input[type=date]{display:block;box-sizing:border-box;width:100%;max-width:380px;height:44px;min-height:44px;min-width:0;padding:8px 12px;border:1px solid #cad6e4;border-radius:9px;font-size:16px;font-weight:600;line-height:24px;text-align:left;color:#18395c;background:#fff;cursor:pointer;color-scheme:light;-webkit-appearance:auto;appearance:auto}
+/* 單行日期選擇框：手機和電腦都限制實際框格寬度，避免整排巨大白框。 */
+.date-picker-layout{display:block;width:min(100%,248px);max-width:248px;min-width:0}
+.date-picker-field{display:flex;flex-direction:column;gap:6px;margin:0;max-width:248px}
+.date-picker-field input[type=date]{display:block;box-sizing:border-box;width:100%;max-width:248px;height:42px;min-height:42px;max-height:42px;min-width:0;margin:0;padding:5px 10px;border:1px solid #cad6e4;border-radius:9px;font-size:16px;font-weight:600;line-height:normal;text-align:left;color:#18395c;background:#fff;cursor:pointer;color-scheme:light;-webkit-appearance:auto;appearance:auto}
 .date-picker-field input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1em}
 .date-picker-field input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.8}
 .date-weekday{margin-top:7px}
-@media(max-width:480px){.date-picker-layout{width:100%;max-width:100%}.date-picker-field input[type=date]{width:100%;max-width:100%;height:44px;min-height:44px;font-size:16px}}
+@media(max-width:480px){.date-picker-layout,.date-picker-field{width:min(100%,248px);max-width:248px}.date-picker-field input[type=date]{width:100%;max-width:248px;height:42px;min-height:42px;max-height:42px;font-size:16px}}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .helper{color:var(--muted);font-weight:450;line-height:1.6;font-size:13px;margin:8px 0 0}
 .helper.small{font-size:12px}
