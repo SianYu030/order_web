@@ -224,7 +224,7 @@
   function belongsToDept(person, dept) {
     if (dept === "E5") return person.unit === "內勤" && person.detail === "業務";
     if (dept === "REVIEW") return person.unit === "內勤" && person.detail === "審圖";
-    if (dept === "E4") return person.unit === "E4" && person.detail === "E4櫃體股" && person.name === "潘詠升";
+    if (dept === "E4") return person.unit === "E4" && person.detail === "E4櫃體股";
     return false;
   }
   function selectOption(select, value, label) {
