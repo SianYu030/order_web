@@ -599,6 +599,7 @@ html,body{background:#f5f7f8}
 .video-preview-actions button{min-height:45px;width:100%;margin-top:0}
 .video-remove{display:block;margin-top:10px;width:100%;min-height:42px;background:#fff;border:1px solid #c9d7e5;color:#31577c}
 </style>
+<link rel="stylesheet" href="./maintenance-report.css?v=20261119-m1" />
 </head>
 <body>
 <div class="app">
@@ -620,7 +621,9 @@ html,body{background:#f5f7f8}
     <div class="mode-switch">
       <button class="mode-btn active" id="reportModeBtn">報修申請</button>
       <button class="mode-btn" id="repairModeBtn">維修處理</button>
+      <button class="mode-btn" id="monthlyModeBtn" type="button">維修月報</button>
     </div>
+    <section id="monthlyMode" class="hidden" aria-label="維修月報"><div id="monthlyReportRoot"></div></section>
 
     <div id="reportMode">
     <section class="card" id="deptCard">
@@ -1331,6 +1334,7 @@ sessionStorage.removeItem("repairAuth");
 sessionStorage.removeItem("repairUser");
 let repairAuth=false;
 let currentRepairUser="";
+let pendingMonthlyLogin=false;
 
 function repairPasswordKey(account){
   return "repairPassword:"+account;
@@ -1358,7 +1362,9 @@ function doRepairLogin(){
     currentRepairUser=account;
     el("repairLoginUser").textContent=account;
     hideRepairLogin();
-    switchMode("repair");
+    const targetMode=pendingMonthlyLogin?"monthly":"repair";
+    pendingMonthlyLogin=false;
+    switchMode(targetMode);
   }else{
     el("repairLoginError").textContent="帳號或密碼錯誤，請重新輸入。";
     el("repairLoginError").classList.remove("hidden");
@@ -1414,9 +1420,10 @@ function saveChangedPassword(){
   },700);
 }
 
-el("reportModeBtn").onclick=()=>{hideRepairLogin();closeChangePassword();switchMode("report");};
-el("repairModeBtn").onclick=()=>repairAuth?switchMode("repair"):showRepairLogin();
-el("repairLoginCancel").onclick=hideRepairLogin;
+el("reportModeBtn").onclick=()=>{pendingMonthlyLogin=false;hideRepairLogin();closeChangePassword();switchMode("report");};
+el("repairModeBtn").onclick=()=>{pendingMonthlyLogin=false;repairAuth?switchMode("repair"):showRepairLogin();};
+el("monthlyModeBtn").onclick=()=>{pendingMonthlyLogin=true;repairAuth?switchMode("monthly"):showRepairLogin();};
+el("repairLoginCancel").onclick=()=>{pendingMonthlyLogin=false;hideRepairLogin();};
 el("repairLoginSubmit").onclick=doRepairLogin;
 el("repairLoginPassword").addEventListener("keydown",e=>{if(e.key==="Enter")doRepairLogin();});
 el("repairLoginAccount").addEventListener("keydown",e=>{if(e.key==="Enter")el("repairLoginPassword").focus();});
@@ -1449,14 +1456,22 @@ el("repairLoginUser").textContent="—";
 function switchMode(mode){
   if(mode==="repair" && !repairAuth){showRepairLogin();return;}
   const isReport=mode==="report";
+  const isRepair=mode==="repair";
+  const isMonthly=mode==="monthly";
   el("reportMode").classList.toggle("hidden",!isReport);
-  el("repairMode").classList.toggle("hidden",isReport);
+  el("repairMode").classList.toggle("hidden",!isRepair);
+  el("monthlyMode").classList.toggle("hidden",!isMonthly);
+  document.body.classList.toggle("monthly-open",isMonthly);
   el("reportBottom").classList.toggle("hidden",!isReport);
   el("reportModeBtn").classList.toggle("active",isReport);
-  el("repairModeBtn").classList.toggle("active",!isReport);
-  if(!isReport){
+  el("repairModeBtn").classList.toggle("active",isRepair);
+  el("monthlyModeBtn").classList.toggle("active",isMonthly);
+  if(isRepair){
     renderRepairOrders();
     if(SYNC_API_URL) refreshLiveOrdersInBackground_();
+  }
+  if(isMonthly){
+    window.maintenanceReport?.open({get:()=>currentOrders(),load:()=>loadLiveOrders(false)});
   }
   window.scrollTo({top:0,behavior:"smooth"});
 }
@@ -2628,5 +2643,6 @@ window.addEventListener("pagehide",function(){
 <script src="./v10_version_gate.js?v=20261028c" defer></script>
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
 <script src="./repair-direct-upload.js?v=20261119-v6-final-verified" defer></script>
+<script src="./maintenance-report.js?v=20261119-m1" defer></script>
 </body>
 </html>
