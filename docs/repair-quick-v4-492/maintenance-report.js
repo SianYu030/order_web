@@ -11,6 +11,8 @@ const monthNow=()=>today().slice(0,7);
 const monthRx=/^20\d{2}-(?:0[1-9]|1[0-2])$/;
 const colors=["#146bd2","#20a5df","#39a574","#f5a623","#9e72dd","#8d9aa9"];
 const mrSvgIcon=(kind)=>{
+ // Solid ascending bars, not a thin-stroke or text-glyph lookalike.
+ if(kind==="bars")return '<svg class="mr-svg-icon mr-bars-solid" viewBox="0 0 24 24" fill="currentColor" stroke="none" focusable="false" aria-hidden="true"><rect x="1" y="13" width="6" height="9" rx="1.2"/><rect x="9" y="8" width="6" height="14" rx="1.2"/><rect x="17" y="2" width="6" height="20" rx="1.2"/></svg>';
  const shapes={
   bars:'<path d="M4 20V13M10 20V8M16 20V4M22 20H2"/>',
   pie:'<path d="M12 3v9h9"/><path d="M20.5 15a9 9 0 1 1-11.5-11.5"/>',
