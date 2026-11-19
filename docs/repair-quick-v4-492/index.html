@@ -581,7 +581,7 @@ html,body{background:#f5f7f8}
 }
 
 
-/* 影片測試僅在 ?video_test=1 啟用，原本操作介面不變。 */
+/* 正式報修、維修皆顯示錄影及選影片；送出前才檢查雲端接收狀態。 */
 .video-pilot[hidden],.video-preview-wrap[hidden]{display:none!important}
 .video-pilot{margin-top:10px}
 .video-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
@@ -692,7 +692,7 @@ html,body{background:#f5f7f8}
         </label>
       </div>
       <div class="photo-grid" id="photoPreview"></div><div class="photo-note" id="photoCount"></div><div class="photo-note">照片選填。拍照或從相簿選取都會累加、不覆蓋；送出後依 MR 工單號歸檔。</div>
-        <div class="video-pilot" id="reportVideoPilot" hidden>
+        <div class="video-pilot" id="reportVideoPilot">
           <div class="video-actions">
             <button type="button" class="filebox video-picker" id="reportVideoRecordStart">🎥 錄製影片</button>
             <label class="filebox video-picker">🎞️ 從相簿選影片
@@ -705,7 +705,7 @@ html,body{background:#f5f7f8}
             <div class="photo-note" id="reportVideoRecordingStatus" role="status">正在錄製影片…</div>
             <button type="button" class="smallbtn" id="reportVideoRecordStop">⏹ 停止錄影並預覽</button>
           </div>
-          <div class="photo-note video-hint">單支影片上限 500 MB（接收器設定）。此頁只提供錄影、選取及預覽，<strong>不會上傳影片或備份 NAS</strong>。錄影後請按「下載影片」留存，離開頁面可能遺失。</div>
+          <div class="photo-note video-hint" role="status" aria-live="polite">影片選填，單支上限 100 MB。送出前會確認 Google Drive 接收器；連線確認中請勿重複送單。</div>
           <div class="video-preview-wrap" id="reportVideoSelected" hidden>
             <div class="video-pilot-detail" id="reportVideoDetails" role="status"></div>
             <div id="reportVideoPreview"></div>
@@ -959,7 +959,7 @@ html,body{background:#f5f7f8}
         </div>
         <div class="photo-grid" id="repairPhotoPreview"></div>
         <div class="photo-note" id="repairPhotoCount">目前尚未選擇維修照片。</div><div class="photo-note">照片選填。拍照或從相簿選取都會累加、不覆蓋；儲存後依 MR 工單號歸檔。</div>
-        <div class="video-pilot" id="repairVideoPilot" hidden>
+        <div class="video-pilot" id="repairVideoPilot">
           <div class="video-actions">
             <button type="button" class="filebox video-picker" id="repairVideoRecordStart">🎥 錄製影片</button>
             <label class="filebox video-picker">🎞️ 從相簿選影片
@@ -972,7 +972,7 @@ html,body{background:#f5f7f8}
             <div class="photo-note" id="repairVideoRecordingStatus" role="status">正在錄製影片…</div>
             <button type="button" class="smallbtn" id="repairVideoRecordStop">⏹ 停止錄影並預覽</button>
           </div>
-          <div class="photo-note video-hint">單支影片上限 500 MB（接收器設定）。此頁只提供錄影、選取及預覽，<strong>不會上傳影片或備份 NAS</strong>。錄影後請按「下載影片」留存，離開頁面可能遺失。</div>
+          <div class="photo-note video-hint" role="status" aria-live="polite">影片選填，單支上限 100 MB。送出前會確認 Google Drive 接收器；連線確認中請勿重複送單。</div>
           <div class="video-preview-wrap" id="repairVideoSelected" hidden>
             <div class="video-pilot-detail" id="repairVideoDetails" role="status"></div>
             <div id="repairVideoPreview"></div>
@@ -2525,7 +2525,7 @@ function select(state,file){
   state.file=file;
   el(state.prefix+"VideoSelected").hidden=false;
   el(state.prefix+"VideoDetails").textContent="已選取："+file.name+"（"+mb(file.size)+"）"+
-    (window.repairDrive?.enabled?"｜送出後自動上傳 Google Drive":"｜僅預覽，不會上傳");
+    (window.repairDrive?.enabled?"｜送出後自動上傳 Google Drive":(previewOnly?"｜測試預覽，不會上傳":"｜等待 Google Drive 接收器確認"));
   state.url=URL.createObjectURL(file);
   var video=document.createElement("video");
   video.controls=true;video.playsInline=true;video.preload="metadata";video.src=state.url;
@@ -2586,7 +2586,7 @@ async function startRecording(state){
 ["report","repair"].forEach(function(prefix){
   var state={prefix:prefix,file:null,url:null,recorder:null,stream:null,chunks:[],bytes:0,discard:false};
   items[prefix]=state;
-  el(prefix+"VideoPilot").hidden=!previewOnly;
+  el(prefix+"VideoPilot").hidden=false;
   ["VideoFile","VideoCapture"].forEach(function(suffix){
     var input=el(prefix+suffix);
     input.addEventListener("change",function(){select(state,input.files&&input.files[0]);});
@@ -2608,6 +2608,15 @@ async function startRecording(state){
 window.repairVideoTestBridge={
   getFile:function(prefix){return items[prefix]&&items[prefix].file||null;},
   clear:function(prefix){if(items[prefix])clearVideo(items[prefix]);},
+  showUnavailable:function(){
+    ["report","repair"].forEach(function(prefix){
+      var pilot=el(prefix+"VideoPilot");
+      if(!pilot)return;
+      pilot.hidden=false;
+      var hint=pilot.querySelector(".video-hint");
+      if(hint)hint.textContent="⚠️ Google Drive 附件接收器目前無法確認連線。請檢查網路；帶影片或照片的工單必須確認上傳，勿重複送單。";
+    });
+  },
   showAuthorized:function(){
     ["report","repair"].forEach(function(prefix){
       var pilot=el(prefix+"VideoPilot");
