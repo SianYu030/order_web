@@ -2473,7 +2473,7 @@ update();
 var qs=new URLSearchParams(location.search);
 if(qs.get("drive_upload")==="1")return;
 var previewOnly=qs.get("video_test")==="1";
-var MAX_BYTES=500*1024*1024,items=Object.create(null);
+var MAX_BYTES=(qs.get('video_test')==='1'?500:100)*1024*1024,items=Object.create(null);
 function el(id){return document.getElementById(id);}
 function mb(n){return (n/(1024*1024)).toFixed(1)+" MB";}
 function accepted(file){return /\.(mov|mp4|m4v|3gp|webm|mkv)$/i.test(file.name||"")||/^video\//i.test(file.type||"");}
@@ -2506,7 +2506,7 @@ function select(state,file){
   if(!file)return;
   if(!accepted(file)){alert("無法辨識影片格式，請選擇 MP4、MOV、WEBM 等影片。");return;}
   if(!file.size){alert("影片檔案是空白的，請重新錄製或選取。");return;}
-  if(file.size>MAX_BYTES){alert("影片超過 500 MB，未載入；請縮短錄影或選擇較小的檔案。");return;}
+  if(file.size>MAX_BYTES){alert("影片超過 "+Math.floor(MAX_BYTES/1048576)+" MB，未載入；請縮短錄影或選擇較小的檔案。");return;}
   state.file=file;
   el(state.prefix+"VideoSelected").hidden=false;
   el(state.prefix+"VideoDetails").textContent="已選取："+file.name+"（"+mb(file.size)+"）"+
@@ -2543,7 +2543,7 @@ async function startRecording(state){
       if(state.discard||!event.data||!event.data.size)return;
       state.chunks.push(event.data);state.bytes+=event.data.size;
       if(state.bytes>MAX_BYTES&&recorder.state!=="inactive"){
-        el(state.prefix+"VideoRecordingStatus").textContent="已達 500 MB 容量上限，錄影自動停止。";
+        el(state.prefix+"VideoRecordingStatus").textContent="已達影片容量上限，錄影自動停止。";
         recorder.stop();
       }
     };
@@ -2599,7 +2599,7 @@ window.repairVideoTestBridge={
       if(!pilot)return;
       pilot.hidden=false;
       var hint=pilot.querySelector(".video-hint");
-      if(hint)hint.textContent="裝置已完成授權。送出後影片將上傳 Google Drive，F 槽由歸檔排程核對。";
+      if(hint)hint.textContent="手機無須配對；影片上限 100 MB。送出後直接上傳 Google Drive，F 槽由歸檔排程核對。";
       var selected=items[prefix];
       if(selected&&selected.file)
         el(prefix+"VideoDetails").textContent="已選取："+selected.file.name+
@@ -2627,6 +2627,6 @@ window.addEventListener("pagehide",function(){
 </script>
 <script src="./v10_version_gate.js?v=20261028c" defer></script>
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
-<script src="./repair-direct-upload.js?v=20261119-v5-secure-stage" defer></script>
+<script src="./repair-direct-upload.js?v=20261119-v6-no-pair" defer></script>
 </body>
 </html>
