@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.9（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.9.1（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -205,9 +205,14 @@ function doPost(e){
  * 只向 Supabase 儲存 Google 部署網址，不修改正式工時。
  */
 function registerBusinessOvertimeInstantWebhook(){
- var url=String(ScriptApp.getService().getUrl()||"").trim();
+ // 有正式部署但 Apps Script 無法自動回傳 URL 時，允許私有 ScriptProperties 指定。
+ // 部署網址不是同步 Token；同步 Token 仍只保存在 BUSINESS_OVERTIME_SYNC_TOKEN。
+ var props=PropertiesService.getScriptProperties();
+ var manual=String(props.getProperty("BUSINESS_OVERTIME_WEBAPP_URL")||"").trim();
+ var detected=String(ScriptApp.getService().getUrl()||"").trim();
+ var url=manual||detected;
  if(!/^https:\/\/script[.]google[.]com\/macros\/s\/[A-Za-z0-9_-]{30,256}\/exec$/.test(url))
-  throw Error("尚未部署正式 Google 網頁應用程式（/exec），請用「部署→新增部署→網頁應用程式」先部署。");
+  throw Error("已部署卻無法自動取得 /exec 網址。請按「部署→管理部署作業」複製「網頁應用程式網址」；在「專案設定→指令碼屬性」新增 BUSINESS_OVERTIME_WEBAPP_URL，值為完整 /exec 網址，儲存後再執行。不要重新建立部署，也不要貼同步 Token。");
  // 同步授權存在 Apps Script 私有設定；此操作不須再次產生授權碼。
  var result=otBridgeApi_("register_webhook",{url:url});
  if(!result.ok||!result.registered)throw Error("Supabase 即時通知網址登記失敗。");
