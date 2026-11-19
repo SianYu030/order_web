@@ -14,6 +14,7 @@ const mrSvgIcon=(kind)=>{
  // Solid ascending bars, not a thin-stroke or text-glyph lookalike.
  if(kind==="bars")return '<svg class="mr-svg-icon mr-bars-solid" viewBox="0 0 24 24" fill="currentColor" stroke="none" focusable="false" aria-hidden="true"><rect x="1" y="13" width="6" height="9" rx="1.2"/><rect x="9" y="8" width="6" height="14" rx="1.2"/><rect x="17" y="2" width="6" height="20" rx="1.2"/></svg>';
  const shapes={
+  wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.1-3.1a6 6 0 0 1-7.9 7.9l-7.4 7.4a2.1 2.1 0 0 1-3-3l7.4-7.4a6 6 0 0 1 7.9-7.9l-3.1 3.1z"/>',
   bars:'<path d="M4 20V13M10 20V8M16 20V4M22 20H2"/>',
   pie:'<path d="M12 3v9h9"/><path d="M20.5 15a9 9 0 1 1-11.5-11.5"/>',
   trophy:'<path d="M8 3h8v7a4 4 0 0 1-8 0V3Z"/><path d="M8 5H5v3a3 3 0 0 0 3 3m8-6h3v3a3 3 0 0 1-3 3M12 14v4m-4 3h8m-8-3h8"/>',
@@ -170,7 +171,7 @@ function render(){
 function make(){
  if(initialised)return;
  root=$("monthlyReportRoot");if(!root)return;
- root.innerHTML='<div class="mr-title"><div><h2>' + mrSvgIcon("bars") + '維修月報</h2><p>設備維修統計與'+esc(SPECIAL)+'</p></div><span class="mr-last">資料來源：正式機修維修單</span></div>'+
+ root.innerHTML='<div class="mr-title"><div><h2>' + mrSvgIcon("wrench") + '維修月報</h2><p>設備維修統計與'+esc(SPECIAL)+'</p></div><span class="mr-last">資料來源：正式機修維修單</span></div>'+
  '<div class="mr-control"><label for="mrMonth">月份</label><div class="mr-month"><button type="button" id="mrMonthPrev" aria-label="上一個月">‹</button><input id="mrMonth" type="month"><button type="button" id="mrMonthNext" aria-label="下一個月">›</button></div><label>廠區</label><div id="mrDepts" class="mr-dept">'+["全部","E3","E4","E5","W8","W8整修&組立","空壓機室"].map(n=>'<button type="button" data-dept="'+esc(n)+'">'+esc(n)+'</button>').join("")+'</div><button class="mr-reload" type="button" id="mrReload">↻ 更新資料</button></div>'+
  '<div class="mr-notice" id="mrFetchStatus">正在準備月報資料…</div><div class="mr-kpis" id="mrKpis"></div><div class="mr-panels" id="mrPanels"></div><div class="mr-lists" id="mrLists"></div>';
  $("mrMonthPrev").onclick=()=>{state.month=monthAdd(state.month,-1);state.page={done:0,open:0,special:0};render()};
