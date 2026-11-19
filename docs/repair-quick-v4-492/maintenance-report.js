@@ -10,6 +10,15 @@ const today=()=>new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Taipei"});
 const monthNow=()=>today().slice(0,7);
 const monthRx=/^20\d{2}-(?:0[1-9]|1[0-2])$/;
 const colors=["#146bd2","#20a5df","#39a574","#f5a623","#9e72dd","#8d9aa9"];
+const mrSvgIcon=(kind)=>{
+ const shapes={
+  bars:'<path d="M4 20V13M10 20V8M16 20V4M22 20H2"/>',
+  pie:'<path d="M12 3v9h9"/><path d="M20.5 15a9 9 0 1 1-11.5-11.5"/>',
+  trophy:'<path d="M8 3h8v7a4 4 0 0 1-8 0V3Z"/><path d="M8 5H5v3a3 3 0 0 0 3 3m8-6h3v3a3 3 0 0 1-3 3M12 14v4m-4 3h8m-8-3h8"/>',
+  trend:'<path d="m3 17 6-6 4 4 8-9M15 6h6v6"/>'
+ };
+ return '<svg class="mr-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">'+(shapes[kind]||shapes.bars)+'</svg>';
+};
 const state={month:monthNow(),dept:"全部",orders:[],syncedAt:0,error:"",loaded:false,expanded:{done:false,open:false,special:false},page:{done:0,open:0,special:0},busy:false};
 let root=null,initialised=false,loader=null;
 function recordDate(order){
@@ -138,10 +147,10 @@ function render(){
   kpi("登錄維修工時",Number(hours.toFixed(1)),"小時","purple","不代表停機時數")+
   kpi("完成率",rate.toFixed(1),"%","teal","依所選月份工單")+
   kpi(SPECIAL,special.length,"件","special","本月合計");
- $("mrPanels").innerHTML='<div class="mr-panel"><h3>▥ 各廠區報修件數</h3>'+panelBars(monthly)+'</div>'+
-   '<div class="mr-panel"><h3>◉ 維修類型占比</h3>'+panelDonut(monthly)+'</div>'+
-   '<div class="mr-panel"><h3>♜ 設備維修排行 Top 5</h3>'+panelTop(monthly)+'</div>'+
-   '<div class="mr-panel"><h3>⌁ 近六個月報修趨勢</h3>'+panelTrend(regular)+'</div>';
+ $("mrPanels").innerHTML='<div class="mr-panel"><h3>' + mrSvgIcon("bars") + '各廠區報修件數</h3>'+panelBars(monthly)+'</div>'+
+   '<div class="mr-panel"><h3>' + mrSvgIcon("pie") + '維修類型占比</h3>'+panelDonut(monthly)+'</div>'+
+   '<div class="mr-panel"><h3>' + mrSvgIcon("trophy") + '設備維修排行 Top 5</h3>'+panelTop(monthly)+'</div>'+
+   '<div class="mr-panel"><h3>' + mrSvgIcon("trend") + '近六個月報修趨勢</h3>'+panelTrend(regular)+'</div>';
  $("mrLists").innerHTML=renderList("done",done,'✓ 已完成工單（所選月份：'+done.length+' 件）')+
   renderList("open",open,'◷ 未完成工單（所有未結：'+open.length+' 件）')+
   renderList("special",special,'▣ '+esc(SPECIAL)+'（本月共 '+special.length+' 件）');
@@ -159,7 +168,7 @@ function render(){
 function make(){
  if(initialised)return;
  root=$("monthlyReportRoot");if(!root)return;
- root.innerHTML='<div class="mr-title"><div><h2>▥ 維修月報</h2><p>設備維修統計與'+esc(SPECIAL)+'</p></div><span class="mr-last">資料來源：正式機修維修單</span></div>'+
+ root.innerHTML='<div class="mr-title"><div><h2>' + mrSvgIcon("bars") + '維修月報</h2><p>設備維修統計與'+esc(SPECIAL)+'</p></div><span class="mr-last">資料來源：正式機修維修單</span></div>'+
  '<div class="mr-control"><label for="mrMonth">月份</label><div class="mr-month"><button type="button" id="mrMonthPrev" aria-label="上一個月">‹</button><input id="mrMonth" type="month"><button type="button" id="mrMonthNext" aria-label="下一個月">›</button></div><label>廠區</label><div id="mrDepts" class="mr-dept">'+["全部","E3","E4","E5","W8","W8整修&組立","空壓機室"].map(n=>'<button type="button" data-dept="'+esc(n)+'">'+esc(n)+'</button>').join("")+'</div><button class="mr-reload" type="button" id="mrReload">↻ 更新資料</button></div>'+
  '<div class="mr-notice" id="mrFetchStatus">正在準備月報資料…</div><div class="mr-kpis" id="mrKpis"></div><div class="mr-panels" id="mrPanels"></div><div class="mr-lists" id="mrLists"></div>';
  $("mrMonthPrev").onclick=()=>{state.month=monthAdd(state.month,-1);state.page={done:0,open:0,special:0};render()};
