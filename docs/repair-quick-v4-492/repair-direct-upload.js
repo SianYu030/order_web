@@ -33,7 +33,7 @@
   // Only accept the audited company's deployment ID. Do NOT trust an URL
   // parameter from a forwarded link, or files could be sent to another script.
   // The fixed /exec is filled in only after deployment and IT approval.
-  const endpoint='https://script.google.com/macros/s/AKfycbwnOPUnbUkpsVkgtN5S7SXjbAXk2nIjVGmzASQyvuXBgox9JsoY3Bv9l1HNyiiPNpo_/exec';
+  const endpoint='https://script.google.com/macros/s/AKfycbxlu57dWVzIstwdPrj1srXXzgB3v55DL9N7SaQRoT5VtGGmWMenN6hQwSXjzPQ0Ove7/exec';
   const VALID=/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint);
   if(!VALID) {
     window.repairDirectV4={configured:false,reason:'V4 獨立附件接收器尚未部署；正式報修流程仍維持原狀'};
