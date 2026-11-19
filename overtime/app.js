@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.29 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.30 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -19,8 +19,10 @@
   var CLIENT_KEY = "overtime:oauth-client-id:v1";
   var DEMO_KEY = "overtime:demo-records:v1";
   var COMMENT_TAG = "\n\n［加班登記網站］";
-  var DEPT_SUFFIX = { "E3": "E3", "E4": "E4", "W8": "w8", "W8整修": "w8整修股", "E5": "E5機修課" };
-  var DEPT_LABEL = { "E3": "E3 門板", "E4": "E4 櫃體", "W8": "W8", "W8整修": "W8 整修股", "E5": "E5 業務" };
+  var DEPT_SUFFIX = { "E3": "E3", "E4": "E4", "W8": "w8", "W8整修": "w8整修股", "E5": "E5機修課", "REVIEW": "E5機修課" };
+  var DEPT_LABEL = { "E3": "E3 門板", "E4": "E4 櫃體", "W8": "W8", "W8整修": "W8 整修股", "E5": "E5 業務", "REVIEW": "審圖" };
+  // 審圖屬於 E5 原月份表；前端分類不變更後端授權、員工工號或核准寫入目的地。
+  function backendDepartment(dept){ return dept==="REVIEW" ? "E5" : dept; }
   var KINDS = { "加班": 1 }; // 原月表每日五欄，固定使用第 2 欄「加班」；不修改支援或班別
   var WEEKDAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
   var state = {
@@ -58,7 +60,7 @@
     $("receiptNo").textContent=record.request_no;
     $("receiptDate").textContent=String(record.date||entry.date).replace(/-/g,"/");
     $("receiptEmployee").textContent=String(record.employee_name||entry.person.name);
-    $("receiptDept").textContent=DEPT_LABEL[record.department||entry.department]||entry.department;
+    $("receiptDept").textContent=DEPT_LABEL[entry.department==="REVIEW"?"REVIEW":(record.department||entry.department)]||entry.department;
     $("receiptHours").textContent=formatHours(record.hours===undefined?entry.hours:record.hours);
     $("receiptReason").textContent=String(record.reason||entry.reason);
     $("receiptLocalWarning").classList.toggle("hidden",saved);
@@ -168,7 +170,7 @@
   }
   // 公開展示名單只列姓名與單位，不公開員工真實工號。
   // 正式申請必須經 Google 登入後依主檔重新取得工號、在職狀態。
-  var PREVIEW_ROSTER = [{"name":"林予瑄","unit":"內勤","detail":"業務","dept":"E5"},{"name":"林季昀","unit":"內勤","detail":"業務","dept":"E5"},{"name":"張妤甄","unit":"內勤","detail":"業務","dept":"E5"},{"name":"陳榮彬","unit":"內勤","detail":"業務","dept":"E5"},{"name":"郭哲維","unit":"內勤","detail":"業務","dept":"E5"},{"name":"劉妍秀","unit":"內勤","detail":"業務","dept":"E5"},{"name":"潘詠升","unit":"E4","detail":"E4櫃體股","dept":"E4"}];
+  var PREVIEW_ROSTER = [{"name":"林予瑄","unit":"內勤","detail":"業務","dept":"E5"},{"name":"林季昀","unit":"內勤","detail":"業務","dept":"E5"},{"name":"張妤甄","unit":"內勤","detail":"業務","dept":"E5"},{"name":"陳榮彬","unit":"內勤","detail":"業務","dept":"E5"},{"name":"郭哲維","unit":"內勤","detail":"業務","dept":"E5"},{"name":"劉妍秀","unit":"內勤","detail":"業務","dept":"E5"},{"name":"潘詠升","unit":"E4","detail":"E4櫃體股","dept":"E4"},{"name":"吳嘉偉","unit":"內勤","detail":"審圖","dept":"REVIEW"},{"name":"蔡雲龍","unit":"內勤","detail":"審圖","dept":"REVIEW"}];
   function demoRoster() {
     return PREVIEW_ROSTER.map(function(person,i){
       return {id:"PREVIEW"+String(i+1).padStart(2,"0"),name:person.name,
@@ -177,6 +179,7 @@
   }
   function belongsToDept(person, dept) {
     if (dept === "E5") return person.unit === "內勤" && person.detail === "業務";
+    if (dept === "REVIEW") return person.unit === "內勤" && person.detail === "審圖";
     if (dept === "E4") return person.unit === "E4" && person.detail === "E4櫃體股" && person.name === "潘詠升";
     return false;
   }
@@ -218,7 +221,7 @@
       (hasGoogle() && preferredName ? selected.find(function(p){return p.name===preferredName;}) : null);
     if (previous) field.value=previous.id;
     $("rosterText").textContent = PORTAL==="employee" ?
-      (state.remoteRoster.length?"已從後端核對 E5 業務 6 位及 E4 潘詠升；正式工號不會顯示於公開網站。":"正在載入後端名冊；尚未載入時不可送出申請。") :
+      (state.remoteRoster.length?"已從後端核對正式在職名冊；工號不會顯示於公開網站。":"正在載入後端名冊；尚未載入時不可送出申請。") :
       (hasGoogle()?"已從原始人員主檔核對在職員工。":"管理員尚未連結 Google 試算表。");
     updatePreview();
   }
@@ -232,7 +235,7 @@
       if(!people.length)throw Error("沒有讀到正式業務名冊");
       state.remoteRoster=people.map(p=>({
         id:String(p.public_key),name:String(p.employee_name),unit:p.department==="E4"?"E4":"內勤",
-        detail:p.department==="E4"?"E4櫃體股":"業務",remote:true,preview:false
+        detail:p.department==="E4"?"E4櫃體股":(p.team==="審圖"?"審圖":"業務"),remote:true,preview:false
       }));
       populateEmployees();
     }catch(e){
@@ -894,7 +897,7 @@
         if(!entry.person.remote||!window.OvertimeApi)throw Error("尚未取得正式後端名冊，無法送出");
         const receipt=state.editKey ? window.OvertimeApi.localReceipts().find(x=>x.id===state.editKey) : null;
         if(state.editKey&&!receipt)throw Error("找不到這筆申請的修改憑證，請使用原本送出的裝置查詢");
-        if(receipt && (receipt.date!==entry.date||receipt.department!==entry.department||receipt.public_key!==entry.person.id))
+        if(receipt && (receipt.date!==entry.date||receipt.department!==backendDepartment(entry.department)||receipt.public_key!==entry.person.id))
           throw Error("修改原申請時，日期與員工不可變更；請重新選擇原本的申請。");
         const yes=await confirmAction((receipt?"修改待同步加班申請：\n":"送出加班申請至公司後端：\n")+
           dateString(entry.p)+" · "+entry.person.name+"\n"+formatHours(entry.hours)+"\n原因："+entry.reason+
@@ -902,7 +905,7 @@
         if(!yes)return;
         const result=receipt ?
           await window.OvertimeApi.update({id:receipt.id,receipt_token:receipt.receipt_token,hours:entry.hours,reason:entry.reason}) :
-          await window.OvertimeApi.submit({department:entry.department,roster_key:entry.person.id,
+          await window.OvertimeApi.submit({department:backendDepartment(entry.department),roster_key:entry.person.id,
             employee_name:entry.person.name,date:entry.date,hours:entry.hours,reason:entry.reason});
         const saved=receipt ? true : window.OvertimeApi.save(result.record,result.receipt_token,entry.person.id);
         state.editKey="";
@@ -967,7 +970,7 @@
       $("historyList").textContent="正在核對後端收件狀態…";
       try{
         const month=String(p.y)+"-"+pad(p.m);
-        const receipts=window.OvertimeApi.find(person.id,$("department").value,month);
+        const receipts=window.OvertimeApi.find(person.id,backendDepartment($("department").value),month);
         const verified=await Promise.all(receipts.map(x=>window.OvertimeApi.receipt(x.id,x.receipt_token)));
         const rows=verified.map(x=>x.record).map(r=>({
           date:r.date,id:person.id,department:r.department,kind:"加班",
