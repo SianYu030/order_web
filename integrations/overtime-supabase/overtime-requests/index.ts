@@ -61,7 +61,7 @@ async function readAuth(req:Request){
  const digest=await sha256(token);
  const {data:session}=await db.from("overtime_sessions").select("account_id,expires_at").eq("token_hash",digest).maybeSingle();
  if(!session||Date.parse(session.expires_at)<Date.now())return null;
- const {data:account}=await db.from("overtime_accounts").select("id,username,role,enabled,must_change").eq("id",session.account_id).maybeSingle();
+ const {data:account}=await db.from("overtime_accounts").select("id,username,display_name,role,enabled,must_change").eq("id",session.account_id).maybeSingle();
  if(!account?.enabled||account.must_change||!["admin","supervisor"].includes(account.role))return null;
  return account;
 }
@@ -89,9 +89,12 @@ Deno.serve(async(req:Request)=>{
  const action=String(body.action||"");
  try{
   if(action==="roster"){
-   const {data,error}=await db.from("overtime_web_roster").select("department,public_key,employee_name").eq("enabled",true).order("employee_name");
+   const {data,error}=await db.from("overtime_web_roster").select("department,public_key,employee_name,team,employee_id").eq("enabled",true).order("employee_name");
    if(error)throw error;
-   return response({ok:true,people:data},200,origin);
+   return response({ok:true,people:(data||[]).map(p=>({
+     department:p.department,public_key:p.public_key,employee_name:p.employee_name,
+     team:p.team,display_code:String(p.employee_id||"")
+    }))},200,origin);
   }
   if(action==="submit"){
    const department=String(body.department||""),roster_key=String(body.roster_key||""),
@@ -105,7 +108,8 @@ Deno.serve(async(req:Request)=>{
    if(!person?.enabled||person.employee_name!==employee_name)return response({ok:false,error:"員工資料與正式名冊不一致"},400,origin);
    const employee_id=person.employee_id;
    if(!await rate(req))return response({ok:false,error:"送出次數過多，請稍後再試"},429,origin);
-   const {data:existing}=await db.from("overtime_web_requests").select("id,status").eq("department",department).eq("employee_id",employee_id).eq("work_date",date).neq("status","已駁回").maybeSingle();
+   const {data:existing,error:checkError}=await db.from("overtime_web_requests").select("id,status").eq("department",department).eq("employee_id",employee_id).eq("work_date",date).not("status","in",'("已駁回","已取消")').maybeSingle();
+   if(checkError)throw checkError;
    if(existing)return response({ok:false,error:"這位員工在該日期已經有申請，請先於查詢頁核對，不會建立重複資料",code:"DUPLICATE"},409,origin);
    const token=makeToken(),request_no="BUS-"+date.replace(/-/g,"")+"-"+department+"-"+employee_id+"-"+crypto.randomUUID().slice(0,8).toUpperCase();
    const {data,error}=await db.from("overtime_web_requests").insert({
@@ -127,6 +131,47 @@ Deno.serve(async(req:Request)=>{
    const {data}=await db.from("overtime_web_requests").select("*").eq("id",id).eq("receipt_hash",hash).maybeSingle();
    if(!data)return response({ok:false,error:"查無此申請或查詢憑證已失效"},404,origin);
    return response({ok:true,record:clean(data)},200,origin);
+  }
+  // Employee self-cancel: valid original receipt token, before supervisor approval only.
+  // Keep the existing rejection synchronization contract; the employee actor is separately audited.
+  if(action==="cancel"){
+   const id=String(body.id||""),token=String(body.receipt_token||"");
+   if(!/^[0-9a-f-]{36}$/.test(id)||token.length<30||token.length>128)
+    return response({ok:false,error:"取消憑證不符合規則"},400,origin);
+   const hash=await sha256(token);
+   const {data:before,error:lookupError}=await db.from("overtime_web_requests").select("*")
+    .eq("id",id).eq("receipt_hash",hash).maybeSingle();
+   if(lookupError)throw lookupError;
+   if(!before)return response({ok:false,error:"找不到這筆申請或沒有取消權限"},403,origin);
+   if(["已駁回","駁回待同步"].includes(before.status)&&before.manager_name==="員工自行取消")
+    return response({ok:true,record:clean(before),message:"這筆申請已提出取消，不需要重複操作。"},200,origin);
+   if(!["待同步","待核准"].includes(before.status))
+    return response({ok:false,error:"申請已進入同步、核准或人工核對流程，不能自行取消。請聯絡主管處理；已核准工時不可直接刪除。"},409,origin);
+   const registered=before.status==="待核准";
+   if((registered&&(before.source_sheet!=="業務假日或臨時加班登記"||
+     !/^A([2-9]|[1-9][0-9]{1,3}):R\1$/.test(String(before.source_range||""))))||
+      (!registered&&(before.source_sheet||before.source_range)))
+    return response({ok:false,error:"Google 原始申請資料待核對，禁止直接取消，請聯絡主管。"},409,origin);
+   if(!await rate(req))return response({ok:false,error:"操作過於頻繁，請稍後再試"},429,origin);
+   const now=new Date().toISOString();
+   const next=registered?"駁回待同步":"已駁回";
+   const {data:updated,error}=await db.from("overtime_web_requests")
+    .update({status:next,manager_name:"員工自行取消",manager_time:now,
+      last_error:null,updated_at:now})
+    .eq("id",id).eq("receipt_hash",hash)
+    .eq("status",before.status).eq("updated_at",before.updated_at)
+    .select("*").maybeSingle();
+   if(error)throw error;
+   if(!updated)return response({ok:false,error:"申請狀態剛剛已變更，請重新查詢；沒有執行取消。"},409,origin);
+   const {error:auditError}=await db.from("overtime_web_audit").insert({
+    request_id:id,actor:"employee-portal",action:"cancelled_by_employee",
+    details:{previous_status:before.status,google_source_registered:registered,
+      source_sheet:before.source_sheet||null,source_range:before.source_range||null}
+   });
+   if(auditError)console.error("Self cancellation audit failed:",auditError.code);
+   if(registered)await notifyGoogle(id,"reject");
+   return response({ok:true,record:clean(updated),
+    message:registered?"已提出取消，待 Google 核對來源後完成；不會寫入正式工時。":"已取消申請，正式工時未寫入。"},200,origin);
   }
   if(action==="update"){
    const id=String(body.id||""),token=String(body.receipt_token||""),
@@ -166,7 +211,7 @@ Deno.serve(async(req:Request)=>{
      return response({ok:false,error:"必須先確認 Google 待核准來源已同步，才允許主管核准。請勿重複操作。"},409,origin);
    const now=new Date().toISOString();
    const {data:approved,error}=await db.from("overtime_web_requests")
-    .update({status:"核准待同步",manager_name:actor.username,manager_time:now,updated_at:now})
+    .update({status:"核准待同步",manager_name:(typeof actor.display_name==="string"&&actor.display_name.trim()?actor.display_name.trim():actor.username),manager_time:now,updated_at:now})
     .eq("id",id).eq("status","待核准").select("*").maybeSingle();
    if(error)throw error;
    if(!approved)return response({ok:false,error:"申請已由其他主管處理，請重新整理"},409,origin);
@@ -188,7 +233,7 @@ Deno.serve(async(req:Request)=>{
     return response({ok:false,error:"Google 來源儲存格沒有通過驗證，禁止駁回，請管理員核對。"},409,origin);
    const nextStatus=registered?"駁回待同步":"已駁回",now=new Date().toISOString();
    const {data:updated,error}=await db.from("overtime_web_requests")
-    .update({status:nextStatus,manager_name:actor.username,manager_time:now,updated_at:now})
+    .update({status:nextStatus,manager_name:(typeof actor.display_name==="string"&&actor.display_name.trim()?actor.display_name.trim():actor.username),manager_time:now,updated_at:now})
     .eq("id",id).eq("status",before.status).select("*").maybeSingle();
    if(error)throw error;
    if(!updated)return response({ok:false,error:"申請已由其他主管處理，請重新整理"},409,origin);
