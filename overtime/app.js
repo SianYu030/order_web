@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.31 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.34 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -332,7 +332,7 @@
   }
   function switchView(name) {
     // 三個網址具有獨立的入口與頁面；真實寫入仍須經後端及 Google 權限驗證。
-    if(PORTAL==="employee"&&!["entry","history","receipt"].includes(name))return;
+    if(PORTAL==="employee"&&!["entry","receipt"].includes(name))return;
     if(PORTAL==="supervisor"&&!["batch","approval"].includes(name))return;
     if(PORTAL==="admin"&&name!=="settings")return;
     document.body.classList.toggle("employee-receipt",PORTAL==="employee"&&name==="receipt");
