@@ -23,6 +23,13 @@ for(const [slug,title] of expected){
  let pass=false;
  for(let i=0;i<12;i++){
   const html=await fetchText(BASE+slug+"?smoke=v"+EMPLOYEE_VERSION+"&attempt="+i);
+  if(i===0)console.log("LIVE_PAGES_DIAG",JSON.stringify({
+    slug:slug||"employee",
+    observedTitle:(html.match(/<title>([^<]*)<\/title>/)||[])[1]||"missing",
+    observedApp:(html.match(/app\.js\?v=[0-9.]+/)||[])[0]||"missing",
+    expectedApp:slug===""?EMPLOYEE_VERSION:slug==="supervisor/"?"1.1.26":"1.1.17",
+    htmlLength:html.length
+  }));
   if(html.includes("<title>"+title+"｜系統櫃廠</title>")&&html.includes("app.js?v="+(slug===""?EMPLOYEE_VERSION:slug==="supervisor/"?"1.1.26":"1.1.17"))){
     pass=true;break;
   }
