@@ -166,7 +166,7 @@ let authClient="",adminPage="",accountManagerPublished=false;
 for(let i=0;i<18;i++){
  const liveAdmin=await fetchText(BASE+"admin/?accounts=v1.1.32&attempt="+i);
  const liveAuth=await fetchText(BASE+"supervisor-auth.js?v="+ADMIN_AUTH_VERSION+"&attempt="+i);
- if(liveAdmin.includes('supervisor-auth.js?v='+ADMIN_AUTH_VERSION)&&liveAdmin.includes("只有管理員可刪除主管帳號")&&
+ if(liveAdmin.includes('supervisor-auth.js?v='+ADMIN_AUTH_VERSION)&&liveAdmin.includes("刪除主管帳號前必須二次確認")&&
     liveAdmin.includes('id="supervisorAddDisplayName"')&&liveAuth.includes("delete-account-btn")&&
     liveAuth.includes('call("rename",{username:entry.username,display_name:name})')){
     adminPage=liveAdmin;authClient=liveAuth;accountManagerPublished=true;break;
