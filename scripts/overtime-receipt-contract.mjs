@@ -21,8 +21,8 @@ assert(app.includes('window.OvertimeApi.receipt(latestReceipt.id,latestReceipt.t
 assert(app.includes('case "需人工核對"')&&app.includes('case "已核准"'),"verified failure and approved states need distinct presentation");
 assert(css.includes('body.employee-receipt .tabs{display:none}'),"navigation must be hidden after submission");
 
-const appAsset=html.match(/app\\.js\\?v=(\\d+\\.\\d+\\.\\d+)/)?.[1];
-const cssAsset=html.match(/style\\.css\\?v=(\\d+\\.\\d+\\.\\d+)/)?.[1];
+const appAsset=html.match(/app\.js\?v=(\d+\.\d+\.\d+)/)?.[1];
+const cssAsset=html.match(/style\.css\?v=(\d+\.\d+\.\d+)/)?.[1];
 assert(appAsset&&cssAsset&&appAsset===cssAsset,"App and CSS must use matching cache-busting versions");
 assert(html.includes('id="ownHistoryForm"')&&html.includes('id="ownEmployeeId"')&&html.includes('data-view="history"'),"employee history lookup must remain reachable");
 assert(app.includes('if(PORTAL==="employee"&&!["entry","history","receipt"].includes(name))return;'),"employee history must be permitted");
