@@ -1,0 +1,99 @@
+
+/* 維修月報 V1.0: scoped styles, no change to reporting or repair forms */
+.mode-switch{grid-template-columns:repeat(3,minmax(0,1fr))}
+.mode-btn{min-width:0;white-space:nowrap}
+body.monthly-open .notice{display:none}
+#monthlyMode{color:#19334f}
+#monthlyMode .mr-title{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+#monthlyMode .mr-title h2{font-size:23px;margin:0;font-weight:900;color:#0c3775}
+#monthlyMode .mr-title p{font-size:12px;color:#64748b;margin:2px 0 0}
+#monthlyMode .mr-control{background:#fff;border:1px solid #dbe7f3;border-radius:13px;padding:11px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
+#monthlyMode .mr-control label{font-weight:850;font-size:14px;color:#294969}
+#monthlyMode .mr-month{display:flex;align-items:center;gap:4px}
+#monthlyMode .mr-month button,#monthlyMode .mr-month input,#monthlyMode .mr-reload,#monthlyMode .mr-dept button{min-height:40px;border:1px solid #c8d9eb;border-radius:9px;background:#fff;color:#1e4268;font-weight:800;padding:6px 10px}
+#monthlyMode .mr-month input{width:149px;font-size:14px}
+#monthlyMode .mr-month button{width:37px;font-size:23px;padding:0}
+#monthlyMode .mr-dept{display:flex;gap:5px;flex-wrap:wrap}
+#monthlyMode .mr-dept button{font-size:13px;min-width:48px;padding:5px 11px}
+#monthlyMode .mr-dept button.sel{background:#1165c5;color:#fff;border-color:#1165c5}
+#monthlyMode .mr-reload{background:#1465bf;color:#fff;border-color:#1465bf;margin-left:auto}
+#monthlyMode .mr-notice{font-size:12px;line-height:1.6;color:#506579;margin:4px 0 12px;background:#eff5fa;border:1px solid #d6e7f4;padding:9px 12px;border-radius:9px}
+#monthlyMode .mr-notice.alert{color:#9d3f00;background:#fff6e5;border-color:#ffd49a}
+#monthlyMode .mr-kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:12px}
+#monthlyMode .mr-kpi{border-radius:11px;padding:13px 8px 11px;border:1px solid #d9e6f2;background:#f0f6ff;text-align:center;min-width:0}
+#monthlyMode .mr-kpi span{font-size:12px;font-weight:800;display:block;line-height:1.35}
+#monthlyMode .mr-kpi strong{font-size:27px;line-height:1.45;font-weight:950;display:block;font-variant-numeric:tabular-nums}
+#monthlyMode .mr-kpi small{font-size:11px;color:#53708c}
+#monthlyMode .mr-kpi.blue{background:#e6f3ff;color:#1159a8}
+#monthlyMode .mr-kpi.green{background:#e5f8ed;color:#167548}
+#monthlyMode .mr-kpi.orange{background:#fff4e3;color:#ae5b02}
+#monthlyMode .mr-kpi.red{background:#fff0f0;color:#b52a31}
+#monthlyMode .mr-kpi.purple{background:#f1eefd;color:#6a43a6}
+#monthlyMode .mr-kpi.teal{background:#e6f8f5;color:#127767}
+#monthlyMode .mr-kpi.special{background:#fff9eb;color:#895002}
+#monthlyMode .mr-panels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}
+#monthlyMode .mr-panel{min-width:0;background:#fff;border:1px solid #d9e5f2;border-radius:12px;padding:12px;box-shadow:0 2px 6px #10376308}
+#monthlyMode .mr-panel h3{font-size:15px;color:#194574;margin:0 0 12px;font-weight:900}
+#monthlyMode .mr-pair{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5edf7;padding:6px 2px;font-size:12px;gap:5px}
+#monthlyMode .mr-pair:last-child{border-bottom:0}
+#monthlyMode .mr-meter{height:8px;background:#e8f0f8;border-radius:20px;margin:3px 0 6px;overflow:hidden}
+#monthlyMode .mr-meter i{display:block;height:100%;background:linear-gradient(90deg,#28b9ed,#156ad3);border-radius:20px}
+#monthlyMode .mr-donut-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+#monthlyMode .mr-donut{width:108px;height:108px;border-radius:50%;display:grid;place-items:center;flex:0 0 108px}
+#monthlyMode .mr-donut-inner{width:67px;height:67px;border-radius:50%;background:white;display:grid;place-items:center;font-size:18px;font-weight:900}
+#monthlyMode .mr-legend{font-size:12px;line-height:1.8;flex:1;min-width:110px}
+#monthlyMode .mr-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+#monthlyMode .mr-chart{width:100%;height:128px;display:block}
+#monthlyMode .mr-chart-labels{display:flex;justify-content:space-between;font-size:11px;color:#50657b;margin-top:3px;text-align:center}
+#monthlyMode .mr-chart-labels span{flex:1}
+#monthlyMode .mr-lists{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+#monthlyMode .mr-list{background:#fff;border:1px solid #d9e4ef;border-radius:12px;min-width:0;padding:12px}
+#monthlyMode .mr-list.done{border-top:4px solid #39a56b}
+#monthlyMode .mr-list.open{border-top:4px solid #ef8656}
+#monthlyMode .mr-list.special{border-top:4px solid #e3a33d;grid-column:1/-1}
+#monthlyMode .mr-listhead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+#monthlyMode .mr-list h3{font-size:16px;margin:0;color:#123b6b;font-weight:900;line-height:1.4}
+#monthlyMode .mr-list.open h3{color:#aa4b16}
+#monthlyMode .mr-list.special h3{color:#915900}
+#monthlyMode .mr-listhead button,#monthlyMode .mr-pager button{background:#eef5fd;color:#175ba2;border:1px solid #b8d5f2;border-radius:8px;font-size:12px;font-weight:900;min-height:32px;padding:5px 10px}
+#monthlyMode .mr-tablescroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+#monthlyMode table{width:100%;border-collapse:collapse;font-size:12px;color:#253b51;min-width:540px}
+#monthlyMode th{background:#e8f0f8;color:#24415e;font-weight:900;white-space:nowrap}
+#monthlyMode th,#monthlyMode td{border-bottom:1px solid #dfe9f3;text-align:left;padding:8px 7px;line-height:1.4}
+#monthlyMode tr:last-child td{border-bottom:0}
+#monthlyMode tbody tr:hover{background:#f8fbff}
+#monthlyMode td.mr-cell{font-weight:850;color:#125ca7;white-space:nowrap}
+#monthlyMode .mr-flag{display:inline-block;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:900;white-space:nowrap}
+#monthlyMode .mr-flag.completed{background:#e4f8ec;color:#167e4a}
+#monthlyMode .mr-flag.pending{background:#ffefda;color:#a4610c}
+#monthlyMode .mr-flag.active{background:#e3efff;color:#1364b9}
+#monthlyMode .mr-flag.paused{background:#eef0f3;color:#59626d}
+#monthlyMode .mr-pager{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:10px;color:#61778e;font-size:12px}
+#monthlyMode .mr-pager button:disabled{opacity:.4;cursor:default}
+#monthlyMode .mr-empty{font-size:13px;color:#738397;padding:15px 8px}
+#monthlyMode .mr-data-note{margin-top:8px;font-size:12px;color:#66788a}
+#monthlyMode .mr-last{font-size:12px;color:#72859a;font-weight:600}
+@media(min-width:1000px){
+ body.monthly-open .app{max-width:1360px;width:calc(100% - 30px)}
+ body.monthly-open .container{padding:12px 17px}
+ body.monthly-open .hero{position:relative!important}
+}
+@media(max-width:1120px){
+ #monthlyMode .mr-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+ #monthlyMode .mr-panels{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:699px){
+ .mode-btn{font-size:13px;padding:8px 2px;min-height:42px}
+ #monthlyMode .mr-title h2{font-size:20px}
+ #monthlyMode .mr-control{gap:8px;padding:9px}
+ #monthlyMode .mr-dept{width:100%}
+ #monthlyMode .mr-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ #monthlyMode .mr-kpi{padding:10px 7px}
+ #monthlyMode .mr-kpi strong{font-size:25px}
+ #monthlyMode .mr-kpi.special{grid-column:1/-1}
+ #monthlyMode .mr-panels{grid-template-columns:1fr}
+ #monthlyMode .mr-lists{grid-template-columns:1fr}
+ #monthlyMode .mr-list.special{grid-column:auto}
+ #monthlyMode .mr-list{padding:10px}
+ #monthlyMode .mr-tablescroll{overflow-x:auto}
+}
