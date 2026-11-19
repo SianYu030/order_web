@@ -45,11 +45,17 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{
 .quick-hours button:focus-visible{outline:3px solid #87afff;outline-offset:2px}
 @media(max-width:680px){.quick-hours{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.quick-hours button{font-size:12px;min-height:43px;padding:7px 2px}}
 .reason-field{margin-bottom:3px}
-.preview-panel{border-color:#d5e2f8;background:#fcfdff}
-.preview-row{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px dashed #dee6f0;padding:11px 0;font-size:14px}
-.preview-row>span{color:var(--muted);flex:none}
-.preview-row strong{text-align:right;font-weight:800;line-height:1.5;overflow-wrap:anywhere}
-.preview-row:last-of-type{border-bottom:0}
+.preview-panel{border-color:#d5e2f8;background:#fff}
+.preview-panel h3{margin-bottom:14px}
+.preview-summary{background:#f6f8fc;border:1px solid #e4eaf3;border-radius:12px;padding:6px 14px}
+.preview-row{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #e4eaf1;padding:12px 0;font-size:14px}
+.preview-row>span,.preview-reason>span{color:var(--muted);flex:none}
+.preview-row strong{min-width:0;text-align:right;font-weight:750;line-height:1.5;overflow-wrap:anywhere}
+.preview-row .preview-hours{font-size:18px;font-weight:850;color:#173f79}
+.preview-reason{display:flex;flex-direction:column;gap:7px;padding:12px 0}
+.preview-reason strong{display:block;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.6;font-weight:700}
+.preview-footnote{color:#718198;text-align:center;font-size:12px;line-height:1.6;margin:12px 0 0}
+@media(max-width:480px){.preview-panel{padding:17px 15px}.preview-summary{padding:4px 12px}.preview-row{gap:10px;padding:11px 0}.preview-row strong{font-size:14px}.preview-row .preview-hours{font-size:18px}}
 .form-actions{position:sticky;bottom:0;padding:12px 0 6px;background:linear-gradient(0deg,var(--bg) 83%,transparent);z-index:5}
 .primary-btn{width:100%;border:0;border-radius:12px;min-height:51px;padding:12px 18px;background:var(--blue);color:white;font-size:16px;font-weight:850}
 .primary-btn:hover{background:var(--blue-dark)}
