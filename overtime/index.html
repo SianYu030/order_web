@@ -6,10 +6,10 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.29">
+  <link rel="stylesheet" href="./style.css?v=1.1.31">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.30" defer></script>
-  <script src="./overtime-client.js?v=1.1.17" defer></script>
+  <script src="./app.js?v=1.1.31" defer></script>
+  <script src="./overtime-client.js?v=1.1.31" defer></script>
 
 </head>
 <body>
@@ -126,6 +126,7 @@
           <button id="receiptRefresh" type="button" class="primary-btn hidden" aria-hidden="true" tabindex="-1">更新申請狀態</button>
           <button id="receiptHistory" type="button" class="secondary-btn hidden" aria-hidden="true" tabindex="-1">查詢／修改紀錄</button>
           <button id="receiptNew" type="button" class="receipt-new-btn">返回登記</button>
+          <button id="receiptCancel" type="button" class="receipt-cancel hidden">取消這筆申請</button>
         </div>
         
       </div>
@@ -134,7 +135,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.30</span>
+        <span class="version">V1.1.31</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -280,7 +281,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班登記 · V1.1.30</footer>
+  <footer class="footer">業務假日或臨時加班登記 · V1.1.31</footer>
 </div>
 
 <dialog id="confirmDialog">
