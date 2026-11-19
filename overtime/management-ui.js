@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班｜員工自助取消、主管已核准取消、管理員人員名冊 V1.2.2 */
+/* 業務假日或臨時加班｜員工自助取消、主管已核准取消、管理員人員名冊 V1.2.3 */
 (function(){
 "use strict";
 const ROOT="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-management";
@@ -38,20 +38,23 @@ function styleForm(form){
 function renderRoster(){
  const target=$("view-settings");if(!target)return;
  const box=block("員工名冊管理",target);
- const desc=hint(box,"新增只填工號、姓名與分類；Google 主檔和當月工時表驗證通過才會啟用。停用可保留在名冊；刪除會從名冊隱藏，但所有歷史加班與核准紀錄保留。");
+ const desc=hint(box,"新增只填工號、姓名與分類，按一次新增即可。系統自動更新驗證狀態，通過 Google 主檔與當月工時表核對後啟用。停用與刪除不影響歷史紀錄。");
  const form=node("form");styleForm(form);const id=textField("工號","text",15),name=textField("姓名","text",40),teamWrap=node("label",undefined,"field"),teamLabel=node("span","分類");
  const team=node("select");for(const t of ["業務","業助","審圖"]){const o=node("option",t);o.value=t;team.append(o);}teamWrap.append(teamLabel,team);
  const submit=btn("新增人員",()=>{},"primary-btn");submit.type="submit";form.append(id.wrap,name.wrap,teamWrap,submit);box.append(form);
  const state=hint(box,"登入管理員後讀取正式名冊。");
  const refresh=btn("重新讀取名冊",()=>void load());box.append(refresh);
  const list=node("div");box.append(list);
- let busy=false;
+ let busy=false,refreshTimer=null;
  async function load(){
+  if(refreshTimer){clearTimeout(refreshTimer);refreshTimer=null;}
+  let hasPending=false;
   if(!window.SupervisorAuth?.isAdmin()){state.textContent="僅管理員登入後可管理人員。";list.replaceChildren();return;}
   if(busy)return;busy=true;refresh.disabled=true;
   try{
    const r=await api("roster_list");list.replaceChildren();
    const n=(r.people||[]).length;
+   hasPending=(r.people||[]).some(p=>!p.enabled&&p.validation_state==="待驗證");
    state.textContent="已登錄 "+n+" 人。"+(r.roster_ready?"Google 自動核對已接通。":"Google 新名冊驗證尚未啟用，新增人員會保持待驗證，不會直接開放申請。");
    for(const p of r.people||[]){
     const row=node("div",undefined,"supervisor-user-row");
@@ -59,7 +62,7 @@ function renderRoster(){
     row.style.alignItems="center";row.style.justifyContent="space-between";
     row.style.padding="10px 0";row.style.borderBottom="1px solid #e3e9f3";
     const left=node("div");left.append(node("strong",p.employee_id+" · "+p.employee_name));
-    left.append(node("div",p.team+" · "+(p.enabled?"啟用":(p.validation_state==="待驗證"?"待驗證":"已停用")),"helper"));
+    left.append(node("div",p.team+" · "+(p.enabled?"啟用":(p.validation_state==="待驗證"?"自動驗證中":(p.validation_state==="驗證失敗"?"驗證未通過":"已停用"))),"helper"));
     if(p.validation_error)left.append(node("div",p.validation_error,"helper"));
     row.append(left);
     const actions=node("div");
@@ -73,11 +76,15 @@ function renderRoster(){
       }catch(e){state.textContent="停用失敗："+e.message;off.disabled=false;}
      });
      actions.append(off);
+    }else if(p.validation_state==="待驗證"){
+     const status=node("span","驗證中，無須再點","helper");
+     status.style.padding="6px 8px";status.style.color="#47627f";actions.append(status);
     }else{
-     const re=btn("重新驗證",async()=>{
-      if(!confirm("讓 "+p.employee_name+" 重新進入 Google 正式主檔及工時表驗證？"))return;
-      re.disabled=true;try{await api("roster_add",{employee_id:p.employee_id,employee_name:p.employee_name,team:p.team});await loadForce();}
-      catch(e){state.textContent="重新驗證失敗："+e.message;re.disabled=false;}
+     const re=btn(p.validation_state==="驗證失敗"?"重新驗證":"重新啟用",async()=>{
+      re.disabled=true;try{
+       const result=await api("roster_add",{employee_id:p.employee_id,employee_name:p.employee_name,team:p.team});
+       await loadForce();state.textContent=result.message;
+      }catch(e){state.textContent="驗證未送出："+e.message;re.disabled=false;}
      });
      actions.append(re);
     }
@@ -98,17 +105,19 @@ function renderRoster(){
     list.append(row);
    }
   }catch(e){state.textContent="名冊讀取失敗："+e.message;}
-  finally{busy=false;refresh.disabled=false;}
+  finally{
+   busy=false;refresh.disabled=false;
+   if(hasPending)refreshTimer=setTimeout(()=>void load(),10000);
+  }
  }
  async function loadForce(){busy=false;await load();}
  form.addEventListener("submit",async e=>{
   e.preventDefault();if(!window.SupervisorAuth?.isAdmin()||busy)return;
   const person={employee_id:id.input.value.trim(),employee_name:name.input.value.trim(),team:team.value};
-  if(!confirm("新增人員\n"+person.employee_id+" · "+person.employee_name+" · "+person.team+
-    "\n\n需先核對 Google 正式主檔與當月工時表，未通過前不會啟用。"))return;
+  if(!person.employee_id||!person.employee_name){state.textContent="請先輸入工號與姓名";return;}
   submit.disabled=true;try{
    const r=await api("roster_add",person);state.textContent=r.message;
-   id.input.value="";name.input.value="";await loadForce();
+   id.input.value="";name.input.value="";await loadForce();state.textContent=r.message;
   }catch(err){state.textContent="新增失敗："+err.message;}
   finally{submit.disabled=false;}
  });
