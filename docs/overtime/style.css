@@ -370,3 +370,6 @@ html[data-portal="supervisor"] .supervisor-compact #supervisorChangeForm:not(.hi
 
 /* Keep successful submission receipt uncluttered. */
 body.employee-receipt .employee-tools{display:none}
+
+/* V1.1.44: separate employee ID/name from request status. */
+.history-card .history-person{display:block;font-size:14px;font-weight:750;color:#1f4777;line-height:1.5;margin:2px 0 4px}
