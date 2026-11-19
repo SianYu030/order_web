@@ -58,6 +58,7 @@
     if(PORTAL!=="employee"||!record||!record.request_no||!record.id)
       throw Error("申請收據缺少必要資料，請到查詢頁核對是否已送出。");
     latestReceipt={id:record.id,token:receiptToken||null};
+    $("receiptHeading").textContent="申請已送出";
     $("receiptNo").textContent=record.request_no;
     $("receiptDate").textContent=String(record.date||entry.date).replace(/-/g,"/");
     $("receiptEmployee").textContent=String(record.employee_name||entry.person.name);
@@ -91,6 +92,7 @@
         throw Error("伺服器回傳的申請編號不一致，請聯絡管理員");
       var status=String(response.record.status||"待同步");
       updateReceiptCancel(response.record);
+      if(isOwnCancellation(response.record))$("receiptHeading").textContent=friendlyStatus(response.record)==="已取消"?"申請已取消":"取消申請處理中";
       displayReceiptStatus(status);
       var important=["同步失敗","需人工核對","已駁回"].includes(status);
       if(important) $("receiptNumberBox").classList.remove("hidden");
@@ -132,6 +134,7 @@
       if(latestReceipt&&latestReceipt.id===id){
         latestReceipt.status=result.record.status;
         updateReceiptCancel(result.record);
+        $("receiptHeading").textContent=friendlyStatus(result.record)==="已取消"?"申請已取消":"取消申請處理中";
         $("receiptRefreshed").textContent=result.message||"取消已受理。";
         $("receiptNumberBox").classList.add("hidden");
       }
@@ -994,7 +997,11 @@
       left.append(heading, detail);
       var btn = document.createElement("button");
       btn.type = "button";
-      btn.textContent = entry.status==="已核准"?"已核准":"編輯";
+      btn.textContent = entry.status==="待同步"?"編輯":
+        entry.status==="待核准"?"待核准":
+        entry.status==="已核准"?"已核准":
+        entry.status==="已駁回"||entry.status==="駁回待同步"?friendlyStatus(entry):
+        entry.status||"編輯";
       btn.disabled = entry.remoteId ? entry.status!=="待同步" : entry.status==="已核准";
       btn.addEventListener("click", function () { editFromHistory(entry, online); });
       if(PORTAL==="employee"&&entry.remoteId&&canEmployeeCancel(entry.status)){
