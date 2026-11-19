@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.9.3（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.9.4（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -110,12 +110,22 @@ function runBusinessOvertimeSync(){
  }
  try{
   var result=otBridgeApi_("pull",{});
-  var rows=result.records||[],success=0,failed=0;
-  if(rows.length===0){
+  var rows=result.records||[],rosterPending=result.roster_pending||[],success=0,failed=0;
+  try{otBridgeApi_("capabilities",{version:"1.9.3"});}
+  catch(e){Logger.log("版本回報失敗："+String(e));}
+  if(rows.length===0&&rosterPending.length===0){
    Logger.log("Google 業務加班補同步：目前無待處理申請。");
    return {ok:true,processed:0,failed:0};
   }
   var ss=otOpen_();
+  for(var p=0;p<rosterPending.length&&p<20;p++){
+   var item=rosterPending[p];
+   try{
+    var validation=otCheckRoster_(ss,item);
+    otBridgeApi_("roster_ack",{department:item.department,employee_id:item.employee_id,
+      employee_name:item.employee_name,team:item.team,valid:validation.ok,message:validation.message});
+   }catch(e){Logger.log("新人員驗證暫停："+String(e).slice(0,200));}
+  }
   for(var i=0;i<rows.length&&i<20;i++){
    var r=rows[i];
    try{
@@ -136,6 +146,11 @@ function runBusinessOvertimeSync(){
      var rejected=otReject_(ss,r);
      otBridgeApi_("ack",{id:r.id,stage:"rejected",
       source_sheet:OT_BRIDGE.SOURCE,source_row:rejected.row});
+     success++;
+    }else if(r.status==="取消待同步"&&r.source_range){
+     var cancelled=otCancelApproved_(ss,r);
+     otBridgeApi_("ack",{id:r.id,stage:"cancelled",
+      source_sheet:OT_BRIDGE.SOURCE,source_row:cancelled.row});
      success++;
     }
    }catch(e){
@@ -184,7 +199,7 @@ function doPost(e){
   var ts=data.ts,id=String(data.id||""),event=String(data.event||""),
       signature=String(data.signature||"");
   if(typeof ts!=="number"||!Number.isSafeInteger(ts)||Math.abs(Date.now()-ts)>120000||
-    !/^[0-9a-f-]{36}$/i.test(id)||["submit","approve","update","reject"].indexOf(event)<0||
+    !/^[0-9a-f-]{36}$/i.test(id)||["submit","approve","update","reject","cancel","roster"].indexOf(event)<0||
     !/^[a-f0-9]{64}$/.test(signature))
    return otWakeReply_({ok:false,error:"Invalid wake-up request"});
   var expected=otWakeSignature_(ts+"."+id+"."+event);
@@ -289,12 +304,14 @@ function otCol_(index){
   out=String.fromCharCode(65+(n-1)%26)+out;
  return out;
 }
-function otVerifyPerson_(ss,r){
+function otVerifyPerson_(ss,r,allowHistorical){
  if(!["E4","E5"].includes(r.department)||!/^[A-Za-z0-9]+$/.test(r.employee_id)||
     !r.employee_name||!r.request_no||String(r.reason||"").trim().length===0 ||
     String(r.reason).length>1600||!(r.hours>=0.5&&r.hours<=24)||
     Math.round(r.hours*2)!==r.hours*2)
   throw Error("工單員工、時數或原因未通過檢查。");
+ // 已核准取消依原核准來源和月份工時進行驗證；不強制要求員工仍在職。
+ if(allowHistorical===true)return;
  var master=ss.getSheetByName(OT_BRIDGE.MASTER);
  if(!master||master.getSheetId()!==1406600017)
   throw Error("人員主檔未找到或分頁 ID 改變。");
@@ -310,12 +327,12 @@ function otVerifyPerson_(ss,r){
     !["業務","審圖"].includes(String(found[0][4])))
   throw Error("E5 人員非已開放的業務／審圖職務。");
 }
-function otTarget_(ss,r){
- otVerifyPerson_(ss,r);
+function otTarget_(ss,r,allowHistorical){
+ otVerifyPerson_(ss,r,allowHistorical);
  var d=otDateParts_(r.date);
  var sheetName=d.month+"月份"+(r.department==="E4"?"E4":"E5機修課");
  var sheet=ss.getSheetByName(sheetName);
- if(!sheet||sheet.isSheetHidden())throw Error("找不到原月份表或已封存："+sheetName);
+ if(!sheet||(sheet.isSheetHidden()&&allowHistorical!==true))throw Error("找不到原月份表或已封存："+sheetName);
  var dateCol=7+5*(d.day-1),overtimeCol=dateCol+1;
  if(overtimeCol>sheet.getMaxColumns())throw Error("月份表日期超出原欄位範圍。");
  if(otIso_(sheet.getRange(1,dateCol).getValue())!==r.date)
@@ -328,6 +345,68 @@ function otTarget_(ss,r){
  var row=matches[0];
  return {sheet:sheet,sheetId:sheet.getSheetId(),name:sheetName,
   row:row,col:overtimeCol,a1:otCol_(overtimeCol-1)+row};
+}
+
+/** 新人員核對：主檔、單位及本月正式工時列三者都相符才啟用。 */
+function otCheckRoster_(ss,p){
+ try{
+  if(!p||!/^[A-Za-z0-9]{2,15}$/.test(String(p.employee_id||""))||
+    !p.employee_name||!["E4","E5"].includes(p.department)||
+    !["業務","業助","審圖"].includes(p.team)||
+    (p.team==="業助")!==(p.department==="E4"))
+   return {ok:false,message:"工號或分類有誤"};
+  var master=ss.getSheetByName(OT_BRIDGE.MASTER);
+  if(!master||master.getSheetId()!==1406600017)return {ok:false,message:"正式主檔不存在"};
+  var rows=master.getRange("A4:F503").getValues().filter(function(r){
+   return String(r[0])===String(p.employee_id)&&String(r[1])===String(p.employee_name)&&String(r[5])==="在職";
+  });
+  if(rows.length!==1)return {ok:false,message:"Google 主檔找不到唯一在職工號姓名"};
+  var m=rows[0];
+  if(p.department==="E4"&&!(String(m[3])==="E4"&&String(m[4])==="E4櫃體股"))
+   return {ok:false,message:"業助尚未登錄 E4 主檔"};
+  if(p.department==="E5"&&!(String(m[3])==="內勤"&&String(m[4])===p.team))
+   return {ok:false,message:"內勤分類與正式主檔不一致"};
+  var mo=Number(Utilities.formatDate(new Date(),"Asia/Taipei","M"));
+  var sheetName=mo+"月份"+(p.department==="E4"?"E4":"E5機修課");
+  var sheet=ss.getSheetByName(sheetName);
+  if(!sheet||sheet.isSheetHidden())return {ok:false,message:"當月工時分頁尚未建立："+sheetName};
+  var found=sheet.getRange("C8:D180").getValues().filter(function(r){
+   return String(r[0])===String(p.employee_id)&&String(r[1])===String(p.employee_name);
+  });
+  if(found.length!==1)return {ok:false,message:"當月工時表沒有唯一員工資料："+sheetName};
+  return {ok:true,message:"正式主檔及當月工時表均已核對"};
+ }catch(e){return {ok:false,message:"Google 主檔查詢異常："+String(e).slice(0,110)};}
+}
+/** 已核准的取消，要求值、註解、來源狀態全部吻合後才精準清除該單格。 */
+function otCancelApproved_(ss,r){
+ if(r.status!=="取消待同步"||!String(r.cancellation_reason||"").trim()||
+    !String(r.cancellation_confirmed_by||"").trim())
+  throw Error("取消未經主管確認，禁止修改正式工時。");
+ var src=otRegisteredSource_(ss,r,true),t=src.target,v=src.values;
+ var cell=otCellReadApi_(t),reason=String(r.reason);
+ var acceptable=[reason,"BUS-SYNC: "+r.request_no+"\n"+reason];
+ if(String(v[15])==="已取消"&&String(v[9])==="不需同步"&&
+    cell.kind==="blank"&&cell.formula===""&&cell.note==="")return {row:src.row};
+ if(String(v[15])!=="已核准"||String(v[9])!=="已同步"||
+    !String(v[16]||"").trim())throw Error("原申請未通過主管 Google 核准來源核對。");
+ if(cell.kind!=="number"||Number(cell.number)!==Number(r.hours)||
+    cell.formula!==""||acceptable.indexOf(cell.note)<0)
+  throw Error("工時格與原申請的時數或註解不符，禁止清空，改人工核對。");
+ // 同一批次更新：只清除已核准的工時格、來源 J 欄及 P 欄。
+ otGoogleBatch_([
+  {updateCells:{start:{sheetId:t.sheetId,rowIndex:t.row-1,columnIndex:t.col-1},
+   rows:[{values:[{}]}],fields:"userEnteredValue,note"}},
+  {updateCells:{start:{sheetId:OT_BRIDGE.SOURCE_ID,rowIndex:src.row-1,columnIndex:9},
+   rows:[{values:[{userEnteredValue:{stringValue:"不需同步"}}]}],fields:"userEnteredValue"}},
+  {updateCells:{start:{sheetId:OT_BRIDGE.SOURCE_ID,rowIndex:src.row-1,columnIndex:15},
+   rows:[{values:[{userEnteredValue:{stringValue:"已取消"}}]}],fields:"userEnteredValue"}}
+ ]);
+ var check=otCellReadApi_(t),after=otSourceReadApi_(src.row);
+ if(check.kind!=="blank"||check.formula!==""||check.note!==""||
+    String(after[0])!==r.request_no||String(after[15])!=="已取消"||
+    String(after[9])!=="不需同步"||String(after[16])!==String(v[16]))
+  throw Error("取消後 Google 讀回不一致，停止處理以免重複修改。");
+ return {row:src.row};
 }
 function otSourceRows_(ss){
  return ss.getSheetByName(OT_BRIDGE.SOURCE).getRange("A2:R1500").getValues();
@@ -427,12 +506,12 @@ function otRegister_(ss,r){
   throw Error("Google 來源表寫入後讀回不一致，禁止標示同步成功。");
  return {row:empty};
 }
-function otRegisteredSource_(ss,r){
+function otRegisteredSource_(ss,r,allowHistorical){
  if(r.source_sheet!==OT_BRIDGE.SOURCE||!/^A([2-9]|[1-9][0-9]{1,3}):R\1$/.test(String(r.source_range||"")))
   throw Error("後端來源儲存格範圍錯誤。");
  var row=Number(/A(\d+):R/.exec(r.source_range)[1]);
  var values=otSourceReadApi_(row);
- var target=otTarget_(ss,r);
+ var target=otTarget_(ss,r,allowHistorical);
  if(!otMatches_(values,r,target))throw Error("來源表申請內容被修改，拒絕寫入原工時。");
  return {row:row,values:values,target:target};
 }
