@@ -8,10 +8,10 @@
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
   <link rel="stylesheet" href="./style.css?v=1.1.31">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.31" defer></script>
+  <script src="./app.js?v=1.1.34" defer></script>
   <script src="./overtime-client.js?v=1.1.31" defer></script>
 
-  <script src="./management-ui.js?v=1.2.0" defer></script>
+  <script src="./management-ui.js?v=1.2.1" defer></script>
 </head>
 <body>
 <div class="app">
@@ -32,12 +32,7 @@
     </div>
     <div class="notice hidden" id="banner" role="status" aria-live="polite"></div>
 
-    <nav class="tabs" aria-label="網站分頁">
-      <button type="button" class="tab is-active" data-view="entry" aria-selected="true">✎ 登記</button>
-      <button type="button" class="tab" data-view="history" aria-selected="false">▤ 查詢／修改</button>
 
-
-    </nav>
 
     <section id="supervisorAccess" class="panel hidden supervisor-panel" aria-label="主管登入">
       <div class="supervisor-heading">
@@ -136,7 +131,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.31</span>
+        <span class="version">V1.1.34</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -201,7 +196,7 @@
       </form>
     </section>
 
-    <section id="view-history" class="view hidden">
+    <section id="view-history" class="view hidden" aria-hidden="true">
       <div class="section-heading"><div><h2>查詢／修改</h2><p>依目前選擇的年份、月份、單位及員工檢視登記。</p></div></div>
       <section class="panel">
         <p class="helper">請先在「登記」選好日期、單位與員工，再到這裡查詢。</p>
@@ -282,7 +277,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班登記 · V1.1.31</footer>
+  <footer class="footer">業務假日或臨時加班登記 · V1.1.34</footer>
 </div>
 
 <dialog id="confirmDialog">
