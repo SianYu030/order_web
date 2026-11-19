@@ -8,7 +8,7 @@
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
   <link rel="stylesheet" href="./style.css?v=1.1.29">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.29" defer></script>
+  <script src="./app.js?v=1.1.30" defer></script>
   <script src="./overtime-client.js?v=1.1.17" defer></script>
 
 </head>
@@ -134,7 +134,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.29</span>
+        <span class="version">V1.1.30</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -154,6 +154,7 @@
             <select id="department" required>
               <option value="E5">業務</option>
               <option value="E4">業助</option>
+              <option value="REVIEW">審圖</option>
             </select>
           </label>
           <label class="field"><span>員工（工號／姓名）<em>*</em></span>
@@ -279,7 +280,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班登記 · V1.1.25</footer>
+  <footer class="footer">業務假日或臨時加班登記 · V1.1.30</footer>
 </div>
 
 <dialog id="confirmDialog">
