@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班｜員工自助取消、主管已核准取消、管理員人員名冊 V1.2.0 */
+/* 業務假日或臨時加班｜員工自助取消、主管已核准取消、管理員人員名冊 V1.2.1 */
 (function(){
 "use strict";
 const ROOT="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-management";
@@ -164,10 +164,17 @@ function renderSupervisorCancel(){
  setTimeout(()=>void load(),0);
 }
 function renderEmployeeCancel(){
- const target=$("view-history");if(!target)return;
- const box=block("已核准加班臨時取消",target);
+ const target=$("view-entry");if(!target)return;
+ // 取消申請保留為登記頁底部的收合入口，不再依賴查詢／修改分頁。
+ const details=node("details",undefined,"employee-cancel-details");
+ details.style.marginTop="16px";
+ const box=block("取消已核准加班",details);
+ const summary=node("summary","臨時取消已核准加班");
+ summary.style.cssText="padding:14px 18px;cursor:pointer;font-weight:700;color:#2355ac;border:1px solid #d9e3f5;border-radius:12px;background:#fff;list-style-position:inside;";
+ details.prepend(summary);
+ target.append(details);
  const note=hint(box,"在原本送出申請的裝置提出取消，主管確認後才會撤銷已核准工時。");
- const trigger=btn("查詢可取消的核准紀錄",()=>void load());box.append(trigger);
+ const trigger=btn("查看可取消的申請",()=>void load());box.append(trigger);
  const list=node("div");box.append(list);
  let busy=false;
  async function load(){
