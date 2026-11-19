@@ -7,11 +7,32 @@
 (() => {
   'use strict';
   const qs=new URLSearchParams(location.search);
-  if(qs.get('drive_direct_test')!=='1')return;
+  const qaMode=qs.get('drive_direct_test')==='1';
+  const AUTH_KEY='mrUploadDeviceV5';
+  // Consume a one-time, owner-issued pairing link from the URL fragment.
+  // The secret never appears in an HTTP query parameter or public source.
+  const hash=location.hash||'';
+  const pair=/^#mr-v5=([a-f0-9]{32})\.([a-f0-9]{64})$/i.exec(hash);
+  if(pair){
+    try{
+      localStorage.setItem(AUTH_KEY,JSON.stringify({
+        deviceId:pair[1].toLowerCase(),deviceSecret:pair[2].toLowerCase()
+      }));
+      history.replaceState(null,'',location.pathname+location.search);
+    }catch(_){}
+  }
+  let credentials=null;
+  try{
+    const raw=localStorage.getItem(AUTH_KEY);
+    const parsed=raw?JSON.parse(raw):null;
+    if(parsed && /^[a-f0-9]{32}$/.test(parsed.deviceId)
+      && /^[a-f0-9]{64}$/.test(parsed.deviceSecret))credentials=parsed;
+  }catch(_){}
+  if(!qaMode&&!credentials)return;
   // Only accept the audited company's deployment ID. Do NOT trust an URL
   // parameter from a forwarded link, or files could be sent to another script.
   // The fixed /exec is filled in only after deployment and IT approval.
-  const endpoint='https://script.google.com/macros/s/AKfycbwZ1_oRXESBlXh760-lKSiFi4KBBGFySASmnyWNAfHwSgY1iIueRbf-krsEKM749gYc/exec';
+  const endpoint='https://script.google.com/macros/s/AKfycbwnOPUnbUkpsVkgtN5S7SXjbAXk2nIjVGmzASQyvuXBgox9JsoY3Bv9l1HNyiiPNpo_/exec';
   const VALID=/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint);
   if(!VALID) {
     window.repairDirectV4={configured:false,reason:'V4 獨立附件接收器尚未部署；正式報修流程仍維持原狀'};
@@ -81,9 +102,18 @@
     if(!VALID)throw new Error('V4 免登入附件接收器尚未設定，不能宣稱附件已備份');
     if(preflightPromise)return preflightPromise;
     preflightPromise=jsonp('health').then(r=>{
-      if(!r||r.ok!==true||r.version!=='4.0'||r.testOnly!==false||r.chunkBytes!==CHUNK)
-        throw new Error('V4 接收器版本不符或 Google Drive 尚無存取權');
-      return r;
+      if(!r||r.ok!==true||r.version!=='5.0'||r.testOnly!==false||r.chunkBytes!==CHUNK)
+        throw new Error('MR 接收器版本不符或 Google Drive 尚無存取權');
+      if(!credentials)throw new Error('此裝置尚未取得上傳授權');
+      return command('auth',{},60000).then(authState=>{
+        if(!authState||!authState.authorized||authState.receiverVersion!=='5.0')
+          throw new Error('無法確認裝置上傳授權');
+        if(!qaMode&&!authState.productionAllowed)
+          throw new Error('此裝置尚未核准正式工單的附件上傳');
+        if(qaMode&&!authState.qaAllowed)
+          throw new Error('此裝置沒有隔離測試權限');
+        return {...r,...authState};
+      });
     }).finally(()=>{preflightPromise=null});
     return preflightPromise;
   }
@@ -97,6 +127,13 @@
   void preflight().then(result=>{
     receiverStatus.state='healthy';
     receiverStatus.version=result.version;
+    // Only the server can enable real uploads. QA authorization never enables
+    // uploads in the formal, unflagged repair website.
+    if(qaMode?result.qaAllowed:result.productionAllowed){
+      window.repairDrive={enabled:true,preflight,uploadFiles,videoFiles,clearVideo};
+      if(!qaMode && window.repairVideoTestBridge?.showAuthorized)
+        window.repairVideoTestBridge.showAuthorized();
+    }
   }).catch(()=>{
     receiverStatus.state='unavailable';
   }).finally(()=>{
@@ -104,7 +141,7 @@
   });
   // This diagnostic link must NEVER post a live report or save/complete
   // a real repair order. It is intentionally read-only, even if healthy.
-  document.addEventListener('click',event=>{
+  if(qaMode)document.addEventListener('click',event=>{
     const button=event.target&&typeof event.target.closest==='function'
       ?event.target.closest('#submitBtn,#saveRepairBtn,#completeRepairBtn'):null;
     if(!button)return;
@@ -124,7 +161,7 @@
     const form=document.createElement('form');
     form.action=endpoint;form.method='POST';form.target=sink.name;form.enctype='application/x-www-form-urlencoded';
     form.style.display='none';
-    const fieldsToSend=Object.assign({rid,action},fields||{});
+    const fieldsToSend=Object.assign({rid,action},credentials||{},fields||{});
     for(const [key,value] of Object.entries(fieldsToSend)){
       const input=document.createElement('input');
       input.type='hidden';input.name=key;input.value=String(value);
@@ -171,7 +208,7 @@
       catch(err){storageDel(key);}
     }
     if(!session){
-      session=await command('start',{meta:JSON.stringify({
+      session=await command(qaMode?'qaStart':'start',{meta:JSON.stringify({
         orderNo:mr,mediaKind:kind,name:file.name,size:file.size
       })});
       if(!session||!session.sessionId)throw new Error('Google 未建立上傳工作階段');
@@ -216,7 +253,9 @@
     if(uploading)throw new Error('附件正在上傳，請勿重複操作');
     uploading=true;
     try{
-      await preflight();
+      const access=await preflight();
+      if(!qaMode&&!access.productionAllowed)
+        throw new Error('此裝置沒有正式工單的上傳權限');
       const list=[...(selected||[])],results=[];
       for(let i=0;i<list.length;i++){
         const f=list[i],kind=suffix(f,originalKind);
@@ -274,7 +313,6 @@
   ['resetBtn','successHomeBtn','againBtn'].forEach(id=>{
     const el=$(id);if(el)el.addEventListener('click',()=>clearVideo('report'));
   });
-  window.repairDrive={enabled:true,preflight,uploadFiles,videoFiles,clearVideo};
-  // No extra Connect button, no popup, no staff code fields.
-  // This is test-mode only; formal original report and LINE remain unmodified.
+  // No visible connectivity panel or company Google password prompt.
+  // Without a server-approved device, the existing photo pathway remains active.
 })();
