@@ -12,6 +12,7 @@ on:
       - 'scripts/overtime-recreate-contract.mjs'
       - 'scripts/overtime-receipt-contract.mjs'
       - 'scripts/overtime-pages-sync-contract.mjs'
+      - 'scripts/overtime-identity-contract.mjs'
       - 'scripts/overtime-supervisor-review-contract.mjs'
       - 'scripts/overtime-rejection-contract.mjs'
       - 'scripts/overtime-supervisor-name-contract.mjs'
@@ -36,6 +37,8 @@ jobs:
           node --check /tmp/overtime-google-bridge.js
       - name: Verify GitHub Pages published files match source
         run: node scripts/overtime-pages-sync-contract.mjs
+      - name: Verify employee code and name lookup integrity
+        run: node scripts/overtime-identity-contract.mjs
       - name: Verify Google worker mapping and read-only safety checks
         run: node scripts/overtime-bridge-unit.mjs
       - name: Verify supervisor deletion safeguards (no account changes)
