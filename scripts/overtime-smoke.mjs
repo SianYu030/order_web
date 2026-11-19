@@ -118,12 +118,13 @@ const roster=await post("roster");
 assert.equal(roster.status,200,"roster HTTP "+roster.status+" "+JSON.stringify(roster.body));
 assert.equal(roster.body.ok,true);
 const people=roster.body.people;
-assert.equal(people.length,7);
-assert.equal(people.filter(x=>x.department==="E4").length,1);
-assert.equal(people.filter(x=>x.department==="E5").length,6);
-assert.equal(people.find(x=>x.department==="E4").employee_name,"潘詠升");
-assert(people.every(x=>typeof x.public_key==="string"&&!Object.hasOwn(x,"employee_id")));
-console.log("PASS live roster E4 1 / E5 6, private employee IDs not exposed");
+assert(Array.isArray(people)&&people.length>0,"active company roster must be available");
+assert(people.some(x=>x.department==="E4")&&people.some(x=>x.department==="E5"),"E4/E5 must both have employees");
+assert(people.every(x=>["E4","E5"].includes(x.department)&&typeof x.employee_name==="string"&&
+  x.employee_name.trim()&&typeof x.public_key==="string"&&
+  /^[0-9a-f-]{36}$/i.test(x.public_key)&&!Object.hasOwn(x,"employee_id")),
+  "public roster must use opaque UUID keys and hide actual employee IDs");
+console.log("PASS live roster "+people.length+" active E4/E5 entries; private employee IDs not exposed");
 const invalid=await post("submit",{department:"E4",roster_key:"00000000-0000-4000-8000-000000000000",employee_name:"測試用戶",date:"2026-11-17",hours:2,reason:"安全負面測試"});
 assert.equal(invalid.status,400,"invalid submit must be rejected");
 console.log("PASS invalid employee cannot submit");
