@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.34 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.35 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -1155,9 +1155,23 @@
     document.querySelectorAll("[data-view]").forEach(function (btn) {
       btn.addEventListener("click", function () { switchView(btn.dataset.view); });
     });
-    document.querySelectorAll("[data-hour]").forEach(function (btn) {
-      btn.addEventListener("click", function () { $("hours").value = btn.dataset.hour; updatePreview(); });
+    function syncQuickHours(){
+      var selected=Number($("hours").value);
+      document.querySelectorAll(".quick-hours [data-hour]").forEach(function(btn){
+        var active=$("hours").value!=="" && selected===Number(btn.dataset.hour);
+        btn.classList.toggle("is-selected",active);
+        btn.setAttribute("aria-pressed",String(active));
+      });
+    }
+    document.querySelectorAll(".quick-hours [data-hour]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        $("hours").value = btn.dataset.hour;
+        syncQuickHours();
+        updatePreview();
+      });
     });
+    $("hours").addEventListener("input", syncQuickHours);
+    syncQuickHours();
     $("year").addEventListener("change", function () { renderDays(); loadMonth(); });
     $("month").addEventListener("change", function () { renderDays(); loadMonth(); });
     $("day").addEventListener("change", updatePreview);
