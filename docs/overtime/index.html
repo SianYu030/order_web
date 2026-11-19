@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.36">
+  <link rel="stylesheet" href="./style.css?v=1.1.37">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.36" defer></script>
+  <script src="./app.js?v=1.1.37" defer></script>
   <script src="./overtime-client.js?v=1.1.31" defer></script>
 
   <script src="./management-ui.js?v=1.2.1" defer></script>
@@ -131,18 +131,28 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.36</span>
+        <span class="version">V1.1.37</span>
       </div>
 
       <form id="entryForm" novalidate>
         <section class="panel">
           <h3><span class="step">1</span> 登記日期</h3>
-          <div class="date-grid">
-            <label class="field"><span>年份</span><select id="year" required aria-label="年份"></select></label>
-            <label class="field"><span>月份</span><select id="month" required aria-label="月份"></select></label>
-            <label class="field"><span>日期</span><select id="day" required aria-label="日期"></select></label>
+          <div class="date-picker-layout">
+            <label class="field date-picker-field" for="datePicker">
+              <span>加班日期 <em>*</em></span>
+              <input id="datePicker" name="overtimeDate" type="date" required aria-describedby="weekdayText">
+            </label>
+            <div class="date-shortcuts" role="group" aria-label="快速選擇日期">
+              <button type="button" id="dateToday" class="date-shortcut">今天</button>
+              <button type="button" id="dateTomorrow" class="date-shortcut">明天</button>
+            </div>
           </div>
-          <p class="helper" id="weekdayText">請選擇日期</p>
+          <p class="helper date-weekday" id="weekdayText">請選擇日期</p>
+          <div class="date-grid date-legacy" hidden aria-hidden="true">
+            <label class="field"><span>年份</span><select id="year" required aria-label="年份" tabindex="-1"></select></label>
+            <label class="field"><span>月份</span><select id="month" required aria-label="月份" tabindex="-1"></select></label>
+            <label class="field"><span>日期</span><select id="day" required aria-label="日期" tabindex="-1"></select></label>
+          </div>
         </section>
 
         <section class="panel">
@@ -287,7 +297,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班登記 · V1.1.36</footer>
+  <footer class="footer">業務假日或臨時加班登記 · V1.1.37</footer>
 </div>
 
 <dialog id="confirmDialog">
