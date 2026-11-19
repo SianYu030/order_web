@@ -97,3 +97,9 @@ body.monthly-open .notice{display:none}
  #monthlyMode .mr-list{padding:10px}
  #monthlyMode .mr-tablescroll{overflow-x:auto}
 }
+
+/* Desktop month view: keep the genuine brand banner undistorted, crop its empty vertical edges. */
+@media(min-width:1000px){
+ body.monthly-open .hero{height:230px!important;aspect-ratio:auto!important;background-size:100% auto!important;background-position:center 50%!important}
+ body.monthly-open .mode-btn{font-size:17px;min-height:48px;font-weight:850}
+}
