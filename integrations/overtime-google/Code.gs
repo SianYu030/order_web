@@ -474,11 +474,11 @@ function otRegister_(ss,r){
  var target=otTarget_(ss,r),source=ss.getSheetByName(OT_BRIDGE.SOURCE);
  var rows=otSourceRows_(ss);
  var found=otSourceFind_(rows,r);
- // 此日期不可和另一筆未駁回的申請重疊，即使來源表由其他工具建立。
+ // 同日只禁止與尚未駁回或未完成取消的申請重疊，即使來源表由其他工具建立。
  rows.forEach(function(x){
   if(String(x[0]||"")!==r.request_no&&
     String(x[5]||"")===String(r.employee_id)&&String(x[4]||"")===r.department&&
-    otIso_(x[1])===r.date&&String(x[15]||"")!=="已駁回")
+    otIso_(x[1])===r.date&&["已駁回","已取消"].indexOf(String(x[15]||""))<0)
     throw Error("Google 來源表同人同日另有未駁回工單，禁止重複。");
  });
  if(found){
