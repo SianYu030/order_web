@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.30 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.31 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -41,7 +41,8 @@
       case "待核准": return {text:"已進入 Google 待核准清單，等待主管審核。",tone:"waiting"};
       case "核准待同步": return {text:"主管已核准，正在等待 Google 寫入正式工時並完成驗證。",tone:"waiting"};
       case "已核准": return {text:"主管已核准，Google 正式工時與註解已完成讀回驗證。",tone:"done"};
-      case "已駁回": return {text:"主管已駁回此筆申請，正式工時不會因這筆申請寫入。",tone:"attention"};
+      case "已駁回": return {text:"此筆申請已結束，不會寫入正式工時。",tone:"attention"};
+      case "駁回待同步": return {text:"取消／駁回已送出，等待 Google 核對來源資料。",tone:"waiting"};
       case "需人工核對": return {text:"公司已收件，但 Google 同步發生異常，需由管理員核對處理。請勿再送出同一天的申請。",tone:"attention"};
       default: return {text:"後端已收到申請；目前尚未確認 Google 同步與主管核准。",tone:"waiting"};
     }
@@ -67,6 +68,7 @@
     // 僅在查詢憑證未保存時顯示申請編號，正常成功頁保持簡潔。
     $("receiptNumberBox").classList.toggle("hidden",!!saved);
     $("receiptRefreshed").textContent="";
+    updateReceiptCancel(record);
     displayReceiptStatus(record.status);
     switchView("receipt");
     $("receiptHeading").focus({preventScroll:true});
@@ -88,6 +90,7 @@
       if(!response.record||response.record.id!==latestReceipt.id)
         throw Error("伺服器回傳的申請編號不一致，請聯絡管理員");
       var status=String(response.record.status||"待同步");
+      updateReceiptCancel(response.record);
       displayReceiptStatus(status);
       var important=["同步失敗","需人工核對","已駁回"].includes(status);
       if(important) $("receiptNumberBox").classList.remove("hidden");
@@ -99,6 +102,44 @@
       $("receiptNumberBox").classList.remove("hidden");
       $("receiptRefreshed").textContent="狀態查詢未完成："+e.message+"。申請已送出，請勿重複提交。";
     }finally{button.disabled=false;button.textContent="更新申請狀態";}
+  }
+  function canEmployeeCancel(status){
+    return status==="待同步"||status==="待核准";
+  }
+  function isOwnCancellation(record){
+    return !!record && record.manager==="員工自行取消";
+  }
+  function friendlyStatus(record){
+    if(isOwnCancellation(record)&&record.status==="已駁回")return "已取消";
+    if(isOwnCancellation(record)&&record.status==="駁回待同步")return "取消處理中";
+    return String(record.status||"");
+  }
+  function updateReceiptCancel(record){
+    var btn=$("receiptCancel");
+    if(!btn)return;
+    btn.classList.toggle("hidden",!record||!canEmployeeCancel(record.status)||
+      !latestReceipt||!latestReceipt.token);
+  }
+  async function cancelOwnRequest(id,token,date,name){
+    if(!id||!token)return;
+    if(!await confirmAction("確定取消這筆加班申請？\n"+String(date||"")+" · "+String(name||"")+
+      "\n\n僅限主管尚未核准的申請。取消後不會寫入正式工時，操作紀錄會保留。"))return;
+    var receiptButton=$("receiptCancel");
+    if(receiptButton)receiptButton.disabled=true;
+    try{
+      // Server checks ownership with the original receipt token and atomically compares status.
+      const result=await window.OvertimeApi.cancel(id,token);
+      if(latestReceipt&&latestReceipt.id===id){
+        latestReceipt.status=result.record.status;
+        updateReceiptCancel(result.record);
+        $("receiptRefreshed").textContent=result.message||"取消已受理。";
+        $("receiptNumberBox").classList.add("hidden");
+      }
+      if(!$("view-history").classList.contains("hidden"))await refreshHistory();
+    }catch(e){
+      message("取消失敗："+e.message+"。請先重新查詢，不要重複送出。","error");
+      if(latestReceipt&&latestReceipt.id===id&&receiptButton)receiptButton.classList.remove("hidden");
+    }finally{if(receiptButton)receiptButton.disabled=false;}
   }
   function newReceiptEntry(){
     latestReceipt=null;
@@ -949,14 +990,26 @@
       var heading = document.createElement("strong");
       heading.textContent = entry.date.replace(/-/g, "/") + "  " + entry.kind + " " + formatHours(entry.hours);
       var detail = document.createElement("small");
-      detail.textContent = (entry.status ? "【"+entry.status+"】 " : "")+(entry.reason||"未填原因");
+      detail.textContent = (entry.status ? "【"+friendlyStatus(entry)+"】 " : "")+(entry.reason||"未填原因");
       left.append(heading, detail);
       var btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = entry.status==="已核准"?"已核准":"編輯";
       btn.disabled = entry.remoteId ? entry.status!=="待同步" : entry.status==="已核准";
       btn.addEventListener("click", function () { editFromHistory(entry, online); });
-      card.append(left, btn);
+      if(PORTAL==="employee"&&entry.remoteId&&canEmployeeCancel(entry.status)){
+        const tokenRecord=window.OvertimeApi.localReceipts().find(x=>x.id===entry.remoteId);
+        if(tokenRecord&&tokenRecord.receipt_token){
+          const cancelBtn=document.createElement("button");
+          cancelBtn.type="button";cancelBtn.textContent="取消申請";cancelBtn.className="history-cancel";
+          cancelBtn.addEventListener("click",function(){
+            void cancelOwnRequest(entry.remoteId,tokenRecord.receipt_token,entry.date,entry.employee_name||"");
+          });
+          const group=document.createElement("div");group.className="history-actions";
+          group.append(btn,cancelBtn);
+          card.append(left,group);
+        }else card.append(left,btn);
+      }else card.append(left,btn);
       list.appendChild(card);
     });
   }
@@ -974,7 +1027,7 @@
         const verified=await Promise.all(receipts.map(x=>window.OvertimeApi.receipt(x.id,x.receipt_token)));
         const rows=verified.map(x=>x.record).map(r=>({
           date:r.date,id:person.id,department:r.department,kind:"加班",
-          hours:r.hours,reason:r.reason,status:r.status,remoteId:r.id
+          hours:r.hours,reason:r.reason,status:r.status,manager:r.manager,employee_name:r.employee_name,remoteId:r.id
         })).sort((a,b)=>b.date.localeCompare(a.date));
         renderHistoryItems(rows,false);
         if(!rows.length)$("historyList").textContent="這台裝置尚未保有此員工當月的後端收件憑證。";
@@ -1106,6 +1159,10 @@
     $("hours").addEventListener("input", updatePreview);
     $("entryForm").addEventListener("submit", submitEntry);
     if(PORTAL==="employee"){
+      $("receiptCancel").addEventListener("click",function(){
+        if(latestReceipt)void cancelOwnRequest(latestReceipt.id,latestReceipt.token,
+          $("receiptDate").textContent,$("receiptEmployee").textContent);
+      });
       $("receiptRefresh").addEventListener("click",refreshReceiptStatus);
       $("receiptHistory").addEventListener("click",function(){switchView("history");});
       $("receiptNew").addEventListener("click",newReceiptEntry);
