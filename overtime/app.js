@@ -361,7 +361,7 @@
   }
   function switchView(name) {
     // 三個網址具有獨立的入口與頁面；真實寫入仍須經後端及 Google 權限驗證。
-    if(PORTAL==="employee"&&!["entry","receipt","history"].includes(name))return;
+    if(PORTAL==="employee"&&!["entry","history","receipt"].includes(name))return;
     if(PORTAL==="supervisor"&&!["batch","approval"].includes(name))return;
     if(PORTAL==="admin"&&name!=="settings")return;
     document.body.classList.toggle("employee-receipt",PORTAL==="employee"&&name==="receipt");
