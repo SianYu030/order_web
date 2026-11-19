@@ -1,7 +1,7 @@
 # 業務假日或臨時加班｜人員管理與已核准取消｜2026-11-19
 
 ## 已發布
-- Supabase `overtime-management` v2：獨立管理 API，供已登入管理員新增、停用及重新驗證人員；主管可查看已核准與取消清單；員工持原申請憑證可請求取消。
+- Supabase `overtime-management` v3：獨立管理 API，供已登入管理員新增、停用及重新驗證人員；主管可查看已核准與取消清單；員工持原申請憑證可請求取消。
 - Supabase `overtime-sheet-bridge` v8：來源表核對、待驗證名冊處理、已核准取消完成回報；保留原核准、駁回流程。
 - Supabase `overtime-requests` v14：完成取消後允許同人同日重新申請；原核准與駁回仍有效。
 - GitHub Pages `overtime/management-ui.js` V1.2.0：員工、主管、管理員三個網站的操作入口。
