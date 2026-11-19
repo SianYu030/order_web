@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.35 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.36 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -322,13 +322,12 @@
     if (!$("day").value) return;
     var p = dateParts(), person = chosenPerson();
     $("weekdayText").textContent = WEEKDAYS[dayOfWeek(p)] + " · " + getDayType(p) + (hasGoogle() ? "（以原表為準）" : "（展示推算）");
-    $("summaryWhen").textContent = dateString(p) + " · " + (DEPT_LABEL[$("department").value] || "");
-    $("summaryWho").textContent = person ? (person.remote ? person.name : (person.preview ? person.name + "（預覽）" : person.id + " · " + person.name)) : "請選擇員工";
-    $("summaryKind").textContent = "加班 " + (numberOrNull($("hours").value) || 0) + " 小時";
-    var cell = a1Col(colIndex(p.d, state.kind));
-    var row = state.month && state.monthKey === contextKey() ? state.month.employeeRows.get($("employee").value) : null;
-    $("summaryCell").textContent = cell + (row ? row : " · 待確認列號");
-    $("summaryLunch").textContent = getLunchPreview(p, numberOrNull($("hours").value) || 0);
+    $("summaryDate").textContent = dateString(p) + "（" + ["日","一","二","三","四","五","六"][dayOfWeek(p)] + "）";
+    $("summaryDept").textContent = DEPT_LABEL[$("department").value] || "尚未選擇";
+    $("summaryWho").textContent = person ? (person.preview ? person.name + "（預覽）" : person.name) : "尚未選擇";
+    var hours = numberOrNull($("hours").value);
+    $("summaryHours").textContent = hours === null ? "尚未填寫" : formatHours(hours);
+    $("summaryReason").textContent = $("reason").value.trim() || "尚未填寫";
   }
   function switchView(name) {
     // 三個網址具有獨立的入口與頁面；真實寫入仍須經後端及 Google 權限驗證。
@@ -1178,6 +1177,7 @@
     $("department").addEventListener("change", function () { populateEmployees(); loadMonth(); });
     $("employee").addEventListener("change", updatePreview);
     $("hours").addEventListener("input", updatePreview);
+    $("reason").addEventListener("input", updatePreview);
     $("entryForm").addEventListener("submit", submitEntry);
     if(PORTAL==="employee"){
       $("receiptCancel").addEventListener("click",function(){
