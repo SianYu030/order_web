@@ -1,4 +1,4 @@
-/* V1.1.29 - 同步核准與駁回，Google 來源驗證，月檢視深連結及定時更新。 */
+/* V1.1.31 - 員工核准前可自行撤銷；保留來源驗證與每分鐘備援。 */
 (function(){
 "use strict";
 const URL="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-requests";
@@ -32,6 +32,7 @@ const api={call,save,find,localReceipts,
  roster:()=>call("roster"),
  submit:(data)=>call("submit",data),
  update:(data)=>call("update",data),
+ cancel:(id,receipt_token)=>call("cancel",{id,receipt_token}),
  receipt:(id,receipt_token)=>call("receipt",{id,receipt_token}),
  queue:()=>call("queue",{},true),
  approve:(id)=>call("approve",{id},true),
