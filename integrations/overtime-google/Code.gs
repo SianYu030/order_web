@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.9.4（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.9.5（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -113,11 +113,20 @@ function runBusinessOvertimeSync(){
   var rows=result.records||[],rosterPending=result.roster_pending||[],success=0,failed=0;
   try{otBridgeApi_("capabilities",{version:"1.9.3"});}
   catch(e){Logger.log("版本回報失敗："+String(e));}
+  // 每 1 分鐘同步管理員已驗證名冊，不依賴 IMPORTDATA 的小時快取。
+  // 名冊核對失敗不能中斷原有加班登記、核准和取消同步。
+  var ss=null;
+  try{
+   ss=otOpen_();
+   otSyncRosterDropdown_(ss);
+  }catch(rosterError){
+   Logger.log("姓名下拉同步受阻，保留原加班同步："+String(rosterError).slice(0,300));
+  }
   if(rows.length===0&&rosterPending.length===0){
    Logger.log("Google 業務加班補同步：目前無待處理申請。");
    return {ok:true,processed:0,failed:0};
   }
-  var ss=otOpen_();
+  if(!ss)ss=otOpen_();
   for(var p=0;p<rosterPending.length&&p<20;p++){
    var item=rosterPending[p];
    try{
@@ -257,6 +266,47 @@ function otBridgeApi_(action,data){
  if(response.getResponseCode()!==200||!json.ok)
   throw Error("Supabase "+response.getResponseCode()+"："+String(json.error||"操作未完成"));
  return json;
+}
+
+/**
+ * 員工姓名下拉同步：固定使用原「業務加班月檢視」隱藏 L2:L100，
+ * 將管理員系統已啟用、已驗證人員同步到原 D3 下拉選單。
+ * 只更動輔助姓名欄；永不修改員工正式工時、申請來源、核准與歷史紀錄。
+ * 由現有 runBusinessOvertimeSync 每分鐘觸發，不需新增排程。
+ */
+function otSyncRosterDropdown_(ss){
+ var result=otBridgeApi_("roster_names",{});
+ var names=result.names||[];
+ if(!Array.isArray(names)||names.length===0||names.length>99 ||
+    names.some(function(x){return typeof x!=="string"||x.trim()!==x||
+      x.length<1||x.length>40||/^[=+@-]/.test(x);}) ||
+    new Set(names).size!==names.length)
+  throw Error("後端員工名冊格式不正確，拒絕更改下拉名單。");
+ var sheet=ss.getSheetByName("業務加班月檢視");
+ if(!sheet||sheet.getSheetId()!==2131065558||sheet.getMaxColumns()<12||
+    sheet.getMaxRows()<100||String(sheet.getRange("L1").getValue())!=="全部員工")
+  throw Error("月檢視姓名輔助欄位置已變更，拒絕寫入。");
+ var range=sheet.getRange("L2:L100");
+ var old=range.getValues().map(function(r){return String(r[0]||"");});
+ var forms=range.getFormulas();
+ if(forms.slice(1).some(function(row){return row[0]!=="";}))
+  throw Error("姓名輔助欄出現未知公式，停止同步以免覆蓋。");
+ var needsUpdate=Boolean(forms[0][0]);
+ if(!needsUpdate){
+  for(var i=0;i<old.length;i++){
+   if(old[i]!==(names[i]||"")){needsUpdate=true;break;}
+  }
+ }
+ if(!needsUpdate)return {ok:true,changed:false,count:names.length};
+ var values=Array.from({length:99},function(_,i){return [names[i]||""];});
+ range.clearContent();
+ range.setValues(values);
+ SpreadsheetApp.flush();
+ var check=range.getValues().map(function(r){return String(r[0]||"");});
+ if(check.some(function(v,i){return v!==(names[i]||"");}))
+  throw Error("Google 姓名下拉寫入後讀回驗證失敗。");
+ Logger.log("管理員員工名冊已同步到月檢視，共 "+names.length+" 位。");
+ return {ok:true,changed:true,count:names.length};
 }
 function otOpen_(){
  var ss=SpreadsheetApp.openById(OT_BRIDGE.SPREADSHEET_ID);
