@@ -39,8 +39,11 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{
 
 
 .suffix-field{position:relative}.suffix-field input{padding-right:57px}.suffix-field>span{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:#77849b;font-size:13px;font-weight:500}
-.quick-hours{display:flex;gap:8px;flex-wrap:wrap;margin:-3px 0 18px}
-.quick-hours button{border:1px solid #cfdaeb;background:#f8fbff;color:#426182;padding:7px 12px;border-radius:8px;font-size:13px}
+.quick-hours{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin:-3px 0 18px}
+.quick-hours button{min-width:0;min-height:40px;border:1px solid #cfdaeb;background:#f8fbff;color:#426182;padding:7px 3px;border-radius:8px;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer}
+.quick-hours button.is-selected{border-color:#245bcc;background:#eaf2ff;color:#1653bd;box-shadow:inset 0 0 0 1px #245bcc}
+.quick-hours button:focus-visible{outline:3px solid #87afff;outline-offset:2px}
+@media(max-width:680px){.quick-hours{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.quick-hours button{font-size:12px;min-height:43px;padding:7px 2px}}
 .reason-field{margin-bottom:3px}
 .preview-panel{border-color:#d5e2f8;background:#fcfdff}
 .preview-row{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px dashed #dee6f0;padding:11px 0;font-size:14px}
