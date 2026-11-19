@@ -260,7 +260,7 @@
     updatePreview();
   }
   function parseCalendarDate(value) {
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || "")) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return null;
     var parts = value.split("-").map(Number);
     var y = parts[0], m = parts[1], d = parts[2];
     if (y < 2025 || m < 1 || m > 12 || d < 1 || d > new Date(y, m, 0).getDate()) return null;
