@@ -62,6 +62,8 @@ function renderRoster(){
     left.append(node("div",p.team+" · "+(p.enabled?"啟用":(p.validation_state==="待驗證"?"待驗證":"已停用")),"helper"));
     if(p.validation_error)left.append(node("div",p.validation_error,"helper"));
     row.append(left);
+    const actions=node("div");
+    actions.style.display="flex";actions.style.gap="8px";actions.style.alignItems="center";actions.style.marginLeft="auto";
     if(p.enabled){
      const off=btn("停用",async()=>{
       if(!confirm("確定停用 "+p.employee_name+"（"+p.employee_id+"）？\n既有加班與核准紀錄會保留。"))return;
@@ -70,14 +72,14 @@ function renderRoster(){
        await loadForce();
       }catch(e){state.textContent="停用失敗："+e.message;off.disabled=false;}
      });
-     row.append(off);
+     actions.append(off);
     }else{
      const re=btn("重新驗證",async()=>{
       if(!confirm("讓 "+p.employee_name+" 重新進入 Google 正式主檔及工時表驗證？"))return;
       re.disabled=true;try{await api("roster_add",{employee_id:p.employee_id,employee_name:p.employee_name,team:p.team});await loadForce();}
       catch(e){state.textContent="重新驗證失敗："+e.message;re.disabled=false;}
      });
-     row.append(re);
+     actions.append(re);
     }
     const remove=btn("刪除",async()=>{
      const identity=p.employee_id+" · "+p.employee_name;
@@ -91,7 +93,8 @@ function renderRoster(){
      }catch(e){state.textContent="刪除失敗："+e.message;remove.disabled=false;}
     },"secondary-btn");
     remove.style.borderColor="#f4b4b4";remove.style.color="#b42323";remove.style.background="#fff8f8";
-    row.append(remove);
+    actions.append(remove);
+    row.append(actions);
     list.append(row);
    }
   }catch(e){state.textContent="名冊讀取失敗："+e.message;}
