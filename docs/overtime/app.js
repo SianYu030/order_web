@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.36 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.37 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -241,6 +241,10 @@
     var m = $("month");
     for (var month = 1; month <= 12; month++) selectOption(m, String(month), month + " 月");
     m.value = String(today.m);
+    if (PORTAL === "employee" && $("datePicker")) {
+      $("datePicker").min = "2025-01-01";
+      $("datePicker").max = String(Math.max(2027, today.y + 2)) + "-12-31";
+    }
     renderDays(today.d);
   }
   function renderDays(preferred) {
@@ -249,7 +253,45 @@
     d.replaceChildren();
     for (var n = 1; n <= last; n++) selectOption(d, String(n), n + " 日");
     d.value = String(Math.min(Math.max(1, selected), last));
+    if (PORTAL === "employee" && $("datePicker")) {
+      $("datePicker").value = isoString(dateParts());
+      syncDateShortcuts();
+    }
     updatePreview();
+  }
+  function parseCalendarDate(value) {
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || "")) return null;
+    var parts = value.split("-").map(Number);
+    var y = parts[0], m = parts[1], d = parts[2];
+    if (y < 2025 || m < 1 || m > 12 || d < 1 || d > new Date(y, m, 0).getDate()) return null;
+    if (![...$("year").options].some(function(option){return Number(option.value)===y;})) return null;
+    return { y:y, m:m, d:d };
+  }
+  function syncDateShortcuts() {
+    if (PORTAL !== "employee" || !$("datePicker")) return;
+    var now = taiwanToday();
+    var today = isoString(now);
+    var tomorrowDate = new Date(Date.UTC(now.y, now.m - 1, now.d + 1));
+    var tomorrow = isoString({y:tomorrowDate.getUTCFullYear(),m:tomorrowDate.getUTCMonth()+1,d:tomorrowDate.getUTCDate()});
+    [["dateToday",today],["dateTomorrow",tomorrow]].forEach(function(item){
+      var active = $("datePicker").value === item[1];
+      $(item[0]).classList.toggle("is-selected",active);
+      $(item[0]).setAttribute("aria-pressed",String(active));
+    });
+  }
+  function chooseCalendarDate(value) {
+    var parsed = parseCalendarDate(value);
+    if (!parsed) {
+      $("datePicker").value = isoString(dateParts());
+      syncDateShortcuts();
+      message("請選擇有效的加班日期。", "warning");
+      return;
+    }
+    var previousMonth = $("year").value + "|" + $("month").value;
+    $("year").value = String(parsed.y);
+    $("month").value = String(parsed.m);
+    renderDays(parsed.d);
+    if (previousMonth !== parsed.y + "|" + parsed.m) void loadMonth();
   }
   function getPeople() { return PORTAL==="employee" ? state.remoteRoster : (hasGoogle() ? state.roster : demoRoster()); }
   function populateEmployees(preferredName) {
@@ -375,6 +417,7 @@
     var hours = numberOrNull($("hours").value), reason = $("reason").value.trim();
     if (state.kind !== "加班") throw Error("此網站只允許加班登記。");
     if (!p.y || !p.m || !p.d || p.d > new Date(p.y, p.m, 0).getDate()) throw Error("請選擇正確登記日期。");
+    if (PORTAL === "employee" && (!$("datePicker").value || $("datePicker").value !== isoString(p))) throw Error("請選擇正確的加班日期。");
     if (!person) throw Error("請先選擇正確的員工。");
     if (hours === null || hours < 0.5 || hours > 24 || Math.round(hours * 2) !== hours * 2) throw Error("時數須為 0.5 至 24 小時，且以半小時為單位。");
     if (!reason) throw Error("請填寫加班原因／備註。");
@@ -1174,6 +1217,14 @@
     $("year").addEventListener("change", function () { renderDays(); loadMonth(); });
     $("month").addEventListener("change", function () { renderDays(); loadMonth(); });
     $("day").addEventListener("change", updatePreview);
+    if (PORTAL === "employee" && $("datePicker")) {
+      $("datePicker").addEventListener("change",function(){chooseCalendarDate($("datePicker").value);});
+      $("dateToday").addEventListener("click",function(){chooseCalendarDate(isoString(taiwanToday()));});
+      $("dateTomorrow").addEventListener("click",function(){
+        var t=taiwanToday(),d=new Date(Date.UTC(t.y,t.m-1,t.d+1));
+        chooseCalendarDate(isoString({y:d.getUTCFullYear(),m:d.getUTCMonth()+1,d:d.getUTCDate()}));
+      });
+    }
     $("department").addEventListener("change", function () { populateEmployees(); loadMonth(); });
     $("employee").addEventListener("change", updatePreview);
     $("hours").addEventListener("input", updatePreview);
