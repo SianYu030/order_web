@@ -1944,7 +1944,7 @@ el("completeRepairBtn").onclick=async()=>{
       },repairState.order.photoEpoch||"");
       clearRepairPhotoSelection_();
       if(window.repairDrive?.enabled)window.repairDrive.clearVideo("repair");
-      el("saveRepairMsg").textContent=window.repairDrive?.enabled?"✅ 工單已結案｜附件已寫入 Google Drive，NAS 備份待核對":"✅ 工單已結案｜📷 維修照片已排入 NAS 自動歸檔";
+      el("saveRepairMsg").textContent=window.repairDrive?.enabled?"✅ 工單已結案｜附件已寫入 Google Drive，F 槽歸檔待核對":"✅ 工單已結案｜📷 維修照片已排入 NAS 自動歸檔";
     }else{
       el("saveRepairMsg").textContent=SYNC_API_URL?"✅ 已同步至電腦「機修維修單」":"✅ 工單已模擬結案";
     }
@@ -1996,7 +1996,7 @@ el("saveRepairBtn").onclick=async()=>{
       },repairState.order.photoEpoch||"");
       clearRepairPhotoSelection_();
       if(window.repairDrive?.enabled)window.repairDrive.clearVideo("repair");
-      el("saveRepairMsg").textContent=window.repairDrive?.enabled?"✅ 維修資料已儲存｜附件已寫入 Google Drive，NAS 備份待核對":"✅ 維修資料已儲存｜📷 維修照片已排入 NAS 自動歸檔";
+      el("saveRepairMsg").textContent=window.repairDrive?.enabled?"✅ 維修資料已儲存｜附件已寫入 Google Drive，F 槽歸檔待核對":"✅ 維修資料已儲存｜📷 維修照片已排入 NAS 自動歸檔";
     }else{
       el("saveRepairMsg").textContent=SYNC_API_URL?"✅ 已同步至電腦「機修維修單」":"✅ 測試儲存成功（未寫入正式資料）";
     }
@@ -2426,7 +2426,7 @@ el("submitBtn").onclick=async()=>{
           btn.textContent="上傳報修照片 "+i+"/"+total+"…";
         },data.photoEpoch||"");
         driveMediaSaved=true;
-        photoMsg=window.repairDrive?.enabled?("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，NAS 備份待核對"):("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
+        photoMsg=window.repairDrive?.enabled?("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，F 槽歸檔待核對"):("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
       }catch(photoErr){
         photoMsg="｜⚠️ 工單已建立，但報修照片暫存失敗："+photoErr.message;
       }
@@ -2465,12 +2465,14 @@ update();
 </script>
 
 <script>
-// Video recording/selection PREVIEW ONLY. Activated solely by ?video_test=1.
-// The public repair and LINE submission workflow is unchanged.
+// Video recording/selection stays hidden on the public site unless the
+// server confirms the device has production media-upload authorization.
+// ?video_test=1 remains preview-only without verified upload credentials.
 (function(){
 "use strict";
 var qs=new URLSearchParams(location.search);
-if(qs.get("video_test")!=="1" || qs.get("drive_upload")==="1")return;
+if(qs.get("drive_upload")==="1")return;
+var previewOnly=qs.get("video_test")==="1";
 var MAX_BYTES=500*1024*1024,items=Object.create(null);
 function el(id){return document.getElementById(id);}
 function mb(n){return (n/(1024*1024)).toFixed(1)+" MB";}
@@ -2507,7 +2509,8 @@ function select(state,file){
   if(file.size>MAX_BYTES){alert("影片超過 500 MB，未載入；請縮短錄影或選擇較小的檔案。");return;}
   state.file=file;
   el(state.prefix+"VideoSelected").hidden=false;
-  el(state.prefix+"VideoDetails").textContent="已選取："+file.name+"（"+mb(file.size)+"）｜僅預覽，不會上傳";
+  el(state.prefix+"VideoDetails").textContent="已選取："+file.name+"（"+mb(file.size)+"）"+
+    (window.repairDrive?.enabled?"｜送出後自動上傳 Google Drive":"｜僅預覽，不會上傳");
   state.url=URL.createObjectURL(file);
   var video=document.createElement("video");
   video.controls=true;video.playsInline=true;video.preload="metadata";video.src=state.url;
@@ -2568,7 +2571,7 @@ async function startRecording(state){
 ["report","repair"].forEach(function(prefix){
   var state={prefix:prefix,file:null,url:null,recorder:null,stream:null,chunks:[],bytes:0,discard:false};
   items[prefix]=state;
-  el(prefix+"VideoPilot").hidden=false;
+  el(prefix+"VideoPilot").hidden=!previewOnly;
   ["VideoFile","VideoCapture"].forEach(function(suffix){
     var input=el(prefix+suffix);
     input.addEventListener("change",function(){select(state,input.files&&input.files[0]);});
@@ -2589,11 +2592,24 @@ async function startRecording(state){
 });
 window.repairVideoTestBridge={
   getFile:function(prefix){return items[prefix]&&items[prefix].file||null;},
-  clear:function(prefix){if(items[prefix])clearVideo(items[prefix]);}
+  clear:function(prefix){if(items[prefix])clearVideo(items[prefix]);},
+  showAuthorized:function(){
+    ["report","repair"].forEach(function(prefix){
+      var pilot=el(prefix+"VideoPilot");
+      if(!pilot)return;
+      pilot.hidden=false;
+      var hint=pilot.querySelector(".video-hint");
+      if(hint)hint.textContent="裝置已完成授權。送出後影片將上傳 Google Drive，F 槽由歸檔排程核對。";
+      var selected=items[prefix];
+      if(selected&&selected.file)
+        el(prefix+"VideoDetails").textContent="已選取："+selected.file.name+
+          "（"+mb(selected.file.size)+"）｜送出後自動上傳 Google Drive";
+    });
+  }
 };
 document.addEventListener("click",function(ev){
   var target=ev.target&&ev.target.closest&&ev.target.closest("#submitBtn,#saveRepairBtn,#completeRepairBtn");
-  if(!target || qs.get("drive_direct_test")==="1")return;
+  if(!target || qs.get("drive_direct_test")==="1" || window.repairDrive?.enabled || !previewOnly)return;
   var state=items[target.id==="submitBtn"?"report":"repair"];
   if(!state||(!state.file&&!(state.recorder&&state.recorder.state!=="inactive")))return;
   var proceed=confirm("影片仍在測試階段，不會上傳或備份。\n按「確定」只送出原本的報修文字及照片；按「取消」返回保留影片預覽。");
@@ -2611,6 +2627,6 @@ window.addEventListener("pagehide",function(){
 </script>
 <script src="./v10_version_gate.js?v=20261028c" defer></script>
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
-<script src="./repair-direct-upload.js?v=20261118-silent-receiver" defer></script>
+<script src="./repair-direct-upload.js?v=20261119-v5-secure-stage" defer></script>
 </body>
 </html>
