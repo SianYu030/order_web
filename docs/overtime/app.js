@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.43 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.44 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -289,13 +289,13 @@
     field.replaceChildren();
     selectOption(field, "", selected.length ? "請選擇員工" : "目前沒有此單位的在職名冊");
     selected.forEach(function (p) {
-      selectOption(field, p.id, p.remote || p.preview ? p.name : (p.id + " · " + p.name));
+      selectOption(field, p.id, p.remote ? (p.code ? p.code+" "+p.name : p.name) : (p.preview ? p.name : (p.id+" · "+p.name)));
     });
     var previous = selected.find(function(p){return p.id===currentId;}) ||
       (hasGoogle() && preferredName ? selected.find(function(p){return p.name===preferredName;}) : null);
     if (previous) field.value=previous.id;
     $("rosterText").textContent = PORTAL==="employee" ?
-      (state.remoteRoster.length?"已從後端核對正式在職名冊；工號不會顯示於公開網站。":"正在載入後端名冊；尚未載入時不可送出申請。") :
+      (state.remoteRoster.length?"已從後端核對正式在職名冊；員工以工號及姓名顯示。":"正在載入後端名冊；尚未載入時不可送出申請。") :
       (hasGoogle()?"已從原始人員主檔核對在職員工。":"管理員尚未連結 Google 試算表。");
     updatePreview();
   }
@@ -305,10 +305,10 @@
     try{
       if(!window.OvertimeApi)throw Error("後端收件元件未載入");
       const resp=await window.OvertimeApi.roster();
-      const people=(resp.people||[]).filter(p=>["E4","E5"].includes(p.department)&&p.public_key&&p.employee_name);
+      const people=(resp.people||[]).filter(p=>["E4","E5"].includes(p.department)&&p.public_key&&p.employee_name&&p.display_code);
       if(!people.length)throw Error("沒有讀到正式業務名冊");
       state.remoteRoster=people.map(p=>({
-        id:String(p.public_key),name:String(p.employee_name),unit:p.department==="E4"?"E4":"內勤",
+        id:String(p.public_key),name:String(p.employee_name),code:String(p.display_code),unit:p.department==="E4"?"E4":"內勤",
         detail:p.department==="E4"?"E4櫃體股":(p.team==="審圖"?"審圖":"業務"),remote:true,preview:false
       }));
       populateEmployees();
@@ -1030,7 +1030,12 @@
       heading.textContent = entry.date.replace(/-/g, "/") + "  " + entry.kind + " " + formatHours(entry.hours);
       var detail = document.createElement("small");
       detail.textContent = (entry.status ? "【"+friendlyStatus(entry)+"】 " : "")+(entry.reason||"未填原因");
-      left.append(heading, detail);
+      if(PORTAL==="employee"&&entry.employee_name){
+        const identity=document.createElement("small");
+        identity.className="history-person";
+        identity.textContent=(entry.employee_code?entry.employee_code+" ":"")+entry.employee_name;
+        left.append(heading,identity,detail);
+      }else left.append(heading,detail);
       if(PORTAL==="employee"){
         const status=document.createElement("span");
         status.className="history-status";
@@ -1127,7 +1132,7 @@
             if(!realId||realId.toUpperCase()!==code.toUpperCase())return;
             verified.push({
               date:record.date,kind:"加班",hours:record.hours,reason:record.reason,
-              status:record.status,manager:record.manager,employee_name:record.employee_name,
+              status:record.status,manager:record.manager,employee_code:realId,employee_name:record.employee_name,
               remoteId:record.id
             });
           });

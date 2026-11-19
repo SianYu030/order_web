@@ -122,8 +122,9 @@ assert(Array.isArray(people)&&people.length>0,"active company roster must be ava
 assert(people.some(x=>x.department==="E4")&&people.some(x=>x.department==="E5"),"E4/E5 must both have employees");
 assert(people.every(x=>["E4","E5"].includes(x.department)&&typeof x.employee_name==="string"&&
   x.employee_name.trim()&&typeof x.public_key==="string"&&
-  /^[0-9a-f-]{36}$/i.test(x.public_key)&&!Object.hasOwn(x,"employee_id")),
-  "public roster must use opaque UUID keys and hide actual employee IDs");
+  /^[0-9a-f-]{36}$/i.test(x.public_key)&&typeof x.display_code==="string"&&
+  /^[0-9]{4,12}$/.test(x.display_code)&&!Object.hasOwn(x,"employee_id")),
+  "public roster must use opaque UUID keys and a separate display-only employee code");
 console.log("PASS live roster "+people.length+" active E4/E5 entries; private employee IDs not exposed");
 const invalid=await post("submit",{department:"E4",roster_key:"00000000-0000-4000-8000-000000000000",employee_name:"測試用戶",date:"2026-11-17",hours:2,reason:"安全負面測試"});
 assert.equal(invalid.status,400,"invalid submit must be rejected");
