@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.9.1（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.9.2（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -304,8 +304,15 @@ function otVerifyPerson_(ss,r){
  if(r.department==="E4"){
   if(r.employee_name!=="潘詠升"||String(found[0][3])!=="E4"||
      String(found[0][4])!=="E4櫃體股")throw Error("E4 員工主檔不符。");
- }else if(String(found[0][3])!=="內勤"||String(found[0][4])!=="業務")
-  throw Error("員工非 E5 業務。");
+ }else{
+  // E5 沿用原月份表；僅允許在職業務及這兩位已核對的審圖人員。
+  var isDrawingReviewer=(String(r.employee_id)==="2122"&&r.employee_name==="吳嘉偉")||
+   (String(r.employee_id)==="3283"&&r.employee_name==="蔡雲龍");
+  var validE5=String(found[0][3])==="內勤"&&
+   (String(found[0][4])==="業務"||
+    (isDrawingReviewer&&String(found[0][4])==="審圖"));
+  if(!validE5)throw Error("員工非 E5 業務或已授權的審圖人員。");
+ }
 }
 function otTarget_(ss,r){
  otVerifyPerson_(ss,r);
