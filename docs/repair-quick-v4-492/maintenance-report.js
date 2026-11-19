@@ -96,7 +96,7 @@ function countsBy(items,key){const x=new Map();items.forEach(o=>{const k=String(
 function panelBars(items){
  const map=new Map();["E3","E4","E5","W8","W8整修&組立","空壓機室"].forEach(d=>map.set(d,0));
  items.forEach(o=>{const d=String(o.dept||"").trim();map.set(d,(map.get(d)||0)+1)});
- const values=[...map].filter(([,n])=>n>0||["E3","E4","E5","W8"].includes(arguments[1]));
+ const values=[...map].filter(([dept,n])=>n>0||["E3","E4","E5","W8"].includes(dept));
  const max=Math.max(1,...values.map(([,n])=>n));
  return values.map(([k,n])=>'<div class="mr-pair"><b>'+esc(k)+'</b><strong>'+n+' 件</strong></div><div class="mr-meter"><i style="width:'+(100*n/max).toFixed(1)+'%"></i></div>').join("")||'<div class="mr-empty">本月沒有設備報修。</div>';
 }
