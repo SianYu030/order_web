@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.42 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.43 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -1080,6 +1080,12 @@
       list.appendChild(card);
     });
   }
+  // The server-generated request_no embeds the real employee ID; public_key is a UUID.
+  // Only compare the ID AFTER the server has verified this browser's receipt token.
+  function employeeCodeFromRequestNo(requestNo){
+    const match=/^BUS-[0-9]{8}-(?:E4|E5)-(.+)-[0-9A-F]{8}$/i.exec(String(requestNo||""));
+    return match?match[1]:"";
+  }
   var historyLookupCounter=0;
   async function refreshHistory() {
     if(PORTAL==="employee"){
@@ -1095,38 +1101,42 @@
         summary.textContent="網站查詢元件未載入，請重新整理頁面。";
         return;
       }
-      const saved=window.OvertimeApi.localReceipts().filter(x=>
-        String(x.public_key||"").trim().toUpperCase()===code.toUpperCase()&&
-        x.id&&x.receipt_token
-      );
+      // Do not compare public_key to employee ID: public_key is a UUID, not a work number.
+      const saved=window.OvertimeApi.localReceipts().filter(x=>x.id&&x.receipt_token);
       if(!saved.length){
-        summary.textContent="這台瀏覽器未保留此工號的加班申請憑證。這不代表公司沒有登記資料；請確認是否使用原申請裝置。";
+        summary.textContent="這台瀏覽器沒有保存加班申請憑證。這不代表公司沒有登記紀錄；請使用原申請裝置查詢。";
         return;
       }
       const searchBtn=$("ownHistorySearch"),refreshBtn=$("refreshHistory");
       searchBtn.disabled=true;refreshBtn.disabled=true;
-      summary.textContent="正在向公司後端核對 "+saved.length+" 筆申請…";
+      summary.textContent="正在向公司後端核對本機加班申請…";
       try{
-        const results=await Promise.allSettled(saved.map(x=>
-          window.OvertimeApi.receipt(x.id,x.receipt_token)));
-        if(sequence!==historyLookupCounter||code!==String($("ownEmployeeId").value||"").trim())return;
         const verified=[];
         let failed=0;
-        results.forEach((r,i)=>{
-          if(r.status==="fulfilled"&&r.value.record&&r.value.record.id===saved[i].id){
-            const record=r.value.record;
+        // Batch reads prevent a busy shared device from sending 120 concurrent requests.
+        for(let offset=0;offset<saved.length;offset+=8){
+          const group=saved.slice(offset,offset+8);
+          const results=await Promise.allSettled(group.map(x=>
+            window.OvertimeApi.receipt(x.id,x.receipt_token)));
+          if(sequence!==historyLookupCounter||code!==String($("ownEmployeeId").value||"").trim())return;
+          results.forEach((result,i)=>{
+            if(result.status!=="fulfilled"||!result.value.record||
+               result.value.record.id!==group[i].id){failed++;return;}
+            const record=result.value.record;
+            const realId=employeeCodeFromRequestNo(record.request_no);
+            if(!realId||realId.toUpperCase()!==code.toUpperCase())return;
             verified.push({
               date:record.date,kind:"加班",hours:record.hours,reason:record.reason,
               status:record.status,manager:record.manager,employee_name:record.employee_name,
               remoteId:record.id
             });
-          }else failed++;
-        });
+          });
+        }
         verified.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
         renderHistoryItems(verified,false);
-        summary.textContent=verified.length?"查詢完成，共 "+verified.length+" 筆加班申請。"+
-          (failed?"另有 "+failed+" 筆憑證無法驗證，請稍後重新讀取。":""):
-          "目前沒有可驗證的紀錄。"+(failed?"有 "+failed+" 筆查詢失敗，請稍後重試。":"");
+        summary.textContent=verified.length?"查詢完成，共 "+verified.length+" 筆加班申請。":
+          "這台瀏覽器沒有此工號可驗證的加班紀錄，請確認工號及原申請裝置。";
+        if(failed)summary.textContent+=" 部分本機憑證未能驗證，請稍後重新讀取。";
       }catch(e){
         if(sequence===historyLookupCounter)summary.textContent="查詢失敗："+e.message+"。請確認網路後重新讀取。";
       }finally{
