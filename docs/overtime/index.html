@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.41">
+  <link rel="stylesheet" href="./style.css?v=1.1.43">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.41" defer></script>
+  <script src="./app.js?v=1.1.43" defer></script>
   <script src="./overtime-client.js?v=1.1.31" defer></script>
 
   <script src="./management-ui.js?v=1.2.1" defer></script>
@@ -88,6 +88,15 @@
     </section>
 
 
+    <nav id="employeeTools" class="employee-tools" aria-label="加班申請功能">
+      <button type="button" class="employee-tool is-active" data-view="entry" aria-pressed="true">
+        <span>新增加班登記</span><small>填寫並送出申請</small>
+      </button>
+      <button type="button" class="employee-tool" data-view="history" aria-pressed="false">
+        <span>我的加班申請</span><small>查詢紀錄・取消申請</small>
+      </button>
+    </nav>
+
     <section id="view-receipt" class="view hidden receipt-view" aria-labelledby="receiptHeading">
       <div class="panel receipt-panel">
         <div class="receipt-mark" aria-hidden="true">✓</div>
@@ -131,7 +140,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.41</span>
+        <span class="version">V1.1.43</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -216,11 +225,18 @@
     </section>
 
     <section id="view-history" class="view hidden" aria-hidden="true">
-      <div class="section-heading"><div><h2>查詢／修改</h2><p>依目前選擇的年份、月份、單位及員工檢視登記。</p></div></div>
+      <div class="section-heading"><div><h2>我的加班申請</h2><p>查詢自己已送出的加班紀錄，以及尚未核准的取消申請。</p></div></div>
       <section class="panel">
-        <p class="helper">請先在「登記」選好日期、單位與員工，再到這裡查詢。</p>
-        <button id="refreshHistory" class="secondary-btn" type="button">重新讀取紀錄</button>
+        <form id="ownHistoryForm" class="own-lookup-form" autocomplete="off">
+          <label class="field" for="ownEmployeeId"><span>員工工號 <em>*</em></span>
+            <input id="ownEmployeeId" type="text" maxlength="40" placeholder="請輸入自己的工號" autocapitalize="off" spellcheck="false" required>
+          </label>
+          <button id="ownHistorySearch" class="primary-btn" type="submit">查詢紀錄</button>
+        </form>
+        <p id="historySummary" class="helper" role="status" aria-live="polite">請先輸入自己的工號查詢。</p>
+        <button id="refreshHistory" class="secondary-btn history-refresh" type="button">重新讀取</button>
         <div id="historyList" class="history-list" aria-live="polite"></div>
+        <p class="helper small history-security-note">目前僅能查詢這台瀏覽器保留申請憑證的紀錄，跨手機或清除瀏覽器資料後可能無法查詢。工號只是篩選條件，取消仍需原申請憑證驗證；已核准的加班不可自行取消。</p>
       </section>
     </section>
 
@@ -296,7 +312,7 @@
     </section>
   </main>
 
-  <footer class="footer">業務假日或臨時加班登記 · V1.1.41</footer>
+  <footer class="footer">業務假日或臨時加班登記 · V1.1.43</footer>
 </div>
 
 <dialog id="confirmDialog">
