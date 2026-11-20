@@ -2525,7 +2525,14 @@ el("submitBtn").onclick=async()=>{
     el("againBtn").disabled=false;
     el("success").classList.remove("hidden");
   }catch(err){
-    alert("手機報修建立失敗："+err.message);
+    const detail=String(err?.message||err);
+    const uncertain=/同步逾時|無法連線同步 API|沒有取得工單編號|回讀驗證|後端版本/.test(detail);
+    if(uncertain){
+      alert("⚠️ 工單送出結果尚未確認（"+detail+"）。請先至維修工單列表核對是否已建立，不要直接重送，避免產生重複工單。");
+      console.warn("MR_CREATE_RESULT_UNCONFIRMED",detail);
+    }else{
+      alert("手機報修未完成："+detail);
+    }
   }finally{
     btn.textContent=oldText;
     btn.disabled=false;
