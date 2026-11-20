@@ -67,6 +67,20 @@
   const files={report:null,repair:null},preview={report:null,repair:null};
   const $=id=>document.getElementById(id);
   let uploading=false,preflightPromise=null;
+  // Keep receipts for this page so retry never sends verified files twice.
+  const confirmedFiles=new WeakMap();
+  const TRANSIENT_BUSY=/附件接收忙碌|附件上傳繁忙|其他傳輸正在進行|正在處理其他分段|資料正被其他上傳使用/;
+  async function retryBusy_(operation){
+    const delays=[1000,2000,4000,6000];
+    for(let attempt=0;;attempt++){
+      try{return await operation();}
+      catch(error){
+        const message=String(error?.message||error);
+        if(attempt>=delays.length||!TRANSIENT_BUSY.test(message))throw error;
+        await new Promise(resolve=>setTimeout(resolve,delays[attempt]));
+      }
+    }
+  }
 
   function uuid() {
     if(!crypto?.randomUUID)throw new Error('瀏覽器缺少安全識別碼功能');
@@ -301,26 +315,30 @@
   async function uploadOne(file,mr,kind,onPart) {
     if(!file||!file.size)throw new Error('附件空白');
     if(!/^MR20\d{8}$/.test(mr))throw new Error('正式 MR 工單號不合法，不能上傳');
+    const already=confirmedFiles.get(file);
+    if(already&&already.mr===mr&&already.kind===kind)return already.result;
     const max=kind.endsWith('影片')?MAX_VIDEO:MAX_PHOTO;
     if(file.size>max)throw new Error(file.name+' 超過 '+Math.floor(max/MB)+' MB');
     const key='repairDirectV4_'+[mr,kind,file.name,file.size,file.lastModified].join(':');
     let session=null;
     const old=storageGet(key);
     if(old){
-      try{session=await command('query',{sessionId:old},65000)}
+      try{session=await retryBusy_(()=>command('query',{sessionId:old},65000))}
       catch(err){storageDel(key);}
     }
     if(!session){
-      session=await command(qaMode?'qaStart':'start',{meta:JSON.stringify({
+      session=await retryBusy_(()=>command(qaMode?'qaStart':'start',{meta:JSON.stringify({
         orderNo:mr,mediaKind:kind,name:file.name,size:file.size
-      })});
+      })}));
       if(!session||!session.sessionId)throw new Error('Google 未建立上傳工作階段');
       storageSet(key,session.sessionId);
     }
     if(session.complete){
       storageDel(key);
       if(!session.fileId||!session.md5)throw new Error('雲端檔案確認資料不完整');
-      return {driveId:session.fileId,category:kind,md5:session.md5};
+      const result={driveId:session.fileId,category:kind,md5:session.md5};
+      confirmedFiles.set(file,{mr,kind,result});
+      return result;
     }
     let tries=0;
     while(session.offset<file.size){
@@ -337,7 +355,7 @@
         tries++;
         // A lost receipt is not proof of upload failure. Query Drive's confirmed
         // offset before resuming; never replay a possibly accepted chunk blindly.
-        try{session=await command('query',{sessionId:session.sessionId},75000)}
+        try{session=await retryBusy_(()=>command('query',{sessionId:session.sessionId},75000))}
         catch(queryErr){
           if(tries>=2)throw new Error('傳輸中斷，尚未確認雲端進度：'+queryErr.message);
           continue;
@@ -346,11 +364,13 @@
           throw new Error('雲端未確認新進度：'+err.message);
       }
     }
-    if(!session.complete)session=await command('query',{sessionId:session.sessionId},75000);
+    if(!session.complete)session=await retryBusy_(()=>command('query',{sessionId:session.sessionId},75000));
     if(!session.complete||!session.fileId||!session.md5)
       throw new Error('Google Drive 尚未回傳完整檔案 ID／MD5，不可視為已備份');
     storageDel(key);
-    return {driveId:session.fileId,category:kind,md5:session.md5};
+    const result={driveId:session.fileId,category:kind,md5:session.md5};
+    confirmedFiles.set(file,{mr,kind,result});
+    return result;
   }
   async function uploadFiles(selected,orderNo,originalKind,onProgress) {
     if(uploading)throw new Error('附件正在上傳，請勿重複操作');
@@ -359,15 +379,29 @@
       const access=await preflight();
       if(!qaMode&&!access.productionAllowed)
         throw new Error('公開附件接收器沒有確認上傳權限');
-      const list=[...(selected||[])],results=[];
+      const list=[...(selected||[])],results=[],failures=[];
       for(let i=0;i<list.length;i++){
-        const f=list[i],kind=suffix(f,originalKind);
+        const f=list[i];
         if(onProgress)onProgress(i+1,list.length);
-        const result=await uploadOne(f,orderNo,kind,(done,total)=>{
-          const el=$(originalKind==='報修照片'?'submitBtn':'saveRepairMsg');
-          if(el)el.textContent='正在上傳 '+f.name+'（'+Math.floor(100*done/total)+'%）';
-        });
-        results.push(result);
+        try{
+          const kind=suffix(f,originalKind);
+          const result=await uploadOne(f,orderNo,kind,(done,total)=>{
+            const el=$(originalKind==='報修照片'?'submitBtn':'saveRepairMsg');
+            if(el)el.textContent='正在上傳 '+f.name+'（'+Math.floor(100*done/total)+'%）';
+          });
+          results.push(result);
+        }catch(err){
+          failures.push({name:f?.name||('第 '+(i+1)+' 個附件'),reason:String(err?.message||err)});
+          console.warn('MR_MEDIA_NOT_CONFIRMED',orderNo,i+1,String(err?.message||err));
+          // Continue other files. A later retry skips already confirmed files.
+        }
+      }
+      if(failures.length){
+        const error=new Error(failures.length+' 個附件未確認：'+failures.map(x=>x.name+'（'+x.reason+'）').join('；'));
+        error.completed=results.length;
+        error.total=list.length;
+        error.failures=failures;
+        throw error;
       }
       return results;
     }finally{uploading=false}

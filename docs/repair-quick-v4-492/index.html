@@ -89,6 +89,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 .order{font-size:24px;font-weight:950;letter-spacing:.6px;margin:7px 0}
 .modal p{color:#647184;font-size:13px;line-height:1.6}
 .modal button{border:0;border-radius:14px;background:var(--navy);color:white;padding:13px 18px;font-weight:850;width:100%}
+#retryReportMediaBtn[hidden],#retryReportMediaStatus[hidden]{display:none!important}
 .modal button.success-dismiss{position:absolute;right:12px;top:10px;width:36px;height:36px;padding:0;background:#f2f5f8;color:#526579;border-radius:50%;font-size:24px;font-weight:500;line-height:1}
 .mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
 .mode-btn{border:1.5px solid var(--line);background:#fff;border-radius:16px;padding:14px 10px;font-weight:900;font-size:16px;color:#31465b}
@@ -728,7 +729,7 @@ html,body{background:#f5f7f8}
           <div class="line-notify-content">
             <div class="line-notify-main">📣 LINE 通知報修</div>
             <div class="line-notify-sub">送出工單後，同步通知機修 LINE 群組。</div>
-            <div class="line-notify-test" id="lineNotifyStatus">勾選時傳送 LINE 文字及報修照片。Google Drive 模式下，照片另暫存於既有 LINE 影像服務以供群組顯示；影片僅歸檔。</div>
+            <div class="line-notify-test" id="lineNotifyStatus">勾選時傳送 LINE 文字及報修照片。Google Drive 模式下，照片另暫存於 LINE 影像服務；影片只會備份至 Google Drive／F 槽，不會發到 LINE 群組。</div>
           </div>
         </label>
       </div>
@@ -1030,6 +1031,8 @@ html,body{background:#f5f7f8}
     <h2 style="margin:0" id="successTitle">報修工單已建立</h2>
     <div class="order" id="orderNo"></div>
     <p id="successText">工單已寫入正式「機修維修單」；LINE 與照片會顯示實際執行結果。</p>
+    <button id="retryReportMediaBtn" type="button" hidden style="margin-top:10px;min-height:52px;background:#0b6745;color:white">🔄 重試未完成的照片／影片（不重建工單）</button>
+    <p id="retryReportMediaStatus" role="status" aria-live="polite" style="font-size:13px;color:#9b3e15" hidden></p>
     <button id="successHomeBtn" type="button" style="margin-top:13px;min-height:48px">確定，返回首頁</button>
     <button id="againBtn" class="success-dismiss" type="button" aria-label="關閉成功訊息並返回首頁">×</button>
   </div>
@@ -2120,6 +2123,7 @@ el("clearIssue").onclick=()=>{el("issue").value="";update();};
 
 let reportPhotoFiles=[];
 let repairPhotoFiles=[];
+let pendingReportMediaRetry=null;
 
 function renderAccumulatedPhotos_(files,previewId,countId,label){
   const box=el(previewId),count=el(countId);
@@ -2434,6 +2438,10 @@ el("submitBtn").onclick=async()=>{
     let photoMsg="";
     let uploadedReportPhotos=[];
     let driveMediaSaved=false;
+    pendingReportMediaRetry=null;
+    el("retryReportMediaBtn").hidden=true;
+    el("retryReportMediaStatus").hidden=true;
+    el("successTitle").textContent="報修工單已建立";
     if(reportMediaFiles.length){
       btn.textContent="上傳報修照片 0/"+reportPhotos.length+"…";
       try{
@@ -2443,7 +2451,15 @@ el("submitBtn").onclick=async()=>{
         driveMediaSaved=true;
         photoMsg=window.repairDrive?.enabled?("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，F 槽歸檔待核對"):("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
       }catch(photoErr){
-        photoMsg="｜⚠️ 工單已建立，但報修照片暫存失敗："+photoErr.message;
+        photoMsg="｜⚠️ 工單已建立，但照片／影片未全部歸檔："+photoErr.message;
+        if(window.repairDrive?.enabled){
+          pendingReportMediaRetry={files:reportMediaFiles,orderNo:data.orderNo,photoEpoch:data.photoEpoch||"",lineMsg};
+          el("retryReportMediaBtn").hidden=false;
+          el("successTitle").textContent="工單已建立，附件待補傳";
+          const msg=el("retryReportMediaStatus");
+          msg.textContent="請按補傳按鈕，不需重新送單或重發 LINE；離開本頁前請確認附件完成。";
+          msg.hidden=false;
+        }
       }
     }
 
@@ -2457,7 +2473,37 @@ el("submitBtn").onclick=async()=>{
     btn.disabled=false;
   }
 };
+// Only upload the unconfirmed files for this ALREADY-CREATED MR.
+// Do not call createMobileReportTest or LINE again.
+el("retryReportMediaBtn").onclick=async()=>{
+  const pending=pendingReportMediaRetry;
+  if(!pending||!window.repairDrive?.enabled)return;
+  const btn=el("retryReportMediaBtn"),info=el("retryReportMediaStatus");
+  btn.disabled=true;
+  btn.textContent="⏳ 正在確認未完成的附件…";
+  info.textContent="正在補傳原工單 "+pending.orderNo+"，請不要離開此頁。";
+  info.hidden=false;
+  try{
+    const saved=await window.repairDrive.uploadFiles(pending.files,pending.orderNo,"報修照片",(i,total)=>{
+      info.textContent="正在核對附件 "+i+"/"+total+"…";
+    });
+    pendingReportMediaRetry=null;
+    btn.hidden=true;
+    info.textContent="✅ "+saved.length+" 個附件已確認在 Google Drive；F 槽將由排程同步。";
+    info.style.color="#0e8a4a";
+    el("successTitle").textContent="報修工單已建立";
+    el("successText").textContent="✅ "+pending.orderNo+" 已建立｜☁️ 照片及影片已取得 Drive 完整回執，F 槽待同步核對"+pending.lineMsg+"。";
+  }catch(error){
+    info.textContent="⚠️ 仍有附件未確認："+String(error?.message||error)+"；原工單已保留，請在此頁再次補傳。";
+    info.style.color="#9b3e15";
+  }finally{
+    btn.disabled=false;
+    btn.textContent="🔄 重試未完成的照片／影片（不重建工單）";
+  }
+};
 function returnHomeAfterReport_(){
+  if(pendingReportMediaRetry&&!window.confirm("這筆工單還有附件未完成歸檔。離開後需要重新選取原照片／影片補傳，確定離開？"))return;
+  pendingReportMediaRetry=null;
   // This function only handles an already verified, fully processed report
   // success screen. It must never post a new report or resend LINE/photos.
   el("success").classList.add("hidden");
@@ -2651,7 +2697,7 @@ window.addEventListener("pagehide",function(){
 </script>
 <script src="./v10_version_gate.js?v=20261028c" defer></script>
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
-<script src="./repair-direct-upload.js?v=20261119-v61-receiver-repaired" defer></script>
+<script src="./repair-direct-upload.js?v=20261120-v62-safe-media-retry" defer></script>
 <script src="./maintenance-report.js?v=20261119-wrench-title-fix3" defer></script>
 </body>
 </html>
