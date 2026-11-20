@@ -81,7 +81,7 @@
     const mime=String(file?.type||'').toLowerCase().split(';')[0].trim();
     const ext=VIDEO_MIME_EXT[mime];
     if(!ext)throw new Error('此手機的影片格式尚未支援，請使用 MP4、MOV、3GP、WebM 或 MKV');
-    return (name||'mobile-video')+'.'+ext;
+    return (name.replace(/\.3gpp$/i,'')||'mobile-video')+'.'+ext;
   }
   const files={report:null,repair:null},preview={report:null,repair:null};
   const $=id=>document.getElementById(id);
