@@ -14,7 +14,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 a{color:#0b5984;text-decoration:underline;font-weight:650}
 h1{font-size:23px;margin:0 0 12px;line-height:1.4}
 h2{font-size:16px;margin:0 0 10px}
-p{margin:8px 0 12px;line-height:1.7}
+p{margin:8px 0 12px;line-height:1.7;overflow-wrap:anywhere}
 small,.sub{font-size:13px;color:#526579}
 .card{background:white;padding:19px;border-radius:16px;border:1px solid #d8e2ed;box-shadow:0 5px 22px #122c4710;margin-bottom:15px}
 label{font-weight:750;display:block;margin:15px 0 8px}
@@ -43,7 +43,9 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
 <p class="sub">只選 G/F 槽尚未保存的照片，避免重複。</p>
 <label for="video">需要補傳的報修影片</label>
 <input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.3gp,.webm,.mkv">
-<p class="sub">支援 MP4／MOV 等格式。影片單檔上限 100 MB，照片單檔 15 MB。</p>
+<label for="videoCapture">🎥 重新錄製一段影片（原影片未存到手機時）</label>
+<input id="videoCapture" type="file" accept="video/*" capture="environment">
+<p class="sub">從相簿選影片或重新錄製，兩者選一。支援 MP4／MOV 等格式；影片單檔上限 100 MB，照片單檔 15 MB。</p>
 <div class="warning">補傳成功以 Google Drive 完整上傳回執為準。F 槽由既有排程同步，需另行核對。LINE 群組目前只發送原報修的文字與照片，不會自動發送影片。</div>
 <button type="submit" id="recoverBtn" style="margin-top:16px">補傳到原工單（不重新報修）</button>
 </form>
@@ -62,7 +64,7 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
 <script>
 (()=>{
   "use strict";
-  const mr=document.getElementById("mr"),photos=document.getElementById("photos"),video=document.getElementById("video");
+  const mr=document.getElementById("mr"),photos=document.getElementById("photos"),video=document.getElementById("video"),videoCapture=document.getElementById("videoCapture");
   const button=document.getElementById("recoverBtn"),status=document.getElementById("status");
   const q=new URLSearchParams(location.search);
   const supplied=String(q.get("mr")||"").trim().toUpperCase();
@@ -84,7 +86,11 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
   document.getElementById("recoverForm").addEventListener("submit",async event=>{
     event.preventDefault();
     const no=mr.value.trim().toUpperCase();
-    const list=[...photos.files,...video.files];
+    const list=[...photos.files,...video.files,...videoCapture.files];
+    if(video.files.length&&videoCapture.files.length){
+      update("請從相簿或重新錄影擇一，不要同時選兩段影片。","bad");
+      return;
+    }
     if(!/^MR20\d{8}$/.test(no)){update("請先填寫正確的 MR 工單號，例如 MR2026112001。","bad");return;}
     if(!list.length){update("尚未選擇照片或影片，請只挑選缺少的附件。","bad");return;}
     button.disabled=true;
