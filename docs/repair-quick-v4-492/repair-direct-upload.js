@@ -67,6 +67,7 @@
   const files={report:null,repair:null},preview={report:null,repair:null};
   const $=id=>document.getElementById(id);
   let uploading=false,preflightPromise=null;
+  let preflightCache=null,preflightCacheAt=0;
   // Keep receipts for this page so retry never sends verified files twice.
   const confirmedFiles=new WeakMap();
   const TRANSIENT_BUSY=/附件接收忙碌|附件上傳繁忙|其他傳輸正在進行|正在處理其他分段|資料正被其他上傳使用/;
@@ -127,6 +128,10 @@
   }
   async function preflight() {
     if(!VALID)throw new Error('V4 免登入附件接收器尚未設定，不能宣稱附件已備份');
+    // Avoid repeating health and guest-auth network roundtrips when a page
+    // already verified this same receiver moments ago. Server still checks
+    // the ticket/session/permissions for every actual upload command.
+    if(preflightCache && Date.now()-preflightCacheAt<30000)return preflightCache;
     if(preflightPromise)return preflightPromise;
     preflightPromise=jsonp('health').then(r=>{
       if(!r||r.ok!==true||r.version!=='6.0'||r.testOnly!==false||r.chunkBytes!==CHUNK)
@@ -149,6 +154,13 @@
           throw new Error('此裝置沒有隔離測試權限');
         return {...r,...authState};
       });
+    }).then(result=>{
+      preflightCache=result;
+      preflightCacheAt=Date.now();
+      return result;
+    }).catch(error=>{
+      preflightCache=null;
+      throw error;
     }).finally(()=>{preflightPromise=null});
     return preflightPromise;
   }
