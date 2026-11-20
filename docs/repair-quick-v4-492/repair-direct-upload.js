@@ -64,6 +64,25 @@
   }
   const MB=1048576, CHUNK=2*MB, MAX_PHOTO=(publicGuest?15:100)*MB, MAX_VIDEO=(publicGuest?100:500)*MB;
   const VIDEO=/\.(mp4|mov|m4v|3gp|webm|mkv)$/i, PHOTO=/\.(jpg|jpeg|png|webp|heic|heif)$/i;
+  // A few Android camera apps export extensionless files or .3gpp, with
+  // the actual container given by the MIME type. The receiver still checks
+  // magic bytes before accepting the original, unmodified file content.
+  const VIDEO_MIME_EXT=Object.freeze({
+    'video/mp4':'mp4',
+    'video/x-m4v':'m4v',
+    'video/quicktime':'mov',
+    'video/3gpp':'3gp',
+    'video/webm':'webm',
+    'video/x-matroska':'mkv'
+  });
+  function uploadMediaName(file,kind) {
+    const name=String(file?.name||'').trim();
+    if(!kind.endsWith('影片')||VIDEO.test(name))return name;
+    const mime=String(file?.type||'').toLowerCase().split(';')[0].trim();
+    const ext=VIDEO_MIME_EXT[mime];
+    if(!ext)throw new Error('此手機的影片格式尚未支援，請使用 MP4、MOV、3GP、WebM 或 MKV');
+    return (name||'mobile-video')+'.'+ext;
+  }
   const files={report:null,repair:null},preview={report:null,repair:null};
   const $=id=>document.getElementById(id);
   let uploading=false,preflightPromise=null;
@@ -89,6 +108,8 @@
   }
   function suffix(file,original) {
     if(VIDEO.test(file.name||''))return original.replace('照片','影片');
+    const mime=String(file.type||'').toLowerCase().split(';')[0].trim();
+    if(VIDEO_MIME_EXT[mime])return original.replace('照片','影片');
     if(PHOTO.test(file.name||''))return original;
     throw new Error('附件類型不支援：'+String(file.name||'未命名'));
   }
@@ -331,6 +352,7 @@
     if(already&&already.mr===mr&&already.kind===kind)return already.result;
     const max=kind.endsWith('影片')?MAX_VIDEO:MAX_PHOTO;
     if(file.size>max)throw new Error(file.name+' 超過 '+Math.floor(max/MB)+' MB');
+    const uploadName=uploadMediaName(file,kind);
     const key='repairDirectV4_'+[mr,kind,file.name,file.size,file.lastModified].join(':');
     let session=null;
     const old=storageGet(key);
@@ -340,7 +362,7 @@
     }
     if(!session){
       session=await retryBusy_(()=>command(qaMode?'qaStart':'start',{meta:JSON.stringify({
-        orderNo:mr,mediaKind:kind,name:file.name,size:file.size
+        orderNo:mr,mediaKind:kind,name:uploadName,size:file.size
       })}));
       if(!session||!session.sessionId)throw new Error('Google 未建立上傳工作階段');
       storageSet(key,session.sessionId);
@@ -440,7 +462,7 @@
     pilot.hidden=false;
     pilot.querySelector('.video-picker').firstChild.textContent='🎥 新增影片';
     pilot.querySelector('.video-hint').textContent='影片會上傳到公司 Google Drive，由 F 槽自動歸檔。';
-    input.setAttribute('accept','video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.webm');
+    input.setAttribute('accept','video/*,.mp4,.mov,.m4v,.3gp,.3gpp,.webm,.mkv');
     input.addEventListener('change',()=>{
       const file=input.files&&input.files[0];
       clearVideo(prefix);
