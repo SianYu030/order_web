@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>原工單附件補傳｜設備維修中心</title>
+<style>
+:root{color-scheme:light;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:#1e293b;background:#f4f7fb}
+*{box-sizing:border-box}
+body{margin:0;background:#f4f7fb}
+main{max-width:650px;margin:0 auto;padding:20px 16px 46px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+a{color:#0b5984;text-decoration:underline;font-weight:650}
+h1{font-size:23px;margin:0 0 12px;line-height:1.4}
+h2{font-size:16px;margin:0 0 10px}
+p{margin:8px 0 12px;line-height:1.7}
+small,.sub{font-size:13px;color:#526579}
+.card{background:white;padding:19px;border-radius:16px;border:1px solid #d8e2ed;box-shadow:0 5px 22px #122c4710;margin-bottom:15px}
+label{font-weight:750;display:block;margin:15px 0 8px}
+input{display:block;width:100%;padding:13px;font:inherit;border-radius:10px;border:1px solid #a5b6c7;background:white;color:#162b3b}
+input[type=file]{padding:12px;max-width:100%}
+button{width:100%;font:inherit;padding:15px;border:0;border-radius:12px;background:#0a5f77;color:#fff;font-size:17px;font-weight:780;cursor:pointer;min-height:52px}
+button[disabled]{background:#8797a6;cursor:wait}
+.warning{background:#fff6e8;border-radius:12px;border:1px solid #eed6aa;padding:11px;color:#7e4b17;font-size:14px}
+.status{padding:13px;border:1px solid #a9c9df;border-radius:12px;background:#edf6ff;color:#124768;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:1.65}
+.status.ok{background:#eaf9f0;border-color:#9bd8b1;color:#12633b}
+.status.bad{background:#fff2ed;border-color:#edb4a2;color:#a1351c}
+ul{padding-left:20px;line-height:1.8;margin:6px 0}
+</style>
+</head>
+<body>
+<main>
+<header><strong>🔧 設備維修中心</strong><a href="./?v=20261120-media-retry" id="backToRepair">返回報修網站</a></header>
+<section class="card">
+<h1>原工單照片／影片補傳</h1>
+<p class="sub">只補上未成功保存的附件。<strong>不新增工單、不修改工單資料、不重送 LINE。</strong></p>
+<form id="recoverForm" novalidate>
+<label for="mr">原本的 MR 工單號</label>
+<input id="mr" name="mr" type="text" required maxlength="12" placeholder="例如 MR2026112001" autocomplete="off" inputmode="text" autocapitalize="characters">
+<label for="photos">需要補傳的報修照片</label>
+<input id="photos" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" multiple>
+<p class="sub">只選 G/F 槽尚未保存的照片，避免重複。</p>
+<label for="video">需要補傳的報修影片</label>
+<input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.3gp,.webm,.mkv">
+<p class="sub">支援 MP4／MOV 等格式。影片單檔上限 100 MB，照片單檔 15 MB。</p>
+<div class="warning">補傳成功以 Google Drive 完整上傳回執為準。F 槽由既有排程同步，需另行核對。LINE 群組目前只發送原報修的文字與照片，不會自動發送影片。</div>
+<button type="submit" id="recoverBtn" style="margin-top:16px">補傳到原工單（不重新報修）</button>
+</form>
+<div id="status" class="status" role="status" aria-live="polite" style="margin-top:14px">選擇缺少的附件，再按「補傳到原工單」。</div>
+</section>
+<section class="card">
+<h2>資料保護</h2>
+<ul>
+<li>伺服器會確認 MR 是仍存在的正式工單，才接受附件。</li>
+<li>已取得完整回執的檔案，本頁重試時不會再次上傳。</li>
+<li>若上傳中斷，請保留本頁並按同一個補傳按鈕，不要再建立新工單。</li>
+</ul>
+</section>
+</main>
+<script src="./repair-direct-upload.js?v=20261120-v62-safe-media-retry" defer></script>
+<script>
+(()=>{
+  "use strict";
+  const mr=document.getElementById("mr"),photos=document.getElementById("photos"),video=document.getElementById("video");
+  const button=document.getElementById("recoverBtn"),status=document.getElementById("status");
+  const q=new URLSearchParams(location.search);
+  const supplied=String(q.get("mr")||"").trim().toUpperCase();
+  if(/^MR20\d{8}$/.test(supplied))mr.value=supplied;
+  const update=(message,kind="")=>{
+    status.className="status"+(kind?" "+kind:"");
+    status.textContent=message;
+  };
+  async function ready(){
+    const started=Date.now();
+    while(Date.now()-started<30000){
+      if(window.repairDrive?.enabled)return window.repairDrive;
+      if(window.repairDirectV4?.state==="unavailable")
+        throw Error("附件接收器無法連線，請確認網路。");
+      await new Promise(resolve=>setTimeout(resolve,400));
+    }
+    throw Error("附件接收器尚未準備好，請確認網路後重試。");
+  }
+  document.getElementById("recoverForm").addEventListener("submit",async event=>{
+    event.preventDefault();
+    const no=mr.value.trim().toUpperCase();
+    const list=[...photos.files,...video.files];
+    if(!/^MR20\d{8}$/.test(no)){update("請先填寫正確的 MR 工單號，例如 MR2026112001。","bad");return;}
+    if(!list.length){update("尚未選擇照片或影片，請只挑選缺少的附件。","bad");return;}
+    button.disabled=true;
+    button.textContent="正在補傳，請勿關閉頁面…";
+    update("正在驗證原工單及 Google Drive 接收器…");
+    try{
+      const bridge=await ready();
+      const results=await bridge.uploadFiles(list,no,"報修照片",(i,total)=>{
+        update("正在處理第 "+i+"／"+total+" 個附件，請保持頁面開啟…");
+      });
+      update("✅ 已核對 "+results.length+" 個附件的 Google Drive 完整回執，MR 工單："+no+"。\n工單沒有重建，LINE 沒有重送。F 槽由排程同步，仍需核對檔案。","ok");
+      button.textContent="附件已確認上傳成功";
+    }catch(err){
+      const details=String(err?.message||err);
+      update("⚠️ 尚未全部完成："+details+"\n已確認的附件會在本頁重試時跳過。請保留這頁並再次按補傳，不要重送報修工單。","bad");
+      button.textContent="再次補傳未完成的附件";
+    }finally{
+      button.disabled=false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
