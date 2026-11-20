@@ -42,10 +42,10 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
 <input id="photos" type="file" accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif" multiple>
 <p class="sub">只選 G/F 槽尚未保存的照片，避免重複。</p>
 <label for="video">需要補傳的報修影片</label>
-<input id="video" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v,.3gp,.webm,.mkv">
+<input id="video" type="file" accept="video/*,.mp4,.mov,.m4v,.3gp,.3gpp,.webm,.mkv">
 <label for="videoCapture">🎥 重新錄製一段影片（原影片未存到手機時）</label>
 <input id="videoCapture" type="file" accept="video/*" capture="environment">
-<p class="sub">從相簿選影片或重新錄製，兩者選一。支援 MP4／MOV 等格式；影片單檔上限 100 MB，照片單檔 15 MB。</p>
+<p class="sub">從相簿選影片或重新錄製，兩者選一。支援 iPhone／Android 常見 MOV、MP4、3GP、WebM、MKV；影片上限 100 MB。LINE 影片通知尚未啟用。</p>
 <div class="warning">補傳成功以 Google Drive 完整上傳回執為準。F 槽由既有排程同步，需另行核對。LINE 群組目前只發送原報修的文字與照片，不會自動發送影片。</div>
 <button type="submit" id="recoverBtn" style="margin-top:16px">補傳到原工單（不重新報修）</button>
 </form>
