@@ -89,7 +89,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 .order{font-size:24px;font-weight:950;letter-spacing:.6px;margin:7px 0}
 .modal p{color:#647184;font-size:13px;line-height:1.6}
 .modal button{border:0;border-radius:14px;background:var(--navy);color:white;padding:13px 18px;font-weight:850;width:100%}
-#retryReportMediaBtn[hidden],#retryReportMediaStatus[hidden]{display:none!important}
+#retryReportMediaBtn[hidden],#retryReportMediaStatus[hidden],#retryReportMediaLater[hidden]{display:none!important}
 .modal button.success-dismiss{position:absolute;right:12px;top:10px;width:36px;height:36px;padding:0;background:#f2f5f8;color:#526579;border-radius:50%;font-size:24px;font-weight:500;line-height:1}
 .mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
 .mode-btn{border:1.5px solid var(--line);background:#fff;border-radius:16px;padding:14px 10px;font-weight:900;font-size:16px;color:#31465b}
@@ -1033,6 +1033,7 @@ html,body{background:#f5f7f8}
     <p id="successText">工單已寫入正式「機修維修單」；LINE 與照片會顯示實際執行結果。</p>
     <button id="retryReportMediaBtn" type="button" hidden style="margin-top:10px;min-height:52px;background:#0b6745;color:white">🔄 重試未完成的照片／影片（不重建工單）</button>
     <p id="retryReportMediaStatus" role="status" aria-live="polite" style="font-size:13px;color:#9b3e15" hidden></p>
+    <a id="retryReportMediaLater" href="./media-retry.html" style="display:block;margin-top:8px;color:#0b5b91;font-size:14px;font-weight:bold" hidden>稍後補傳到同一筆 MR（不重建工單）</a>
     <button id="successHomeBtn" type="button" style="margin-top:13px;min-height:48px">確定，返回首頁</button>
     <button id="againBtn" class="success-dismiss" type="button" aria-label="關閉成功訊息並返回首頁">×</button>
   </div>
@@ -2441,6 +2442,7 @@ el("submitBtn").onclick=async()=>{
     pendingReportMediaRetry=null;
     el("retryReportMediaBtn").hidden=true;
     el("retryReportMediaStatus").hidden=true;
+    el("retryReportMediaLater").hidden=true;
     el("successTitle").textContent="報修工單已建立";
     if(reportMediaFiles.length){
       btn.textContent="上傳報修照片 0/"+reportPhotos.length+"…";
@@ -2455,6 +2457,9 @@ el("submitBtn").onclick=async()=>{
         if(window.repairDrive?.enabled){
           pendingReportMediaRetry={files:reportMediaFiles,orderNo:data.orderNo,photoEpoch:data.photoEpoch||"",lineMsg};
           el("retryReportMediaBtn").hidden=false;
+          const later=el("retryReportMediaLater");
+          later.href="./media-retry.html?mr="+encodeURIComponent(data.orderNo);
+          later.hidden=false;
           el("successTitle").textContent="工單已建立，附件待補傳";
           const msg=el("retryReportMediaStatus");
           msg.textContent="請按補傳按鈕，不需重新送單或重發 LINE；離開本頁前請確認附件完成。";
@@ -2489,6 +2494,7 @@ el("retryReportMediaBtn").onclick=async()=>{
     });
     pendingReportMediaRetry=null;
     btn.hidden=true;
+    el("retryReportMediaLater").hidden=true;
     info.textContent="✅ "+saved.length+" 個附件已確認在 Google Drive；F 槽將由排程同步。";
     info.style.color="#0e8a4a";
     el("successTitle").textContent="報修工單已建立";
@@ -2502,7 +2508,7 @@ el("retryReportMediaBtn").onclick=async()=>{
   }
 };
 function returnHomeAfterReport_(){
-  if(pendingReportMediaRetry&&!window.confirm("這筆工單還有附件未完成歸檔。離開後需要重新選取原照片／影片補傳，確定離開？"))return;
+  if(pendingReportMediaRetry&&!window.confirm("這筆工單還有附件未完成歸檔。離開後可從「原工單附件補傳」頁面重新選取缺少的照片／影片，確定離開？"))return;
   pendingReportMediaRetry=null;
   // This function only handles an already verified, fully processed report
   // success screen. It must never post a new report or resend LINE/photos.
