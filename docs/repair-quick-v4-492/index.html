@@ -89,6 +89,7 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 .order{font-size:24px;font-weight:950;letter-spacing:.6px;margin:7px 0}
 .modal p{color:#647184;font-size:13px;line-height:1.6}
 .modal button{border:0;border-radius:14px;background:var(--navy);color:white;padding:13px 18px;font-weight:850;width:100%}
+#retryReportMediaBtn[hidden],#retryReportMediaStatus[hidden]{display:none!important}
 .modal button.success-dismiss{position:absolute;right:12px;top:10px;width:36px;height:36px;padding:0;background:#f2f5f8;color:#526579;border-radius:50%;font-size:24px;font-weight:500;line-height:1}
 .mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
 .mode-btn{border:1.5px solid var(--line);background:#fff;border-radius:16px;padding:14px 10px;font-weight:900;font-size:16px;color:#31465b}
@@ -728,7 +729,7 @@ html,body{background:#f5f7f8}
           <div class="line-notify-content">
             <div class="line-notify-main">📣 LINE 通知報修</div>
             <div class="line-notify-sub">送出工單後，同步通知機修 LINE 群組。</div>
-            <div class="line-notify-test" id="lineNotifyStatus">勾選時傳送 LINE 文字及報修照片。Google Drive 模式下，照片另暫存於既有 LINE 影像服務以供群組顯示；影片僅歸檔。</div>
+            <div class="line-notify-test" id="lineNotifyStatus">勾選時傳送 LINE 文字及報修照片。Google Drive 模式下，照片另暫存於 LINE 影像服務；影片只會備份至 Google Drive／F 槽，不會發到 LINE 群組。</div>
           </div>
         </label>
       </div>
@@ -2696,7 +2697,7 @@ window.addEventListener("pagehide",function(){
 </script>
 <script src="./v10_version_gate.js?v=20261028c" defer></script>
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
-<script src="./repair-direct-upload.js?v=20261119-v61-receiver-repaired" defer></script>
+<script src="./repair-direct-upload.js?v=20261120-v62-safe-media-retry" defer></script>
 <script src="./maintenance-report.js?v=20261119-wrench-title-fix3" defer></script>
 </body>
 </html>
