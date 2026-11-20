@@ -87,8 +87,9 @@ textarea{width:100%;min-height:104px;resize:vertical;border:1.5px solid var(--li
 .modal{position:relative;width:min(92vw,430px);background:#fff;border-radius:22px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.22);text-align:center}
 .check{width:64px;height:64px;border-radius:50%;background:#eaf8ef;color:#0b8b48;display:grid;place-items:center;font-size:34px;margin:0 auto 12px}
 .order{font-size:24px;font-weight:950;letter-spacing:.6px;margin:7px 0}
-.modal p{color:#647184;font-size:13px;line-height:1.6}
+.modal p{color:#536579;font-size:15px;line-height:1.65;white-space:pre-line;text-align:left;overflow-wrap:anywhere}
 .modal button{border:0;border-radius:14px;background:var(--navy);color:white;padding:13px 18px;font-weight:850;width:100%}
+.modal button:disabled{opacity:.55;cursor:wait}
 #retryReportMediaBtn[hidden],#retryReportMediaStatus[hidden],#retryReportMediaLater[hidden]{display:none!important}
 .modal button.success-dismiss{position:absolute;right:12px;top:10px;width:36px;height:36px;padding:0;background:#f2f5f8;color:#526579;border-radius:50%;font-size:24px;font-weight:500;line-height:1}
 .mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
@@ -2125,6 +2126,7 @@ el("clearIssue").onclick=()=>{el("issue").value="";update();};
 let reportPhotoFiles=[];
 let repairPhotoFiles=[];
 let pendingReportMediaRetry=null;
+let reportProcessing=false;
 
 function renderAccumulatedPhotos_(files,previewId,countId,label){
   const box=el(previewId),count=el(countId);
@@ -2352,6 +2354,7 @@ el("submitBtn").onclick=async()=>{
   const btn=el("submitBtn");
   const oldText=btn.textContent;
   btn.disabled=true;
+  const requestStartAt=performance.now();
   btn.textContent="建立工單中…";
 
   try{
@@ -2392,17 +2395,46 @@ el("submitBtn").onclick=async()=>{
     if(existing>=0)LIVE_ORDERS[existing]=localOrder; else LIVE_ORDERS.push(localOrder);
     saveLiveOrdersCache_();
 
-    let lineMsg="";
-    if(el("lineNotify").checked){
+    // Formal MR is authoritative and already verified. Show it immediately,
+    // then complete LINE and Drive concurrently through independent services.
+    // Never create a second ticket or retry a LINE notification automatically.
+    const mrMs=Math.round(performance.now()-requestStartAt);
+    const mediaReady=reportMediaFiles.length>0;
+    const lineReady=el("lineNotify").checked;
+    const stage={
+      line:lineReady?"準備中":"未啟用",
+      media:mediaReady?"等待上傳":"無附件"
+    };
+    reportProcessing=true;
+    pendingReportMediaRetry=null;
+    el("retryReportMediaBtn").hidden=true;
+    el("retryReportMediaStatus").hidden=true;
+    el("retryReportMediaLater").hidden=true;
+    el("successTitle").textContent="工單已建立，附件處理中";
+    el("successHomeBtn").disabled=true;
+    el("againBtn").disabled=true;
+    function renderReportStages_(){
+      el("successText").textContent=
+        "✅ 工單已寫入正式「機修維修單」並完成回讀確認（"+(mrMs/1000).toFixed(1)+" 秒）。\n"+
+        "📣 LINE："+stage.line+"\n"+
+        "☁️ 附件："+stage.media+"\n"+
+        "請維持頁面開啟，直到兩項流程都完成。";
+    }
+    renderReportStages_();
+    el("success").classList.remove("hidden");
+    const runLine_=async()=>{
+      const began=performance.now();
+      let result="｜➖ 未發送 LINE";
+      if(!lineReady)return {message:result,ms:0};
       let linePhotoIds=[];
       const lineWarnings=[];
       if(window.repairDrive?.enabled && reportPhotos.length){
-        linePhotoIds=[];
-        // LINE 影像暫存與 Google Drive 原始附件歸檔互不依賴。
-        btn.textContent="準備 LINE 照片…";
+        stage.line="準備照片中";
+        renderReportStages_();
         try{
           const prepared=await uploadLinePhotosForDrive_(reportPhotos,data.orderNo,data.photoEpoch||"",(i,total)=>{
-            btn.textContent="準備 LINE 照片 "+i+"/"+total+"…";
+            stage.line="準備照片 "+i+"/"+total;
+            renderReportStages_();
           });
           linePhotoIds=prepared.ids;
           lineWarnings.push(...prepared.warnings);
@@ -2410,69 +2442,98 @@ el("submitBtn").onclick=async()=>{
           lineWarnings.push("LINE 照片暫存失敗："+linePhotoErr.message);
         }
       }
-      btn.textContent="發送 LINE 通知…";
+      stage.line="發送通知中";
+      renderReportStages_();
       try{
         const lineData=await sendLineReport_({
-          orderNo:data.orderNo,
-          time:localOrder.time,
-          person:state.person,
-          dept:state.dept,
-          machine:state.machine,
-          stop:state.stop,
-          issue:issue,
-          level:state.level,
-          photoIds:linePhotoIds
+          orderNo:data.orderNo,time:localOrder.time,
+          person:state.person,dept:state.dept,machine:state.machine,
+          stop:state.stop,issue,level:state.level,photoIds:linePhotoIds
         });
         const sentImages=Number(lineData.imageCount||0);
-        lineMsg="｜📣 LINE 文字已送出"+(sentImages?("＋"+sentImages+" 張報修照片"):"");
+        result="｜📣 LINE 文字已送出"+(sentImages?("＋"+sentImages+" 張報修照片"):"");
         if(linePhotoIds.length>sentImages)lineWarnings.push("LINE 後端未確認全部照片");
         if(reportPhotos.length && sentImages===0)lineWarnings.push("LINE 沒有附上報修照片");
-        if(lineWarnings.length)lineMsg+="｜⚠️ "+lineWarnings.join("；");
+        if(lineWarnings.length)result+="｜⚠️ "+lineWarnings.join("；");
+        stage.line=lineWarnings.length?"已送出，但有警告":"完成";
       }catch(lineErr){
-        lineMsg="｜⚠️ 工單已建立，但 LINE 通知失敗："+lineErr.message;
-        if(lineWarnings.length)lineMsg+="；"+lineWarnings.join("；");
+        result="｜⚠️ 工單已建立，但 LINE 通知失敗："+lineErr.message;
+        if(lineWarnings.length)result+="；"+lineWarnings.join("；");
+        stage.line="失敗或結果未確認";
       }
-    }else{
-      lineMsg="｜➖ 未發送 LINE";
-    }
-
-    let photoMsg="";
-    let uploadedReportPhotos=[];
-    let driveMediaSaved=false;
-    pendingReportMediaRetry=null;
-    el("retryReportMediaBtn").hidden=true;
-    el("retryReportMediaStatus").hidden=true;
-    el("retryReportMediaLater").hidden=true;
-    el("successTitle").textContent="報修工單已建立";
-    if(reportMediaFiles.length){
-      btn.textContent="上傳報修照片 0/"+reportPhotos.length+"…";
+      renderReportStages_();
+      return {message:result,ms:Math.round(performance.now()-began)};
+    };
+    const runMedia_=async()=>{
+      const began=performance.now();
+      let result="";
+      if(!mediaReady)return {message:result,ms:0};
+      stage.media="準備 "+reportMediaFiles.length+" 個附件";
+      renderReportStages_();
       try{
-        uploadedReportPhotos=await (window.repairDrive?.enabled ? window.repairDrive.uploadFiles : uploadPhotoFiles_)(reportMediaFiles,data.orderNo,"報修照片",(i,total)=>{
-          btn.textContent="上傳報修照片 "+i+"/"+total+"…";
-        },data.photoEpoch||"");
-        driveMediaSaved=true;
-        photoMsg=window.repairDrive?.enabled?("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，F 槽歸檔待核對"):("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
+        await (window.repairDrive?.enabled?window.repairDrive.uploadFiles:uploadPhotoFiles_)(
+          reportMediaFiles,data.orderNo,"報修照片",(i,total)=>{
+            stage.media="上傳中 "+i+"/"+total+"（照片＋影片）";
+            renderReportStages_();
+          },data.photoEpoch||""
+        );
+        result=window.repairDrive?.enabled?
+          ("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，F 槽待排程核對"):
+          ("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
+        stage.media="已確認 "+reportMediaFiles.length+" 個附件";
       }catch(photoErr){
-        photoMsg="｜⚠️ 工單已建立，但照片／影片未全部歸檔："+photoErr.message;
+        result="｜⚠️ 工單已建立，但照片／影片未全部歸檔："+photoErr.message;
+        stage.media="部分失敗，需要補傳";
         if(window.repairDrive?.enabled){
-          pendingReportMediaRetry={files:reportMediaFiles,orderNo:data.orderNo,photoEpoch:data.photoEpoch||"",lineMsg};
+          pendingReportMediaRetry={
+            files:reportMediaFiles,orderNo:data.orderNo,
+            photoEpoch:data.photoEpoch||"",lineMsg:""
+          };
           el("retryReportMediaBtn").hidden=false;
           const later=el("retryReportMediaLater");
           later.href="./media-retry.html?mr="+encodeURIComponent(data.orderNo);
           later.hidden=false;
-          el("successTitle").textContent="工單已建立，附件待補傳";
           const msg=el("retryReportMediaStatus");
-          msg.textContent="請按補傳按鈕，不需重新送單或重發 LINE；離開本頁前請確認附件完成。";
+          msg.textContent="請按補傳按鈕，不需重新送單或重發 LINE。";
           msg.hidden=false;
         }
       }
-    }
-
-
-    el("successText").textContent="✅ 已寫入正式「機修維修單」並完成回讀驗證"+photoMsg+lineMsg+"。";
+      renderReportStages_();
+      return {message:result,ms:Math.round(performance.now()-began)};
+    };
+    const [lineResult,mediaResult]=await Promise.all([runLine_(),runMedia_()]);
+    if(pendingReportMediaRetry)pendingReportMediaRetry.lineMsg=lineResult.message;
+    const totalMs=Math.round(performance.now()-requestStartAt);
+    el("successTitle").textContent=pendingReportMediaRetry?
+      "工單已建立，附件待補傳":"報修工單已建立";
+    el("successText").textContent=
+      "✅ 已寫入正式「機修維修單」並完成回讀驗證"+
+      mediaResult.message+lineResult.message+
+      "。\n⏱ 工單 "+(mrMs/1000).toFixed(1)+
+      " 秒｜LINE "+(lineResult.ms/1000).toFixed(1)+
+      " 秒｜附件 "+(mediaResult.ms/1000).toFixed(1)+
+      " 秒｜總計 "+(totalMs/1000).toFixed(1)+" 秒。";
+    try{
+      localStorage.setItem("repairSubmitDiagnosticsV1",JSON.stringify({
+        at:new Date().toISOString(),orderNo:data.orderNo,
+        mrMs,lineMs:lineResult.ms,mediaMs:mediaResult.ms,totalMs,
+        attachments:reportMediaFiles.length,
+        attachmentStatus:stage.media,lineStatus:stage.line
+      }));
+    }catch(_){}
+    reportProcessing=false;
+    el("successHomeBtn").disabled=false;
+    el("againBtn").disabled=false;
     el("success").classList.remove("hidden");
   }catch(err){
-    alert("手機報修建立失敗："+err.message);
+    const detail=String(err?.message||err);
+    const uncertain=/同步逾時|無法連線同步 API|沒有取得工單編號|回讀驗證|後端版本/.test(detail);
+    if(uncertain){
+      alert("⚠️ 工單送出結果尚未確認（"+detail+"）。請先至維修工單列表核對是否已建立，不要直接重送，避免產生重複工單。");
+      console.warn("MR_CREATE_RESULT_UNCONFIRMED",detail);
+    }else{
+      alert("手機報修未完成："+detail);
+    }
   }finally{
     btn.textContent=oldText;
     btn.disabled=false;
@@ -2508,6 +2569,7 @@ el("retryReportMediaBtn").onclick=async()=>{
   }
 };
 function returnHomeAfterReport_(){
+  if(reportProcessing){alert("LINE 或附件仍在處理，請維持此頁開啟至完成。");return;}
   if(pendingReportMediaRetry&&!window.confirm("這筆工單還有附件未完成歸檔。離開後可從「原工單附件補傳」頁面重新選取缺少的照片／影片，確定離開？"))return;
   pendingReportMediaRetry=null;
   // This function only handles an already verified, fully processed report
@@ -2516,6 +2578,10 @@ function returnHomeAfterReport_(){
   reset();
   switchMode("report");
 }
+window.addEventListener("beforeunload",event=>{
+  if(!reportProcessing)return;
+  event.preventDefault();event.returnValue="仍在傳送 LINE 與附件，離開可能導致上傳中斷";
+});
 el("successHomeBtn").onclick=returnHomeAfterReport_;
 el("againBtn").onclick=returnHomeAfterReport_;
 el("resetBtn").onclick=reset;
