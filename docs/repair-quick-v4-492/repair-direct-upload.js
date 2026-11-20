@@ -131,7 +131,7 @@
     // Avoid repeating health and guest-auth network roundtrips when a page
     // already verified this same receiver moments ago. Server still checks
     // the ticket/session/permissions for every actual upload command.
-    if(preflightCache && Date.now()-preflightCacheAt<30000)return preflightCache;
+    if(preflightCache && Date.now()-preflightCacheAt<120000)return preflightCache;
     if(preflightPromise)return preflightPromise;
     preflightPromise=jsonp('health').then(r=>{
       if(!r||r.ok!==true||r.version!=='6.0'||r.testOnly!==false||r.chunkBytes!==CHUNK)
