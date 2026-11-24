@@ -2491,7 +2491,7 @@ el("submitBtn").onclick=async()=>{
           };
           el("retryReportMediaBtn").hidden=false;
           const later=el("retryReportMediaLater");
-          later.href="./media-retry.html?mr="+encodeURIComponent(data.orderNo);
+          later.href="./media-retry.html?mr="+encodeURIComponent(data.orderNo)+"&epoch="+encodeURIComponent(data.photoEpoch||"");
           later.hidden=false;
           const msg=el("retryReportMediaStatus");
           msg.textContent="請按補傳按鈕，不需重新送單或重發 LINE。";
@@ -2550,9 +2550,13 @@ el("retryReportMediaBtn").onclick=async()=>{
   info.textContent="正在補傳原工單 "+pending.orderNo+"，請不要離開此頁。";
   info.hidden=false;
   try{
+    const current=await jsonp_("listTestOrders",{},30000);
+    if(current.spreadsheetId!==EXPECTED_SPREADSHEET_ID || current.backendVersion!==EXPECTED_BACKEND_VERSION)throw new Error("無法確認正式後端，已停止補傳");
+    const active=(current.orders||[]).find(o=>o.no===pending.orderNo);
+    if(!pending.photoEpoch||!active||active.photoEpoch!==pending.photoEpoch)throw new Error("原工單已刪除、重建或建立識別碼尚未確認，禁止補傳舊附件");
     const saved=await window.repairDrive.uploadFiles(pending.files,pending.orderNo,"報修照片",(i,total)=>{
       info.textContent="正在核對附件 "+i+"/"+total+"…";
-    });
+    },pending.photoEpoch);
     pendingReportMediaRetry=null;
     btn.hidden=true;
     el("retryReportMediaLater").hidden=true;
@@ -2773,7 +2777,7 @@ window.addEventListener("pagehide",function(){
 </script>
 <script src="./v10_version_gate.js?v=20261028c" defer></script>
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
-<script src="./repair-direct-upload.js?v=20261124-resume-v64" defer></script>
+<script src="./repair-direct-upload.js?v=20261125-identity-v65" defer></script>
 <script src="./maintenance-report.js?v=20261119-wrench-title-fix3" defer></script>
 </body>
 </html>
