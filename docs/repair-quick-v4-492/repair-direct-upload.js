@@ -358,7 +358,7 @@
     const old=storageGet(key);
     if(old){
       try{session=await retryBusy_(()=>command('query',{sessionId:old},65000))}
-      catch(err){storageDel(key);}
+      catch(err){throw new Error('原附件續傳狀態尚未確認，已保留原工作階段，不會重建或重複上傳：'+String(err?.message||err));}
     }
     if(!session){
       session=await retryBusy_(()=>command(qaMode?'qaStart':'start',{meta:JSON.stringify({
@@ -367,9 +367,13 @@
       if(!session||!session.sessionId)throw new Error('Google 未建立上傳工作階段');
       storageSet(key,session.sessionId);
     }
+    function verifySession(value,expectedId){
+      if(!value||value.sessionId!==expectedId||value.size!==file.size||!Number.isSafeInteger(value.offset)||value.offset<0||value.offset>file.size||(value.complete&&value.offset!==file.size))throw new Error('雲端附件工作階段資料不一致，停止傳輸');
+      return value;
+    }
+    session=verifySession(session,old||session.sessionId);
     if(session.complete){
-      storageDel(key);
-      if(!session.fileId||!session.md5)throw new Error('雲端檔案確認資料不完整');
+      if(!session.fileId||!/^[0-9a-f]{32}$/i.test(session.md5||''))throw new Error('雲端檔案確認資料不完整');
       const result={driveId:session.fileId,category:kind,md5:session.md5};
       confirmedFiles.set(file,{mr,kind,result});
       return result;
@@ -380,28 +384,33 @@
       const bytes=file.slice(offset,Math.min(file.size,offset+CHUNK));
       const base64=base64Chunk(await bytes.arrayBuffer());
       try {
-        session=await command('chunk',{sessionId:session.sessionId,offset,base64},145000);
-        if(!Number.isSafeInteger(session.offset)||session.offset<=offset)
-          throw new Error('Drive 上傳進度未前進，拒絕重複傳送');
+        const next=verifySession(await command('chunk',{sessionId:session.sessionId,offset,base64},145000),session.sessionId);
+        if(next.offset<=offset||next.offset>offset+bytes.size)
+          throw new Error('Drive 上傳進度不符，先確認雲端實際位置');
+        session=next;
         if(onPart)onPart(session.offset,file.size);
         tries=0;
       }catch(err){
         tries++;
         // A lost receipt is not proof of upload failure. Query Drive's confirmed
         // offset before resuming; never replay a possibly accepted chunk blindly.
-        try{session=await retryBusy_(()=>command('query',{sessionId:session.sessionId},75000))}
-        catch(queryErr){
-          if(tries>=2)throw new Error('傳輸中斷，尚未確認雲端進度：'+queryErr.message);
-          continue;
+        const sessionId=session.sessionId;
+        let recovered=null,lastError=null;
+        for(let q=0;q<2;q++){
+          try{recovered=verifySession(await retryBusy_(()=>command('query',{sessionId},75000)),sessionId);break;}
+          catch(queryErr){lastError=queryErr;}
         }
+        if(!recovered)throw new Error('傳輸中斷，已保留工作階段，尚未確認雲端進度：'+String(lastError?.message||lastError));
+        if(recovered.offset<offset)throw new Error('雲端回報進度倒退，已停止傳輸');
+        session=recovered;
         if(tries>=2 && !session.complete && session.offset<=offset)
           throw new Error('雲端未確認新進度：'+err.message);
       }
     }
-    if(!session.complete)session=await retryBusy_(()=>command('query',{sessionId:session.sessionId},75000));
-    if(!session.complete||!session.fileId||!session.md5)
+    if(!session.complete)session=verifySession(await retryBusy_(()=>command('query',{sessionId:session.sessionId},75000)),session.sessionId);
+    if(!session.complete||!session.fileId||!/^[0-9a-f]{32}$/i.test(session.md5||''))
       throw new Error('Google Drive 尚未回傳完整檔案 ID／MD5，不可視為已備份');
-    storageDel(key);
+    // Keep the verified session ID so same-file retry after reload can query it.
     const result={driveId:session.fileId,category:kind,md5:session.md5};
     confirmedFiles.set(file,{mr,kind,result});
     return result;
