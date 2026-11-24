@@ -2349,6 +2349,7 @@ el("submitBtn").onclick=async()=>{
   const issue=el("issue").value.trim();
   if(!(state.dept&&state.person&&state.machine&&state.stop&&state.level&&issue))return;
 
+  const lineReady=el("lineNotify").checked;
   const reportPhotos=[...reportPhotoFiles];
   const reportMediaFiles=window.repairDrive?.enabled?[...reportPhotos,...window.repairDrive.videoFiles("report")]:reportPhotos;
   const btn=el("submitBtn");
@@ -2371,7 +2372,7 @@ el("submitBtn").onclick=async()=>{
       stop:state.stop,
       level:state.level,
       issue:issue,
-      lineNotify:el("lineNotify").checked?"1":"0",
+      lineNotify:lineReady?"1":"0",
       requestId:state.requestId
     },35000);
 
@@ -2400,7 +2401,6 @@ el("submitBtn").onclick=async()=>{
     // Never create a second ticket or retry a LINE notification automatically.
     const mrMs=Math.round(performance.now()-requestStartAt);
     const mediaReady=reportMediaFiles.length>0;
-    const lineReady=el("lineNotify").checked;
     const stage={
       line:lineReady?"準備中":"未啟用",
       media:mediaReady?"等待上傳":"無附件"
