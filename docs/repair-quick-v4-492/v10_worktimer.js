@@ -287,6 +287,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     if(!validateRepairFields_())return;
     if(!confirm("確定設備已修復並結案？將提交目前的維修類型、分類、內容與備註，並停止計時。"))return;
     try{
+      await relayEnsureOrderIdentity_(repairState.order);
       const order=repairState.order,photos=[...repairPhotoFiles],media=window.repairDrive?.enabled?[...photos,...window.repairDrive.videoFiles("repair")]:photos;
       const relay=relaySelection_(photos,media,byId("repairLineNotify")?.checked,order.photoEpoch);
       const closed=await op("close","","",{...relay,repairType:byId("repairTypeSelect").value,
