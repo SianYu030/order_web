@@ -147,7 +147,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
       const writeRequest=fetch(SYNC_API_URL,{method:"POST",mode:"no-cors",
         headers:{"Content-Type":"text/plain;charset=utf-8"},
         body:JSON.stringify({action:"timerAction",orderNo:id,timerEvent:event,
-          operationId:pending.operationId,expectedLastOperationId:pending.expectedLastOperationId,
+          operationId:pending.operationId,expectedLastOperationId:pending.expectedLastOperationId,photoEpoch:order.photoEpoch||"",
           technician:currentRepairUser,sessionToken,detail,nextDate,...extra,...(pending.relaySelection||{})})}).catch(()=>null);
       await Promise.race([writeRequest,wait(900)]);
       // Bound a failed synchronization to ~30s, not 15 * 20s per read.
