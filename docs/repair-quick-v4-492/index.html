@@ -715,7 +715,6 @@ body.mr-camera-open{overflow:hidden!important;overscroll-behavior:none}
         <div class="video-pilot" id="reportVideoPilot">
           <div class="video-actions">
             <button type="button" class="filebox video-picker" id="reportVideoRecordStart">🎥 高畫質錄影</button>
-            <button type="button" class="smallbtn" id="reportVideoNative">原生相機（備用）</button>
             <label class="filebox video-picker">🎞️ 從相簿選影片
               <input id="reportVideoFile" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.3gpp,.webm,.mkv">
             </label>
@@ -983,7 +982,6 @@ body.mr-camera-open{overflow:hidden!important;overscroll-behavior:none}
         <div class="video-pilot" id="repairVideoPilot">
           <div class="video-actions">
             <button type="button" class="filebox video-picker" id="repairVideoRecordStart">🎥 高畫質錄影</button>
-            <button type="button" class="smallbtn" id="repairVideoNative">原生相機（備用）</button>
             <label class="filebox video-picker">🎞️ 從相簿選影片
               <input id="repairVideoFile" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.3gpp,.webm,.mkv">
             </label>
@@ -2804,7 +2802,7 @@ async function startRecording(state){
     state.quality=(settings.width&&settings.height?settings.width+" × "+settings.height:"解析度待確認")+(settings.frameRate?"｜"+Math.round(settings.frameRate)+" FPS":"");
     el(state.prefix+"VideoRecordingStatus").textContent=state.quality+"｜按紅色按鈕開始";
     el(state.prefix+"VideoRecordStop").disabled=false;
-  }catch(err){if(state.attempt!==attempt){if(stream)stream.getTracks().forEach(t=>t.stop());return;}if(stream&&!state.stream)stream.getTracks().forEach(t=>t.stop());cancelRecording(state);alert("無法啟動高畫質錄影。請允許相機及麥克風，或使用原生相機／相簿影片。");}
+  }catch(err){if(state.attempt!==attempt){if(stream)stream.getTracks().forEach(t=>t.stop());return;}if(stream&&!state.stream)stream.getTracks().forEach(t=>t.stop());cancelRecording(state);alert("無法啟動高畫質錄影。請允許相機及麥克風，或從相簿選取影片。");}
   finally{if(state.attempt===attempt)state.starting=false;}
 }
 function toggleRecording(state){
@@ -2824,7 +2822,7 @@ function toggleRecording(state){
     el(state.prefix+"VideoTimer").dataset.recording="true";status.textContent=state.quality+"｜錄影中";
     function tick(){var sec=Math.floor((Date.now()-state.recordStarted)/1000);el(state.prefix+"VideoTimer").textContent=String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");if(sec>=90&&recorder.state!=="inactive"){shutter.disabled=true;status.textContent="已達錄影時間上限，正在儲存…";recorder.stop();}}
     state.timer=setInterval(tick,250);tick();
-  }catch(err){cancelRecording(state);alert("無法開始錄影，請使用原生相機或相簿影片。");}
+  }catch(err){cancelRecording(state);alert("無法開始錄影，請重新操作或從相簿選取影片。");}
 }
 ["report","repair"].forEach(function(prefix){
   var state={prefix:prefix,file:null,url:null,recorder:null,stream:null,chunks:[],bytes:0,discard:false};
@@ -2836,7 +2834,6 @@ function toggleRecording(state){
     input.addEventListener("change",function(){select(state,input.files&&input.files[0]);});
   });
   el(prefix+"VideoRecordStart").addEventListener("click",function(){startRecording(state);});
-  el(prefix+"VideoNative").addEventListener("click",function(){if(state.starting||state.recorder||state.stream)return;el(prefix+"VideoCapture").click();});
   el(prefix+"VideoRecordStop").addEventListener("click",function(){toggleRecording(state);});
   el(prefix+"VideoCancel").addEventListener("click",function(){if(state.recorder&&state.recorder.state!=="inactive"&&!confirm("取消這次錄影？"))return;cancelRecording(state);});
   el(prefix+"VideoSave").addEventListener("click",function(){
