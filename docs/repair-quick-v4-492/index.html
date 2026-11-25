@@ -1012,6 +1012,7 @@ html,body{background:#f5f7f8}
         <button class="save-repair" id="saveRepairBtn">儲存目前進度（不結案）</button>
         <div class="select-note" style="margin:6px 0 0">可先儲存未填完的維修資料；結案前須選維修類型，選「故障維修」則須選故障分類。停止計時不會自動儲存這些欄位。</div>
         <div class="save-msg hidden" id="saveRepairMsg">✅ 測試儲存成功（未寫入正式資料）</div>
+        <button type="button" id="retryRepairRelayBtn" hidden>重試原維修附件及 LINE 通知（不重新儲存／結案）</button>
 
         <button class="complete-repair-btn" id="completeRepairBtn" style="margin-top:14px">✅ 維修完成・結案</button>
         <div class="complete-note">結案前請確認維修類型與內容；按下結案後，系統會停止計時並提交本頁資料，待後端確認才會標示「已完成」。</div>
@@ -1592,6 +1593,7 @@ function renderRepairOrders(){
 }
 function openRepairOrder(o){
   const s=storeFor(o);
+  if(el("retryRepairRelayBtn"))el("retryRepairRelayBtn").hidden=!repairRelayPending_(o);
   repairState.order=o;repairState.store=s;repairState.type=s.type;repairState.classification=s.classification;repairState.status=s.status;repairState.pendingStatus="";
   el("repairListCard").classList.add("hidden");el("repairDetailCard").classList.remove("hidden");
   el("repairNo").textContent=o.no;el("repairMeta").textContent=o.dept+"｜"+o.machine;
@@ -1994,6 +1996,7 @@ el("saveRepairBtn").onclick=async()=>{
   el("saveRepairMsg").classList.remove("hidden");
 
   try{
+    if(relayEnabled_()&&repairRelayPending_(repairState.order)){el("retryRepairRelayBtn").hidden=false;throw Error("請先重試前一筆維修附件及 LINE 通知");}
     const relayPhotos=[...repairPhotoFiles],relayMedia=window.repairDrive?.enabled?[...relayPhotos,...window.repairDrive.videoFiles("repair")]:relayPhotos;
     const relay=relaySelection_(relayPhotos,relayMedia,el("repairLineNotify")?.checked,repairState.order.photoEpoch);
     const relayEventId=relay.lineMode==="relay-v2"?crypto.randomUUID():"";
@@ -2368,20 +2371,38 @@ async function relayCommit_(orderNo,epoch,eventId,receipts,createRequestId){
   }
   throw Error("通知排程結果未確認，請勿重複建立工單");
 }
+const pendingRepairRelays_=new Map();
+function repairRelayKey_(order){return order.no+":"+(order.photoEpoch||"");}
+function repairRelayPending_(order){return pendingRepairRelays_.get(repairRelayKey_(order));}
 async function relayRepairMedia_(order,photos,media,eventId){
-  let receipts=[];
-  if(media.length){
+  const key=repairRelayKey_(order);
+  let pending=pendingRepairRelays_.get(key);
+  if(pending&&pending.eventId!==eventId)throw Error("前一筆維修附件尚未確認，請先按重試原維修通知");
+  if(!pending){pending={order:{...order},photos:[...photos],media:[...media],eventId,receipts:null};pendingRepairRelays_.set(key,pending);}
+  el("retryRepairRelayBtn").hidden=false;
+  let receipts=pending.receipts||[];
+  if(media.length&&!pending.receipts){
     if(!window.repairDrive?.enabled)throw Error("附件接收器未就緒");
     receipts=await window.repairDrive.uploadFiles(media,order.no,"維修照片",(i,total)=>{
       el("saveRepairMsg").textContent="⏳ 維修附件 "+i+"/"+total+"…";
     },order.photoEpoch||"",order.mediaLayout===2?2:1);
   }
+  pending.receipts=receipts;
   if(eventId)await relayCommit_(order.no,order.photoEpoch,eventId,receipts);
+  pendingRepairRelays_.delete(key);el("retryRepairRelayBtn").hidden=true;
   clearRepairPhotoSelection_();
   if(window.repairDrive?.enabled)window.repairDrive.clearVideo("repair");
   el("saveRepairMsg").textContent="✅ 維修資料已回讀"+(media.length?"｜附件已確認寫入 Drive":"")+(eventId?"｜LINE 已排入整批派送（尚未發送確認）":"");
 }
 
+el("retryRepairRelayBtn").onclick=async()=>{
+ const order=repairState.order;if(!order)return;
+ const pending=repairRelayPending_(order);if(!pending)return;
+ const btn=el("retryRepairRelayBtn");btn.disabled=true;
+ try{await relayRepairMedia_(pending.order,pending.photos,pending.media,pending.eventId);}
+ catch(e){el("saveRepairMsg").textContent="⚠️ 原維修附件或通知仍未確認："+e.message;}
+ finally{btn.disabled=false;}
+};
 function clearRepairPhotoSelection_(){
   repairPhotoFiles=[];
   el("repairPhoto").value="";
