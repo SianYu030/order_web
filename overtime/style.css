@@ -373,3 +373,16 @@ body.employee-receipt .employee-tools{display:none}
 
 /* V1.1.44: separate employee ID/name from request status. */
 .history-card .history-person{display:block;font-size:14px;font-weight:750;color:#1f4777;line-height:1.5;margin:2px 0 4px}
+
+/* V1.1.45 加班類型 */
+.overtime-type-field{border:0;padding:0;margin:0 0 12px;min-width:0}
+.overtime-type-field legend{margin-bottom:8px;font-weight:600;font-size:14px;color:inherit}
+.overtime-type-field legend em{color:#b91c1c;font-style:normal}
+.overtime-type-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.overtime-type-options label{position:relative;cursor:pointer}
+.overtime-type-options input{position:absolute;opacity:0;width:1px;height:1px}
+.overtime-type-options span{display:flex;align-items:center;justify-content:center;min-height:42px;border:1px solid #cbd5e1;border-radius:8px;padding:8px;color:#1e3a5f;background:#f8fafc;font-weight:600;font-size:14px}
+.overtime-type-options input:checked+span{border:2px solid #2563eb;background:#eff6ff;color:#1d4ed8;padding:7px}
+.overtime-type-options input:focus-visible+span{outline:2px solid #2563eb;outline-offset:2px}
+.comp-hours{color:#d00000!important}
+#receiptReason,#summaryReason,#approvalReason{white-space:pre-line}
