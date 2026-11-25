@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.44 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.45 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -65,6 +65,7 @@
     $("receiptDept").textContent=DEPT_LABEL[entry.department==="REVIEW"?"REVIEW":(record.department||entry.department)]||entry.department;
     $("receiptHours").textContent=formatHours(record.hours===undefined?entry.hours:record.hours);
     $("receiptReason").textContent=String(record.reason||entry.reason);
+    markComp($("receiptHours"),record.reason||entry.reason);
     $("receiptLocalWarning").classList.toggle("hidden",saved);
     // 僅在查詢憑證未保存時顯示申請編號，正常成功頁保持簡潔。
     $("receiptNumberBox").classList.toggle("hidden",!!saved);
@@ -150,6 +151,7 @@
     $("employee").value="";
     $("hours").value="3";
     $("reason").value="";
+    setOvertimeType("normal");
     $("receiptRefreshed").textContent="";
     updatePreview();
     switchView("entry");
@@ -195,6 +197,20 @@
     return value === "" || value === null || value === undefined || !Number.isFinite(n) ? null : n;
   }
   function formatHours(n) { return Number(n).toString() + " 小時"; }
+  var COMP_MARK="（加班換補休）";
+  function isCompReason(reason){return String(reason||"").trimEnd().endsWith("\n"+COMP_MARK);}
+  function stripCompReason(reason){
+    var value=String(reason||"").trim();
+    while(isCompReason(value))value=value.slice(0,-COMP_MARK.length-1).trimEnd();
+    return value;
+  }
+  function overtimeType(){return document.querySelector('input[name="overtimeType"]:checked')?.value==="comp"?"comp":"normal";}
+  function setOvertimeType(value){
+    var input=document.querySelector('input[name="overtimeType"][value="'+(value==="comp"?"comp":"normal")+'"]');
+    if(input)input.checked=true;
+  }
+  function reasonWithType(reason,type){return stripCompReason(reason)+(type==="comp"?"\n"+COMP_MARK:"");}
+  function markComp(node,reason){if(node)node.classList.toggle("comp-hours",isCompReason(reason));}
   function taiwanToday() {
     var parts = new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Taipei", year: "numeric", month: "numeric", day: "numeric"
@@ -357,7 +373,10 @@
     $("summaryWho").textContent = person ? (person.preview ? person.name + "（預覽）" : person.name) : "尚未選擇";
     var hours = numberOrNull($("hours").value);
     $("summaryHours").textContent = hours === null ? "尚未填寫" : formatHours(hours);
-    $("summaryReason").textContent = $("reason").value.trim() || "尚未填寫";
+    var type=overtimeType(),baseReason=stripCompReason($("reason").value);
+    if($("summaryOvertimeType"))$("summaryOvertimeType").textContent=type==="comp"?"加班換補休":"一般加班";
+    $("summaryReason").textContent = baseReason ? reasonWithType(baseReason,type) : "尚未填寫";
+    markComp($("summaryHours"),type==="comp"?"x\n"+COMP_MARK:"");
   }
   function switchView(name) {
     // 三個網址具有獨立的入口與頁面；真實寫入仍須經後端及 Google 權限驗證。
@@ -414,11 +433,14 @@
     if (PORTAL === "employee" && (!$("datePicker").value || $("datePicker").value !== isoString(p))) throw Error("請選擇正確的加班日期。");
     if (!person) throw Error("請先選擇正確的員工。");
     if (hours === null || hours < 0.5 || hours > 24 || Math.round(hours * 2) !== hours * 2) throw Error("時數須為 0.5 至 24 小時，且以半小時為單位。");
+    reason=stripCompReason(reason);
     if (!reason) throw Error("請填寫加班原因／備註。");
+    var type=overtimeType();
+    reason=reasonWithType(reason,type);
     if (reason.length > 1600) throw Error("原因文字過長，請控制在 1600 字內。");
     return {
       p: p, date: isoString(p), department: $("department").value, person: person, id: person.id,
-      kind: "加班", hours: hours, reason: reason
+      kind: "加班", hours: hours, reason: reason, overtime_type:type
     };
   }
   function makeCellContext(entry) {
@@ -689,6 +711,7 @@
     $("approvalEmployee").textContent=String(r[6]||"")+"（"+String(r[5]||"")+"）";
     $("approvalHours").textContent=formatHours(r[7]);
     $("approvalReason").textContent=String(r[8]||"");
+    markComp($("approvalHours"),r[8]);
     $("approvalStatus").textContent=String(r[15]||"未知");
   }
   async function loadApprovalRequest() {
@@ -751,6 +774,7 @@
     var item=await getPendingById(id);
     if(!item||item.row[15]!=="待核准")throw Error("這筆申請已核准、駁回或不存在。");
     var row=item.row,ctx=await locateApprovedCell(row),hours=Number(row[7]),reason=String(row[8]||"").trim();
+    if(isCompReason(reason))throw Error("加班換補休請使用主管後端審核清單，禁止舊版直接寫入。");
     if(!(hours>=0.5&&hours<=24&&Math.round(hours*2)===hours*2) ||
        !reason || reason.length>1600)throw Error("申請時數或原因不符合規則。");
     var old=await getValues(ctx.sheetName,ctx.range,true);
@@ -984,9 +1008,9 @@
           "\n申請先送公司後端，Google 待同步成功後才會進入正式月檢視。主管核准前不會更動工時。");
         if(!yes)return;
         const result=receipt ?
-          await window.OvertimeApi.update({id:receipt.id,receipt_token:receipt.receipt_token,hours:entry.hours,reason:entry.reason}) :
+          await window.OvertimeApi.update({id:receipt.id,receipt_token:receipt.receipt_token,hours:entry.hours,reason:entry.reason,overtime_type:entry.overtime_type}) :
           await window.OvertimeApi.submit({department:backendDepartment(entry.department),roster_key:entry.person.id,
-            employee_name:entry.person.name,date:entry.date,hours:entry.hours,reason:entry.reason});
+            employee_name:entry.person.name,date:entry.date,hours:entry.hours,reason:entry.reason,overtime_type:entry.overtime_type});
         const saved=receipt ? true : window.OvertimeApi.save(result.record,result.receipt_token,entry.person.id);
         state.editKey="";
         showReceiptPage(result.record,entry,saved,receipt?receipt.receipt_token:result.receipt_token);
@@ -1027,7 +1051,8 @@
       card.className = "history-card";
       var left = document.createElement("div");
       var heading = document.createElement("strong");
-      heading.textContent = entry.date.replace(/-/g, "/") + "  " + entry.kind + " " + formatHours(entry.hours);
+      heading.textContent = entry.date.replace(/-/g, "/") + "  " + (isCompReason(entry.reason)?"加班換補休":entry.kind) + " " + formatHours(entry.hours);
+      markComp(heading,entry.reason);
       var detail = document.createElement("small");
       detail.textContent = (entry.status ? "【"+friendlyStatus(entry)+"】 " : "")+(entry.reason||"未填原因");
       if(PORTAL==="employee"&&entry.employee_name){
@@ -1184,7 +1209,8 @@
     if ((entry.remoteId && entry.status!=="待同步") || (online && entry.status!=="待核准")) { message("申請已進入正式流程，不能自行修改。","warning"); return; }
     $("day").value = String(Number(entry.date.slice(-2)));
     $("hours").value = String(entry.hours);
-    $("reason").value = entry.reason || "";
+    $("reason").value = stripCompReason(entry.reason);
+    setOvertimeType(isCompReason(entry.reason)?"comp":"normal");
     // 待核准申請的原因直接來自申請來源表，不讀取 對應月表註解。
     state.editKey = entry.remoteId || (entry.date + "|" + entry.kind + "|" + entry.id);
     updatePreview();
@@ -1295,6 +1321,7 @@
     $("employee").addEventListener("change", updatePreview);
     $("hours").addEventListener("input", updatePreview);
     $("reason").addEventListener("input", updatePreview);
+    document.querySelectorAll('input[name="overtimeType"]').forEach(function(input){input.addEventListener("change",updatePreview);});
     $("entryForm").addEventListener("submit", submitEntry);
     if(PORTAL==="employee"){
       $("receiptCancel").addEventListener("click",function(){
