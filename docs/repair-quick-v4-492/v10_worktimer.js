@@ -132,13 +132,13 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
         latestState : await refresh(id);
       if(before.status==="已完成")throw Error("工單已結案");
       const sessionToken=v10AuthToken_();
-      const pendingKey="repairV10Pending:"+id+":"+event;
+      const pendingKey="repairV10Pending:"+id+":"+(order.photoEpoch||"legacy")+":"+event;
       let pending=null;
       try{pending=JSON.parse(sessionStorage.getItem(pendingKey)||"null");}catch(e){}
       if(!pending||!pending.operationId){
         pending={operationId:(typeof crypto!=="undefined"&&crypto.randomUUID)?crypto.randomUUID():
           "op_"+Date.now()+"_"+Math.floor(Math.random()*1000000),
-          expectedLastOperationId:before.lastOperationId||""};
+          expectedLastOperationId:before.lastOperationId||"",relaySelection:extra.lineMode==="relay-v2"?{lineMode:extra.lineMode,lineNotify:extra.lineNotify,linePhotoCount:extra.linePhotoCount,lineVideoCount:extra.lineVideoCount,photoEpoch:extra.photoEpoch}:null};
         sessionStorage.setItem(pendingKey,JSON.stringify(pending));
       }
       // Dispatch the write first, then start checking in parallel instead of
@@ -148,7 +148,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
         headers:{"Content-Type":"text/plain;charset=utf-8"},
         body:JSON.stringify({action:"timerAction",orderNo:id,timerEvent:event,
           operationId:pending.operationId,expectedLastOperationId:pending.expectedLastOperationId,
-          technician:currentRepairUser,sessionToken,detail,nextDate,...extra})}).catch(()=>null);
+          technician:currentRepairUser,sessionToken,detail,nextDate,...extra,...(pending.relaySelection||{})})}).catch(()=>null);
       await Promise.race([writeRequest,wait(900)]);
       // Bound a failed synchronization to ~30s, not 15 * 20s per read.
       // Late/uncertain responses keep their pending operation ID for safe retry.
@@ -181,7 +181,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
           }
           confirmed=true;
           console.info("[V10 timer]",event,"回讀已確認",Date.now()-clickedAt,"ms");
-          return state;
+          return {...state,relayEventId:pending.relaySelection?pending.operationId:""};
         }
         if(state.lastOperationId&&state.lastOperationId!==pending.expectedLastOperationId){
           throw Error("工單已被其他人更新，請重新整理");
@@ -286,14 +286,20 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     if(!validateRepairFields_())return;
     if(!confirm("確定設備已修復並結案？將提交目前的維修類型、分類、內容與備註，並停止計時。"))return;
     try{
-      await op("close","","",{repairType:byId("repairTypeSelect").value,
+      const order=repairState.order,photos=[...repairPhotoFiles],media=window.repairDrive?.enabled?[...photos,...window.repairDrive.videoFiles("repair")]:photos;
+      const relay=relaySelection_(photos,media,byId("repairLineNotify")?.checked,order.photoEpoch);
+      const closed=await op("close","","",{...relay,repairType:byId("repairTypeSelect").value,
         classification:byId("repairClassSelect").value,
         content:byId("repairContent").value.trim(),note:byId("repairNote").value.trim()});
       byId("saveRepairMsg").classList.remove("hidden");
       byId("saveRepairMsg").textContent="✅ 結案與工時已回讀驗證";
       // Keep the original V4.4.52 NAS photo pipeline, but only AFTER verified close.
       // If photo upload fails, the completed order is not silently marked as unclosed.
-      const photos=[...repairPhotoFiles];
+      if(relayEnabled_()){
+        try{await relayRepairMedia_(order,photos,media,closed.relayEventId||"");}
+        catch(mediaError){byId("saveRepairMsg").textContent="⚠️ 結案已確認，但附件／LINE 通知未確認："+mediaError.message;}
+        return;
+      }
       if(photos.length){
         byId("saveRepairMsg").textContent="⏳ 結案成功，維修照片上傳 0/"+photos.length+"…";
         try{
