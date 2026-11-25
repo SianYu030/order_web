@@ -123,6 +123,27 @@
       out+=String.fromCharCode(...arr.subarray(i,Math.min(i+8192,arr.length)));
     return btoa(out);
   }
+  // Native Blob encoding avoids large intermediate JavaScript binary strings.
+  async function encodeBlob_(blob){
+    if(typeof FileReader==="function"){
+      try{
+        return await new Promise((resolve,reject)=>{
+          const reader=new FileReader();
+          reader.onload=()=>{
+            const data=String(reader.result||""),marker=";base64,",i=data.indexOf(marker);
+            if(i<0||!data.startsWith("data:"))return reject(new Error("Invalid native base64"));
+            const encoded=data.slice(i+marker.length);
+            if(encoded.length!==Math.ceil(blob.size/3)*4)return reject(new Error("Invalid encoded size"));
+            resolve(encoded);
+          };
+          reader.onerror=()=>reject(new Error("Native encoding failed"));
+          reader.onabort=()=>reject(new Error("Native encoding aborted"));
+          reader.readAsDataURL(blob);
+        });
+      }catch(_){/* Retain existing encoder on unsupported devices. */}
+    }
+    return base64Chunk(await blob.arrayBuffer());
+  }
   // JSONP is used ONLY for the health and random, non-sensitive request receipt.
   function jsonp(op,params={},timeout=18000) {
     if(!VALID)return Promise.reject(new Error('V4 接收器尚未部署，未設定有效 /exec 網址'));
@@ -403,7 +424,7 @@
     while(session.offset<file.size){
       const offset=session.offset;
       const bytes=file.slice(offset,Math.min(file.size,offset+chunkBytes));
-      const base64=base64Chunk(await bytes.arrayBuffer());
+      const base64=await encodeBlob_(bytes);
       try {
         const next=verifySession(await command('chunk',{sessionId:session.sessionId,offset,base64},145000),session.sessionId);
         if(next.offset<=offset||next.offset>offset+bytes.size)
