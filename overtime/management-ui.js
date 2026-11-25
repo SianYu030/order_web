@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班｜員工自助取消、主管已核准取消、管理員人員名冊 V1.2.3 */
+/* 業務假日或臨時加班｜員工自助取消、主管已核准取消、管理員人員名冊 V1.2.5 */
 (function(){
 "use strict";
 const ROOT="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-management";
@@ -127,6 +127,9 @@ function renderRoster(){
 function renderSupervisorCancel(){
  const target=$("view-batch");if(!target)return;
  const box=block("已核准加班取消",target);
+ // Pending approvals always precede cancellation; independent of script load order.
+ const approvalPanel=target.querySelector(":scope > .overtime-backend-panel");
+ if(approvalPanel)approvalPanel.after(box);
  const notice=hint(box,"原核准工時不會直接刪除。主管確認取消後，Google 需核對原時數與備註一致，才會精準撤銷該筆。");
  const refresh=btn("更新已核准清單",()=>void load());box.append(refresh);
  const list=node("div");list.style.marginTop="12px";box.append(list);
