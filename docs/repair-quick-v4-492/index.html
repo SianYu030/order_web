@@ -1180,7 +1180,7 @@ async function loadLiveOrders(renderList=true){
     classification:o.classification||"",technician:o.technician||"",content:o.content||"",
     note:o.note||"",start:o.start||"",end:o.end||"",work:o.work||"",
     followupSummary:o.followupSummary||"",nextFollow:o.nextFollow||"",lastFollow:o.lastFollow||"",
-    trackCount:o.trackCount||0,deletable:!!o.deletable,photoEpoch:o.photoEpoch||"",_live:true
+    trackCount:o.trackCount||0,deletable:!!o.deletable,photoEpoch:o.photoEpoch||"",mediaLayout:o.mediaLayout===2?2:1,_live:true
   }));
   saveLiveOrdersCache_();
   if(renderList)renderRepairOrders();
@@ -1961,7 +1961,7 @@ el("completeRepairBtn").onclick=async()=>{
       el("saveRepairMsg").textContent="⏳ 結案完成，正在上傳維修附件 0/"+repairMediaFiles.length+"…";
       await (window.repairDrive?.enabled ? window.repairDrive.uploadFiles : uploadPhotoFiles_)(repairMediaFiles,repairState.order.no,"維修照片",(i,total)=>{
         el("saveRepairMsg").textContent="⏳ 上傳維修附件 "+i+"/"+total+"…";
-      },repairState.order.photoEpoch||"");
+      },repairState.order.photoEpoch||"",repairState.order.mediaLayout===2?2:1);
       clearRepairPhotoSelection_();
       if(window.repairDrive?.enabled)window.repairDrive.clearVideo("repair");
       el("saveRepairMsg").textContent=window.repairDrive?.enabled?"✅ 工單已結案｜附件已寫入 Google Drive，F 槽歸檔待核對":"✅ 工單已結案｜📷 維修照片已排入 NAS 自動歸檔";
@@ -2013,7 +2013,7 @@ el("saveRepairBtn").onclick=async()=>{
       el("saveRepairMsg").textContent="⏳ 上傳維修附件 0/"+repairMediaFiles.length+"…";
       await (window.repairDrive?.enabled ? window.repairDrive.uploadFiles : uploadPhotoFiles_)(repairMediaFiles,repairState.order.no,"維修照片",(i,total)=>{
         el("saveRepairMsg").textContent="⏳ 上傳維修附件 "+i+"/"+total+"…";
-      },repairState.order.photoEpoch||"");
+      },repairState.order.photoEpoch||"",repairState.order.mediaLayout===2?2:1);
       clearRepairPhotoSelection_();
       if(window.repairDrive?.enabled)window.repairDrive.clearVideo("repair");
       el("saveRepairMsg").textContent=window.repairDrive?.enabled?"✅ 維修資料已儲存｜附件已寫入 Google Drive，F 槽歸檔待核對":"✅ 維修資料已儲存｜📷 維修照片已排入 NAS 自動歸檔";
@@ -2390,7 +2390,7 @@ el("submitBtn").onclick=async()=>{
       person:state.person,dept:state.dept,machine:state.machine,stop:state.stop,
       issue:issue,level:state.level,status:"待處理",type:"",classification:"",
       technician:"",content:"",note:"",start:"",end:"",work:"",
-      followupSummary:"",nextFollow:"",lastFollow:"",trackCount:0,deletable:true,photoEpoch:data.photoEpoch||"",_live:true
+      followupSummary:"",nextFollow:"",lastFollow:"",trackCount:0,deletable:true,photoEpoch:data.photoEpoch||"",mediaLayout:data.mediaLayout===2?2:1,_live:true
     };
     const existing=LIVE_ORDERS.findIndex(x=>x.no===data.orderNo);
     if(existing>=0)LIVE_ORDERS[existing]=localOrder; else LIVE_ORDERS.push(localOrder);
@@ -2475,7 +2475,7 @@ el("submitBtn").onclick=async()=>{
           reportMediaFiles,data.orderNo,"報修照片",(i,total)=>{
             stage.media="上傳中 "+i+"/"+total+"（照片＋影片）";
             renderReportStages_();
-          },data.photoEpoch||""
+          },data.photoEpoch||"",data.mediaLayout===2?2:1
         );
         result=window.repairDrive?.enabled?
           ("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，F 槽待排程核對"):
@@ -2487,7 +2487,7 @@ el("submitBtn").onclick=async()=>{
         if(window.repairDrive?.enabled){
           pendingReportMediaRetry={
             files:reportMediaFiles,orderNo:data.orderNo,
-            photoEpoch:data.photoEpoch||"",lineMsg:""
+            photoEpoch:data.photoEpoch||"",mediaLayout:data.mediaLayout===2?2:1,lineMsg:""
           };
           el("retryReportMediaBtn").hidden=false;
           const later=el("retryReportMediaLater");
@@ -2553,10 +2553,10 @@ el("retryReportMediaBtn").onclick=async()=>{
     const current=await jsonp_("listTestOrders",{},30000);
     if(current.spreadsheetId!==EXPECTED_SPREADSHEET_ID || current.backendVersion!==EXPECTED_BACKEND_VERSION)throw new Error("無法確認正式後端，已停止補傳");
     const active=(current.orders||[]).find(o=>o.no===pending.orderNo);
-    if(!pending.photoEpoch||!active||active.photoEpoch!==pending.photoEpoch)throw new Error("原工單已刪除、重建或建立識別碼尚未確認，禁止補傳舊附件");
+    if(!pending.photoEpoch||!active||active.photoEpoch!==pending.photoEpoch||(active.mediaLayout===2?2:1)!==pending.mediaLayout)throw new Error("原工單已刪除、重建或建立識別碼尚未確認，禁止補傳舊附件");
     const saved=await window.repairDrive.uploadFiles(pending.files,pending.orderNo,"報修照片",(i,total)=>{
       info.textContent="正在核對附件 "+i+"/"+total+"…";
-    },pending.photoEpoch);
+    },pending.photoEpoch,pending.mediaLayout);
     pendingReportMediaRetry=null;
     btn.hidden=true;
     el("retryReportMediaLater").hidden=true;
@@ -2777,7 +2777,7 @@ window.addEventListener("pagehide",function(){
 </script>
 <script src="./v10_version_gate.js?v=20261028c" defer></script>
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
-<script src="./repair-direct-upload.js?v=20261125-identity-v65" defer></script>
+<script src="./repair-direct-upload.js?v=20261125-receipt-v66" defer></script>
 <script src="./maintenance-report.js?v=20261119-wrench-title-fix3" defer></script>
 </body>
 </html>
