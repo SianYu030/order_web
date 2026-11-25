@@ -1008,6 +1008,7 @@ html,body{background:#f5f7f8}
 
         <div class="section-title">備註</div>
         <textarea id="repairNote" placeholder="例如：高速皮帶106J*1，已請購2條…"></textarea>
+        <label id="repairRelayChoice" hidden style="display:none"><input type="checkbox" id="repairLineNotify" checked> LINE 通知機修群組（文字、照片及影片一起發送）</label>
         <button class="save-repair" id="saveRepairBtn">儲存目前進度（不結案）</button>
         <div class="select-note" style="margin:6px 0 0">可先儲存未填完的維修資料；結案前須選維修類型，選「故障維修」則須選故障分類。停止計時不會自動儲存這些欄位。</div>
         <div class="save-msg hidden" id="saveRepairMsg">✅ 測試儲存成功（未寫入正式資料）</div>
@@ -1993,11 +1994,15 @@ el("saveRepairBtn").onclick=async()=>{
   el("saveRepairMsg").classList.remove("hidden");
 
   try{
+    const relayPhotos=[...repairPhotoFiles],relayMedia=window.repairDrive?.enabled?[...relayPhotos,...window.repairDrive.videoFiles("repair")]:relayPhotos;
+    const relay=relaySelection_(relayPhotos,relayMedia,el("repairLineNotify")?.checked,repairState.order.photoEpoch);
+    const relayEventId=relay.lineMode==="relay-v2"?crypto.randomUUID():"";
     // 先保留維修紀錄，附件上傳失敗於下方另外警示，不阻擋工單儲存。
     if(SYNC_API_URL && repairState.order?._live){
       el("saveRepairMsg").textContent="⏳ 正在同步至電腦…";
       await syncPost_({
         action:"saveRepair",
+        ...relay,lineEventId:relayEventId,
         orderNo:repairState.order.no,
         technician:currentRepairUser,
         repairType:s.type,
@@ -2007,6 +2012,7 @@ el("saveRepairBtn").onclick=async()=>{
       });
     }
 
+    if(relayEnabled_()){await relayRepairMedia_(repairState.order,relayPhotos,relayMedia,relayEventId);return;}
     const repairPhotos=[...repairPhotoFiles];
     const repairMediaFiles=window.repairDrive?.enabled?[...repairPhotos,...window.repairDrive.videoFiles("repair")]:repairPhotos;
     if(repairMediaFiles.length && repairState.order?.no){
@@ -2337,6 +2343,45 @@ async function sendLineReport_(payload){
   }finally{clearTimeout(timeout);}
 }
 
+function relayEnabled_(){return window.__mrRelayV2Ready===true;}
+function relaySelection_(photos,media,checked,epoch){
+  if(!relayEnabled_()||!checked)return {};
+  if(!window.repairDrive?.enabled&&media.length)throw Error("附件接收器未就緒，請勿送出新版 LINE 通知");
+  if(photos.length>12||media.length-photos.length>1)throw Error("LINE 整批通知最多 12 張照片及 1 部影片，請調整附件數量");
+  return {lineMode:"relay-v2",lineNotify:"1",linePhotoCount:String(photos.length),lineVideoCount:String(media.length-photos.length),photoEpoch:epoch||""};
+}
+async function relayCommit_(orderNo,epoch,eventId,receipts,createRequestId){
+  if(!eventId)throw Error("尚未取得通知事件識別碼");
+  const ids=receipts.map(x=>x.sessionId);
+  if(ids.some(x=>!x)||new Set(ids).size!==ids.length)throw Error("附件回執不完整，暫停 LINE 派送");
+  const requestId=crypto.randomUUID();
+  const body={action:"lineRelayCommitV2",orderNo,epoch,eventId,requestId,sessionIds:ids};
+  if(createRequestId)body.createRequestId=createRequestId;
+  else body.sessionToken=v10AuthToken_();
+  await fetch(SYNC_API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)}).catch(()=>null);
+  const deadline=Date.now()+30000;
+  while(Date.now()<deadline){
+    const r=await jsonp_("lineRelayCommitResultV2",{requestId},Math.min(9000,Math.max(1000,deadline-Date.now())));
+    if(r.queued&&r.eventId===eventId&&r.orderNo===orderNo&&r.attachments===ids.length)return r;
+    if(!r.pending)throw Error("通知事件提交未確認");
+    await new Promise(r=>setTimeout(r,500));
+  }
+  throw Error("通知排程結果未確認，請勿重複建立工單");
+}
+async function relayRepairMedia_(order,photos,media,eventId){
+  let receipts=[];
+  if(media.length){
+    if(!window.repairDrive?.enabled)throw Error("附件接收器未就緒");
+    receipts=await window.repairDrive.uploadFiles(media,order.no,"維修照片",(i,total)=>{
+      el("saveRepairMsg").textContent="⏳ 維修附件 "+i+"/"+total+"…";
+    },order.photoEpoch||"",order.mediaLayout===2?2:1);
+  }
+  if(eventId)await relayCommit_(order.no,order.photoEpoch,eventId,receipts);
+  clearRepairPhotoSelection_();
+  if(window.repairDrive?.enabled)window.repairDrive.clearVideo("repair");
+  el("saveRepairMsg").textContent="✅ 維修資料已回讀"+(media.length?"｜附件已確認寫入 Drive":"")+(eventId?"｜LINE 已排入整批派送（尚未發送確認）":"");
+}
+
 function clearRepairPhotoSelection_(){
   repairPhotoFiles=[];
   el("repairPhoto").value="";
@@ -2360,11 +2405,12 @@ el("submitBtn").onclick=async()=>{
 
   try{
     if(!state.requestId){
-      state.requestId="MOB-"+Date.now()+"-"+Math.floor(Math.random()*1000000);
+      state.requestId=crypto.randomUUID();
     }
 
     // 業務關鍵流程：先建立並驗證 MR，照片接收器只影響附件。
     // 不得因 Google Drive 尚未授權就阻斷報修或 LINE 文字通知。
+    const relaySelection=relaySelection_(reportPhotos,reportMediaFiles,lineReady,"");
     const data=await jsonp_("createMobileReportTest",{
       dept:state.dept,
       person:state.person,
@@ -2373,6 +2419,7 @@ el("submitBtn").onclick=async()=>{
       level:state.level,
       issue:issue,
       lineNotify:lineReady?"1":"0",
+      ...relaySelection,
       requestId:state.requestId
     },35000);
 
@@ -2422,6 +2469,7 @@ el("submitBtn").onclick=async()=>{
     }
     renderReportStages_();
     el("success").classList.remove("hidden");
+    let relayReceipts=[];
     const runLine_=async()=>{
       const began=performance.now();
       let result="｜➖ 未發送 LINE";
@@ -2471,7 +2519,7 @@ el("submitBtn").onclick=async()=>{
       stage.media="準備 "+reportMediaFiles.length+" 個附件";
       renderReportStages_();
       try{
-        await (window.repairDrive?.enabled?window.repairDrive.uploadFiles:uploadPhotoFiles_)(
+        relayReceipts=await (window.repairDrive?.enabled?window.repairDrive.uploadFiles:uploadPhotoFiles_)(
           reportMediaFiles,data.orderNo,"報修照片",(i,total)=>{
             stage.media="上傳中 "+i+"/"+total+"（照片＋影片）";
             renderReportStages_();
@@ -2487,7 +2535,7 @@ el("submitBtn").onclick=async()=>{
         if(window.repairDrive?.enabled){
           pendingReportMediaRetry={
             files:reportMediaFiles,orderNo:data.orderNo,
-            photoEpoch:data.photoEpoch||"",mediaLayout:data.mediaLayout===2?2:1,lineMsg:""
+            photoEpoch:data.photoEpoch||"",mediaLayout:data.mediaLayout===2?2:1,lineMsg:"",relayEventId:data.lineRelayEventId||"",createRequestId:state.requestId
           };
           el("retryReportMediaBtn").hidden=false;
           const later=el("retryReportMediaLater");
@@ -2501,7 +2549,21 @@ el("submitBtn").onclick=async()=>{
       renderReportStages_();
       return {message:result,ms:Math.round(performance.now()-began)};
     };
-    const [lineResult,mediaResult]=await Promise.all([runLine_(),runMedia_()]);
+    let lineResult,mediaResult;
+    if(relaySelection.lineMode==="relay-v2"){
+      mediaResult=await runMedia_();
+      lineResult={message:"｜LINE 等待完整附件",ms:0};
+      if(!pendingReportMediaRetry){
+        try{
+          await relayCommit_(data.orderNo,data.photoEpoch,data.lineRelayEventId,relayReceipts,state.requestId);
+          stage.line="已排入整批派送（待發送確認）";
+          lineResult.message="｜LINE 已排入整批派送（待確認）";
+        }catch(err){stage.line="排程未確認";lineResult.message="｜⚠️ LINE 排程未確認："+err.message;}
+      }
+      renderReportStages_();
+    }else{
+      [lineResult,mediaResult]=await Promise.all([runLine_(),runMedia_()]);
+    }
     if(pendingReportMediaRetry)pendingReportMediaRetry.lineMsg=lineResult.message;
     const totalMs=Math.round(performance.now()-requestStartAt);
     el("successTitle").textContent=pendingReportMediaRetry?
@@ -2557,6 +2619,7 @@ el("retryReportMediaBtn").onclick=async()=>{
     const saved=await window.repairDrive.uploadFiles(pending.files,pending.orderNo,"報修照片",(i,total)=>{
       info.textContent="正在核對附件 "+i+"/"+total+"…";
     },pending.photoEpoch,pending.mediaLayout);
+    if(pending.relayEventId)await relayCommit_(pending.orderNo,pending.photoEpoch,pending.relayEventId,saved,pending.createRequestId);
     pendingReportMediaRetry=null;
     btn.hidden=true;
     el("retryReportMediaLater").hidden=true;
