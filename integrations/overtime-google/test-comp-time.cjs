@@ -4,7 +4,7 @@ const assert=require("node:assert/strict");
 const path=require("node:path");
 const root=process.argv[2]||path.resolve(__dirname,"../..");
 const src=fs.readFileSync(path.join(root,"integrations/overtime-google/Code.gs"),"utf8");
-const context={console,Utilities:{sleep(){}}};
+const context={console,Utilities:{sleep(){},formatDate(){return '2026-11-25-16-00-00';}}};
 vm.createContext(context);vm.runInContext(src,context);
 const normal="支援E4", comp=normal+"\n（加班換補休）";
 assert.equal(context.otIsComp_(normal),false);
