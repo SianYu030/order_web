@@ -386,3 +386,8 @@ body.employee-receipt .employee-tools{display:none}
 .overtime-type-options input:focus-visible+span{outline:2px solid #2563eb;outline-offset:2px}
 .comp-hours{color:#d00000!important}
 #receiptReason,#summaryReason,#approvalReason{white-space:pre-line}
+
+/* V1.1.46: plain original reason, red second-line compensatory-leave marker. */
+.overtime-reason-lines{white-space:pre-wrap;overflow-wrap:anywhere;color:inherit}
+.overtime-reason-lines .comp-reason-line{display:block;color:#ff0000!important;font-weight:inherit;white-space:normal}
+.comp-hours{color:#ff0000!important}
