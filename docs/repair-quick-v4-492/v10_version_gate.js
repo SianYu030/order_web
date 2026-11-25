@@ -12,7 +12,9 @@
   if(!repairBtn) return;
   const oldTitle=repairBtn.getAttribute("title")||"";
   const oldButtonLabel=repairBtn.textContent;
-  const scriptVersion="20261028c";
+  const scriptVersion="20261125-relay-v2";
+  window.__mrRelayV2Ready=false;
+  window.__mrRelayGateChecked=false;
   repairBtn.disabled=true;
   repairBtn.textContent="維修處理（載入中…）";
   repairBtn.setAttribute("title","確認維修系統後端版本中");
@@ -60,6 +62,11 @@
         await appendScript("./v10_rbac.js");
         if(!window.__v10RepairTimerReady || !window.__v10RepairAuthReady || typeof v10AuthToken_!=="function")
           throw new Error("V10 計時或機修管理員模組未正確載入");
+        window.__mrRelayV2Ready=ping.lineRelayV2===true;
+        const choice=document.getElementById("repairRelayChoice");
+        if(choice&&window.__mrRelayV2Ready){choice.hidden=false;choice.style.display="block";}
+        const hintLine=document.getElementById("lineNotifyStatus");
+        if(hintLine&&window.__mrRelayV2Ready)hintLine.textContent="勾選時，文字、照片及影片全部確認後，整批排入 LINE 通知。";
         const title=document.querySelector("#repairLoginModal h2");
         if(title) title.textContent="機修管理員登入";
         const hint=document.querySelector("#repairLoginModal .login-demo");
@@ -69,6 +76,7 @@
       }
       // No V10 marker = the original V9 deployment is still running.
       // Keep original V4.4.52 handlers fully unchanged.
+      window.__mrRelayGateChecked=true;
       repairBtn.disabled=false;
       repairBtn.textContent=oldButtonLabel;
       if(oldTitle) repairBtn.setAttribute("title",oldTitle);

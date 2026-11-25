@@ -121,13 +121,14 @@
  // No opaque-response success claims: confirm legacy content/status in a fresh list read.
  syncPost_=async function(body){
    const u=authorized();
-   try{await post({...body,sessionToken:u.sessionToken});}catch(e){}
+   const current=repairState.order&&repairState.order.no===body.orderNo?repairState.order:null;
+   try{await post({...body,photoEpoch:current?.photoEpoch||body.photoEpoch||"",sessionToken:u.sessionToken});}catch(e){}
    for(let i=0;i<12;i++){
      await wait(450+Math.min(i*180,900));
      try{
        const v=await oldJsonp("listTestOrders",{},20000);
        const r=(v.orders||[]).find(x=>x.no===body.orderNo);
-       if(!r)continue;
+       if(!r||(current?.photoEpoch&&r.photoEpoch!==current.photoEpoch))continue;
        if(body.action==="saveRepair"&&r.type===body.repairType&&r.classification===body.classification&&
           r.technician===u.account&&r.content===body.content&&r.note===body.note)return true;
        if(body.action==="setStatus"&&r.status===body.status&&r.technician===u.account)return true;
@@ -152,11 +153,11 @@
  // This is a fallback only: it does not mean the delete POST succeeded.
  // An authoritative V10 backend list can confirm that the old MR is absent
  // when the operation-result poll itself times out or loses its cached result.
- async function deletedFromServerList(orderNo){
+ async function deletedFromServerList(orderNo,epoch){
    try{
      const r=await oldJsonp("listTestOrders",{},12000);
      return !!(r && r.ok===true && r.spreadsheetId===EXPECTED_SPREADSHEET_ID &&
-       Array.isArray(r.orders) && !r.orders.some(x=>x.no===orderNo));
+       Array.isArray(r.orders) && !r.orders.some(x=>x.no===orderNo&&(!epoch||x.photoEpoch===epoch)));
    }catch(_){return false;}
  }
  deleteLiveOrder_=async function(o,btn){
@@ -170,7 +171,7 @@
    let confirmed=false;
    try{
      try{await post({action:"deleteRepairOrder",sessionToken:u.sessionToken,
-       orderNo:o.no,confirmOrderNo:o.no,operationId,
+       orderNo:o.no,confirmOrderNo:o.no,operationId,photoEpoch:o.photoEpoch||"",
        reason:"管理員於網頁直接刪除（未另填原因）"});}catch(e){}
      try{
        const r=await poll("deleteResult",{operationId});
@@ -179,7 +180,7 @@
        confirmed=true;
      }catch(pollError){
        // Do not report 'delete failed' merely because the result cache timed out.
-       if(await deletedFromServerList(o.no)) confirmed=true;
+       if(await deletedFromServerList(o.no,o.photoEpoch)) confirmed=true;
        else throw pollError;
      }
      if(!confirmed)throw Error("尚未取得正式刪除確認");
@@ -192,8 +193,8 @@
          body:JSON.stringify({type:"delete_changed"})
        });
      }catch(_){}
-     LIVE_ORDERS=LIVE_ORDERS.filter(x=>x.no!==o.no);
-     delete REPAIR_STORE[o.no];saveLiveOrdersCache_();renderRepairOrders();
+     LIVE_ORDERS=LIVE_ORDERS.filter(x=>x.no!==o.no||!!o.photoEpoch&&x.photoEpoch!==o.photoEpoch);
+     if(!LIVE_ORDERS.some(x=>x.no===o.no))delete REPAIR_STORE[o.no];saveLiveOrdersCache_();renderRepairOrders();
      deleteMessage("✅ 工單已從正式資料刪除："+o.no,false);
      setTimeout(()=>refreshLiveOrdersInBackground_(true),1000);
    }catch(e){

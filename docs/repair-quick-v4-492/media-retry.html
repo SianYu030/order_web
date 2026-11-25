@@ -34,7 +34,7 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
 <header><strong>🔧 設備維修中心</strong><a href="./?v=20261120-media-retry" id="backToRepair">返回報修網站</a></header>
 <section class="card">
 <h1>原工單照片／影片補傳</h1>
-<p class="sub">只補上未成功保存的附件。<strong>不新增工單、不修改工單資料、不重送 LINE。</strong></p>
+<p class="sub">請由原工單的補傳連結進入，只補上未成功保存的附件。<strong>不新增工單、不修改工單資料、不重送 LINE。</strong></p>
 <form id="recoverForm" novalidate>
 <label for="mr">原本的 MR 工單號</label>
 <input id="mr" name="mr" type="text" required maxlength="12" placeholder="例如 MR2026112001" autocomplete="off" inputmode="text" autocapitalize="characters">
@@ -54,13 +54,13 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
 <section class="card">
 <h2>資料保護</h2>
 <ul>
-<li>伺服器會確認 MR 是仍存在的正式工單，才接受附件。</li>
+<li>補傳前核對原工單及建立識別碼，同號重建後禁止舊附件補傳。</li>
 <li>已取得完整回執的檔案，本頁重試時不會再次上傳。</li>
 <li>若上傳中斷，請保留本頁並按同一個補傳按鈕，不要再建立新工單。</li>
 </ul>
 </section>
 </main>
-<script src="./repair-direct-upload.js?v=20261124-resume-v64" defer></script>
+<script src="./repair-direct-upload.js?v=20261125-receipt-v66" defer></script>
 <script>
 (()=>{
   "use strict";
@@ -68,7 +68,29 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
   const button=document.getElementById("recoverBtn"),status=document.getElementById("status");
   const q=new URLSearchParams(location.search);
   const supplied=String(q.get("mr")||"").trim().toUpperCase();
-  if(/^MR20\d{8}$/.test(supplied))mr.value=supplied;
+  const epoch=String(q.get("epoch")||"").trim();
+  if(/^MR20\d{8}$/.test(supplied)){mr.value=supplied;mr.readOnly=true;}
+  const SYNC_API_URL="https://script.google.com/macros/s/AKfycbwo0-nCm0hVVBhAgAIkBK5RGzpl8K1aGhbbBDCN_JAkXqZY82AenX9L7o702LLmnMYx/exec";
+  const EXPECTED_SPREADSHEET_ID="13qpQWg3tKOXd1BC0XPsK7DsIxG1sBaVI6-yRpERIRMQ";
+  const EXPECTED_BACKEND_VERSION="V9-deletefix-20261005";
+  function verifyOriginal(no){
+    if(no!==supplied||! /^[A-Za-z0-9_-]{1,128}$/.test(epoch))return Promise.reject(Error("缺少原工單建立識別碼。請從原工單的補傳連結進入，避免同號重建後混入舊附件。"));
+    return new Promise((resolve,reject)=>{
+      const cb="repairRecover_"+crypto.randomUUID().replace(/-/g,"");
+      const script=document.createElement("script");
+      const timer=setTimeout(()=>finish(Error("原工單驗證逾時")),30000);
+      function finish(err,layout){clearTimeout(timer);delete window[cb];script.remove();if(err)reject(err);else resolve(layout);}
+      window[cb]=data=>{
+        if(data?.ok===false||data?.spreadsheetId!==EXPECTED_SPREADSHEET_ID||data?.backendVersion!==EXPECTED_BACKEND_VERSION){finish(Error("無法確認正式後端，禁止補傳"));return;}
+        const active=(data.orders||[]).find(o=>o.no===no);
+        if(!active||active.photoEpoch!==epoch){finish(Error("原工單已刪除、重建或建立識別碼未確認，禁止補傳舊附件"));return;}
+        finish(null,active.mediaLayout===2?2:1);
+      };
+      script.onerror=()=>finish(Error("原工單驗證連線失敗"));
+      script.src=SYNC_API_URL+"?"+new URLSearchParams({action:"listTestOrders",callback:cb});
+      document.body.appendChild(script);
+    });
+  }
   const update=(message,kind="")=>{
     status.className="status"+(kind?" "+kind:"");
     status.textContent=message;
@@ -97,10 +119,11 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
     button.textContent="正在補傳，請勿關閉頁面…";
     update("正在驗證原工單及 Google Drive 接收器…");
     try{
+      const mediaLayout=await verifyOriginal(no);
       const bridge=await ready();
       const results=await bridge.uploadFiles(list,no,"報修照片",(i,total)=>{
         update("正在處理第 "+i+"／"+total+" 個附件，請保持頁面開啟…");
-      });
+      },epoch,mediaLayout);
       update("✅ 已核對 "+results.length+" 個附件的 Google Drive 完整回執，MR 工單："+no+"。\n工單沒有重建，LINE 沒有重送。F 槽由排程同步，仍需核對檔案。","ok");
       button.textContent="附件已確認上傳成功";
     }catch(err){
