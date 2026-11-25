@@ -1,4 +1,4 @@
-/* 業務假日或臨時加班登記 V1.1.45 · GitHub Pages + Google Sheets API
+/* 業務假日或臨時加班登記 V1.1.46 · GitHub Pages + Google Sheets API
  * 安全原則：只以 Google OAuth 的授權身分存取原始表，不把工作表內容或 OAuth token 寫入 GitHub。
  * 正式資料操作需有該試算表的「編輯者」權限；展示模式永不呼叫 Google API。
  */
@@ -64,7 +64,7 @@
     $("receiptEmployee").textContent=String(record.employee_name||entry.person.name);
     $("receiptDept").textContent=DEPT_LABEL[entry.department==="REVIEW"?"REVIEW":(record.department||entry.department)]||entry.department;
     $("receiptHours").textContent=formatHours(record.hours===undefined?entry.hours:record.hours);
-    $("receiptReason").textContent=String(record.reason||entry.reason);
+    renderOvertimeReason($("receiptReason"),record.reason||entry.reason);
     markComp($("receiptHours"),record.reason||entry.reason);
     $("receiptLocalWarning").classList.toggle("hidden",saved);
     // 僅在查詢憑證未保存時顯示申請編號，正常成功頁保持簡潔。
@@ -211,6 +211,23 @@
   }
   function reasonWithType(reason,type){return stripCompReason(reason)+(type==="comp"?"\n"+COMP_MARK:"");}
   function markComp(node,reason){if(node)node.classList.toggle("comp-hours",isCompReason(reason));}
+  // Native Google Sheets Notes are plain text; apply line-level color only in the web UI.
+  function renderOvertimeReason(node,reason,prefix){
+    if(!node)return;
+    var raw=String(reason||"").trimEnd(),comp=isCompReason(raw);
+    var base=comp?raw.slice(0,-COMP_MARK.length-1):raw;
+    node.replaceChildren();
+    node.classList.add("overtime-reason-lines");
+    node.append(document.createTextNode(String(prefix||"")+base));
+    if(comp){
+      var line=document.createElement("span");
+      line.className="comp-reason-line";
+      line.textContent=COMP_MARK;
+      node.append(line);
+    }
+  }
+  window.renderOvertimeReason=renderOvertimeReason;
+  window.isCompOvertimeReason=isCompReason;
   function taiwanToday() {
     var parts = new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Taipei", year: "numeric", month: "numeric", day: "numeric"
@@ -375,7 +392,7 @@
     $("summaryHours").textContent = hours === null ? "尚未填寫" : formatHours(hours);
     var type=overtimeType(),baseReason=stripCompReason($("reason").value);
     if($("summaryOvertimeType"))$("summaryOvertimeType").textContent=type==="comp"?"加班換補休":"一般加班";
-    $("summaryReason").textContent = baseReason ? reasonWithType(baseReason,type) : "尚未填寫";
+    renderOvertimeReason($("summaryReason"),baseReason ? reasonWithType(baseReason,type) : "尚未填寫");
     markComp($("summaryHours"),type==="comp"?"x\n"+COMP_MARK:"");
   }
   function switchView(name) {
@@ -710,7 +727,7 @@
     $("approvalDate").textContent=dateString(p);
     $("approvalEmployee").textContent=String(r[6]||"")+"（"+String(r[5]||"")+"）";
     $("approvalHours").textContent=formatHours(r[7]);
-    $("approvalReason").textContent=String(r[8]||"");
+    renderOvertimeReason($("approvalReason"),r[8]);
     markComp($("approvalHours"),r[8]);
     $("approvalStatus").textContent=String(r[15]||"未知");
   }
@@ -904,7 +921,7 @@
       var title=document.createElement("strong");
       title.textContent=(date?dateString(date):"日期待核對")+" · "+String(r[4]||"")+" · "+String(r[6]||"");
       var detail=document.createElement("small");
-      detail.textContent=String(r[7]||"")+" 小時 · "+String(r[8]||"");
+      renderOvertimeReason(detail,r[8],String(r[7]||"")+" 小時 · ");
       info.append(title,detail);
       checkbox.addEventListener("change",function(){
         if(checkbox.checked)selectedIds.add(id);else selectedIds.delete(id);
@@ -1054,7 +1071,7 @@
       heading.textContent = entry.date.replace(/-/g, "/") + "  " + (isCompReason(entry.reason)?"加班換補休":entry.kind) + " " + formatHours(entry.hours);
       markComp(heading,entry.reason);
       var detail = document.createElement("small");
-      detail.textContent = (entry.status ? "【"+friendlyStatus(entry)+"】 " : "")+(entry.reason||"未填原因");
+      renderOvertimeReason(detail,entry.reason||"未填原因",entry.status ? "【"+friendlyStatus(entry)+"】 " : "");
       if(PORTAL==="employee"&&entry.employee_name){
         const identity=document.createElement("small");
         identity.className="history-person";
