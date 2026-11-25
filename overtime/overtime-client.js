@@ -1,4 +1,4 @@
-/* V1.1.32 - 員工核准前可自行撤銷；保留來源驗證與每分鐘備援。 */
+/* V1.1.33 - 員工核准前可自行撤銷；保留來源驗證與每分鐘備援。 */
 (function(){
 "use strict";
 const URL="https://mjcbixcgbcybtciribar.supabase.co/functions/v1/overtime-requests";
@@ -92,7 +92,10 @@ async function load(){
    top.append(element("strong",comp?"comp-hours":"",x.date+" · "+x.employee_name+" · "+x.hours+" 小時"+(comp?"（加班換補休）":"")));
    top.append(element("span","overtime-backend-status",x.status));
    card.append(top);
-   card.append(element("p","helper",x.department+"｜"+x.reason));
+   const reasonNode=element("p","helper");
+   if(window.renderOvertimeReason)window.renderOvertimeReason(reasonNode,x.reason,x.department+"｜");
+   else reasonNode.textContent=x.department+"｜"+x.reason;
+   card.append(reasonNode);
    card.append(element("p","helper small","申請編號："+x.request_no));
    const googleReady=x.status==="待核准"&&x.source_sheet==="業務假日或臨時加班登記"&&
     /^A([2-9]|[1-9][0-9]{1,3}):R\1$/.test(x.source_range||"");
