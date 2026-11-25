@@ -2450,6 +2450,9 @@ function clearRepairPhotoSelection_(){
   el("repairPhotoPreview").classList.remove("show");
   el("repairPhotoCount").textContent="目前尚未選擇維修照片。";
 }
+function reportRequestDefinitelyRejected_(detail){
+  return /^工單MR20\d{8}的舊照片尚未完成 NAS 清理確認；請稍後再送出，不會跳號$/.test(String(detail||"").trim());
+}
 el("submitBtn").onclick=async()=>{
   const issue=el("issue").value.trim();
   if(!(state.dept&&state.person&&state.machine&&state.stop&&state.level&&issue))return;
@@ -2653,7 +2656,10 @@ el("submitBtn").onclick=async()=>{
     el("success").classList.remove("hidden");
   }catch(err){
     const detail=String(err?.message||err);
-    const uncertain=/同步逾時|無法連線同步 API|沒有取得工單編號|回讀驗證|後端版本/.test(detail);
+    // This precise backend rejection happens before any new order row is written.
+    // Only a deliberate retry of a definitely rejected request receives a fresh ID.
+    if(reportRequestDefinitelyRejected_(detail))state.requestId="";
+    const uncertain=/同步逾時|無法連線同步 API|沒有取得工單編號|回讀驗證|後端版本|尚未收到 GS 回讀確認/.test(detail);
     if(uncertain){
       alert("⚠️ 工單送出結果尚未確認（"+detail+"）。請先至維修工單列表核對是否已建立，不要直接重送，避免產生重複工單。");
       console.warn("MR_CREATE_RESULT_UNCONFIRMED",detail);
