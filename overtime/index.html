@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#f6f8fc">
   <meta name="description" content="系統櫃廠業務假日或臨時加班登記。與既有 Google 試算表連結，保留原統計公式及註解。">
   <title>業務假日或臨時加班登記｜系統櫃廠</title>
-  <link rel="stylesheet" href="./style.css?v=1.1.44">
+  <link rel="stylesheet" href="./style.css?v=1.1.46">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=1.1.44" defer></script>
-  <script src="./overtime-client.js?v=1.1.31" defer></script>
+  <script src="./app.js?v=1.1.46" defer></script>
+  <script src="./overtime-client.js?v=1.1.33" defer></script>
 
-  <script src="./management-ui.js?v=1.2.1" defer></script>
+  <script src="./management-ui.js?v=1.2.4" defer></script>
 </head>
 <body>
 <div class="app">
@@ -140,7 +140,7 @@
     <section id="view-entry" class="view">
       <div class="section-heading">
         <div><h2>新增登記</h2><p>選擇日期、人員及時數，送出後先等待主管核准。</p></div>
-        <span class="version">V1.1.44</span>
+        <span class="version">V1.1.46</span>
       </div>
 
       <form id="entryForm" novalidate>
@@ -180,6 +180,13 @@
 
         <section class="panel">
           <h3><span class="step">3</span> 加班登記</h3>
+          <fieldset class="field overtime-type-field">
+            <legend>加班類型 <em>*</em></legend>
+            <div class="overtime-type-options">
+              <label><input type="radio" name="overtimeType" value="normal" checked><span>一般加班</span></label>
+              <label><input type="radio" name="overtimeType" value="comp"><span>加班換補休</span></label>
+            </div>
+          </fieldset>
           <label class="field"><span>加班時數 <em>*</em></span>
             <div class="suffix-field"><input type="number" id="hours" min="0.5" max="24" step="0.5" inputmode="decimal" value="3" required><span>小時</span></div>
           </label>
@@ -211,6 +218,7 @@
             <div class="preview-row"><span>加班日期</span><strong id="summaryDate">尚未選擇</strong></div>
             <div class="preview-row"><span>所屬單位</span><strong id="summaryDept">尚未選擇</strong></div>
             <div class="preview-row"><span>員工姓名</span><strong id="summaryWho">尚未選擇</strong></div>
+            <div class="preview-row"><span>加班類型</span><strong id="summaryOvertimeType">一般加班</strong></div>
             <div class="preview-row"><span>加班時數</span><strong id="summaryHours" class="preview-hours">尚未填寫</strong></div>
             <div class="preview-reason"><span>加班原因</span><strong id="summaryReason">尚未填寫</strong></div>
           </div>
