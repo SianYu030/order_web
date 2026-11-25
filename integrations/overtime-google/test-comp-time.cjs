@@ -63,3 +63,24 @@ console.log("PASS: note marker added once, editing/correcting normal removes mar
 const mask=src.match(/var fields="(spreadsheetId,sheets\(properties\(sheetId\),data\(startRow,startColumn,rowData\(values\(userEnteredValue,note,effectiveFormat[^"]+)"/);
 assert.ok(mask,"color readback mask exists");let n=0;for(const c of mask[1]){if(c==="(")n++;if(c===")")n--;assert.ok(n>=0);}assert.equal(n,0);
 console.log("PASS: Sheets API field mask parentheses balanced");
+
+const renderSource=app.slice(app.indexOf("  function renderOvertimeReason("),app.indexOf("  window.renderOvertimeReason="));
+assert.ok(renderSource.includes("comp-reason-line"));
+const fakeElement=()=>({children:[],className:"",textContent:"",classList:{add(){}},replaceChildren(){this.children=[];},append(...x){this.children.push(...x);}});
+ui.document={createTextNode:text=>({textContent:text,isText:true}),createElement:fakeElement};
+vm.runInContext(renderSource,ui);
+const el=fakeElement();
+ui.renderOvertimeReason(el,comp);
+assert.equal(el.children.length,2);
+assert.equal(el.children[0].textContent,normal);
+assert.equal(el.children[1].textContent,"（加班換補休）");
+assert.equal(el.children[1].className,"comp-reason-line");
+ui.renderOvertimeReason(el,normal);
+assert.equal(el.children.length,1);
+assert.equal(el.children[0].textContent,normal);
+ui.renderOvertimeReason(el,"<img src=x onerror=alert(1)>\n（加班換補休）");
+assert.equal(el.children[0].isText,true);
+assert.equal(el.children[1].className,"comp-reason-line");
+const css=fs.readFileSync(path.join(root,"overtime/style.css"),"utf8");
+assert.ok(/\.comp-reason-line\{[^}]*display:block;[^}]*color:#ff0000/.test(css));
+console.log("PASS: web marker red separate line, original reason plain text, normal resets, HTML-like reasons remain inert");
