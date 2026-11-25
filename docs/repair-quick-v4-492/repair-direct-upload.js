@@ -345,43 +345,54 @@
   function storageGet(key) {try{return localStorage.getItem(key)}catch(_){return null}}
   function storageSet(key,value) {try{localStorage.setItem(key,value)}catch(_){}}
   function storageDel(key) {try{localStorage.removeItem(key)}catch(_){}}
-  function attachmentIdentity_(mr,epoch){
+  function attachmentIdentity_(mr,epoch,layout=1){
     const generation=String(epoch||'').trim();
-    if(!/^[A-Za-z0-9_-]{1,128}$/.test(generation))throw new Error('尚未取得這筆工單的有效建立識別碼，禁止續傳，以免同號重建後混入舊附件');
+    if(![1,2].includes(layout))throw new Error('附件資料夾版本無效');
+    if(qaMode)return mr+':qa';
+    if(layout===1&&!generation)return null; // existing pre-epoch ticket; no cross-page session reuse
+    if(!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(generation))throw new Error('尚未取得這筆工單的有效建立識別碼，禁止續傳');
     return mr+':'+generation;
   }
-  async function uploadOne(file,mr,kind,onPart,photoEpoch) {
+  function verifyReceiptIdentity_(session,mr,kind,epoch,layout){
+    if(!session||session.orderNo!==mr||session.mediaKind!==kind||session.orderEpoch!==String(epoch||'').trim()||session.mediaLayout!==layout||session.testOnly!==qaMode)
+      throw new Error('雲端回執工單世代或附件分類不一致，停止傳輸');
+    return session;
+  }
+  function receiptResult_(session,kind){
+    return {driveId:session.fileId,category:kind,md5:session.md5,sessionId:session.sessionId,fileName:session.fileName,size:session.size,orderEpoch:session.orderEpoch,mediaLayout:session.mediaLayout};
+  }
+  async function uploadOne(file,mr,kind,onPart,photoEpoch,mediaLayout=1) {
     if(!file||!file.size)throw new Error('附件空白');
     if(!/^MR20\d{8}$/.test(mr))throw new Error('正式 MR 工單號不合法，不能上傳');
-    const identity=attachmentIdentity_(mr,photoEpoch);
+    const identity=attachmentIdentity_(mr,photoEpoch,mediaLayout);
     const already=confirmedFiles.get(file);
-    if(already&&already.identity===identity&&already.kind===kind)return already.result;
+    if(identity&&already&&already.identity===identity&&already.kind===kind)return already.result;
     const max=kind.endsWith('影片')?MAX_VIDEO:MAX_PHOTO;
     if(file.size>max)throw new Error(file.name+' 超過 '+Math.floor(max/MB)+' MB');
     const uploadName=uploadMediaName(file,kind);
     const key='repairDirectV65_'+JSON.stringify([identity,kind,file.name,file.size,file.lastModified]);
     let session=null;
-    const old=storageGet(key);
+    const old=identity?storageGet(key):null;
     if(old){
       try{session=await retryBusy_(()=>command('query',{sessionId:old},65000))}
       catch(err){throw new Error('原附件續傳狀態尚未確認，已保留原工作階段，不會重建或重複上傳：'+String(err?.message||err));}
     }
     if(!session){
       session=await retryBusy_(()=>command(qaMode?'qaStart':'start',{meta:JSON.stringify({
-        orderNo:mr,photoEpoch:String(photoEpoch).trim(),mediaKind:kind,name:uploadName,size:file.size
+        orderNo:mr,photoEpoch:String(photoEpoch||'').trim(),mediaKind:kind,name:uploadName,size:file.size
       })}));
       if(!session||!session.sessionId)throw new Error('Google 未建立上傳工作階段');
-      storageSet(key,session.sessionId);
+      if(identity)storageSet(key,session.sessionId);
     }
     function verifySession(value,expectedId){
       if(!value||value.sessionId!==expectedId||value.size!==file.size||!Number.isSafeInteger(value.offset)||value.offset<0||value.offset>file.size||(value.complete&&value.offset!==file.size))throw new Error('雲端附件工作階段資料不一致，停止傳輸');
-      return value;
+      return verifyReceiptIdentity_(value,mr,kind,qaMode?'':photoEpoch,qaMode?1:mediaLayout);
     }
     session=verifySession(session,old||session.sessionId);
     if(session.complete){
       if(!session.fileId||!/^[0-9a-f]{32}$/i.test(session.md5||''))throw new Error('雲端檔案確認資料不完整');
-      const result={driveId:session.fileId,category:kind,md5:session.md5};
-      confirmedFiles.set(file,{identity,kind,result});
+      const result=receiptResult_(session,kind);
+      if(identity)confirmedFiles.set(file,{identity,kind,result});
       return result;
     }
     let tries=0;
@@ -417,12 +428,12 @@
     if(!session.complete||!session.fileId||!/^[0-9a-f]{32}$/i.test(session.md5||''))
       throw new Error('Google Drive 尚未回傳完整檔案 ID／MD5，不可視為已備份');
     // Keep the verified session ID so same-file retry after reload can query it.
-    const result={driveId:session.fileId,category:kind,md5:session.md5};
-    confirmedFiles.set(file,{identity,kind,result});
+    const result=receiptResult_(session,kind);
+    if(identity)confirmedFiles.set(file,{identity,kind,result});
     return result;
   }
-  async function uploadFiles(selected,orderNo,originalKind,onProgress,photoEpoch) {
-    if((selected||[]).length)attachmentIdentity_(orderNo,photoEpoch);
+  async function uploadFiles(selected,orderNo,originalKind,onProgress,photoEpoch,mediaLayout=1) {
+    if((selected||[]).length)attachmentIdentity_(orderNo,photoEpoch,mediaLayout);
     if(uploading)throw new Error('附件正在上傳，請勿重複操作');
     uploading=true;
     try{
@@ -438,7 +449,7 @@
           const result=await uploadOne(f,orderNo,kind,(done,total)=>{
             const el=$(originalKind==='報修照片'?'submitBtn':'saveRepairMsg');
             if(el)el.textContent='正在上傳 '+f.name+'（'+Math.floor(100*done/total)+'%）';
-          },photoEpoch);
+          },photoEpoch,mediaLayout);
           results.push(result);
         }catch(err){
           failures.push({name:f?.name||('第 '+(i+1)+' 個附件'),reason:String(err?.message||err)});
