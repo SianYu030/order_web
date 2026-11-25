@@ -1997,6 +1997,7 @@ el("saveRepairBtn").onclick=async()=>{
 
   try{
     if(relayEnabled_()&&repairRelayPending_(repairState.order)){el("retryRepairRelayBtn").hidden=false;throw Error("請先重試前一筆維修附件及 LINE 通知");}
+    await relayEnsureOrderIdentity_(repairState.order);
     const relayPhotos=[...repairPhotoFiles],relayMedia=window.repairDrive?.enabled?[...relayPhotos,...window.repairDrive.videoFiles("repair")]:relayPhotos;
     const relay=relaySelection_(relayPhotos,relayMedia,el("repairLineNotify")?.checked,repairState.order.photoEpoch);
     const relayEventId=relay.lineMode==="relay-v2"?crypto.randomUUID():"";
@@ -2347,6 +2348,26 @@ async function sendLineReport_(payload){
 }
 
 function relayEnabled_(){return window.__mrRelayV2Ready===true;}
+async function relayEnsureOrderIdentity_(order){
+  if(!relayEnabled_()||order.photoEpoch)return;
+  const requestId=crypto.randomUUID();
+  const body={action:"lineRelayEnsureIdentityV2",orderNo:order.no,sourceTime:order.time,requestId,sessionToken:v10AuthToken_()};
+  await fetch(SYNC_API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)}).catch(()=>null);
+  const until=Date.now()+30000;
+  while(Date.now()<until){
+    const r=await jsonp_("lineRelayIdentityResultV2",{requestId},Math.min(9000,Math.max(1000,until-Date.now())));
+    if(!r.pending){
+      if(r.ok!==true||r.orderNo!==order.no||!r.photoEpoch||r.mediaLayout!==1||repairState.order!==order)throw Error("舊工單識別未確認，請重新選取工單");
+      order.photoEpoch=r.photoEpoch;order.mediaLayout=r.mediaLayout;
+      if(repairState.store)repairState.store._sourceTime=r.photoEpoch;
+      saveLiveOrdersCache_();
+      return;
+    }
+    await new Promise(resolve=>setTimeout(resolve,500));
+  }
+  throw Error("舊工單識別確認逾時，請勿重複送出");
+}
+
 function relaySelection_(photos,media,checked,epoch){
   if(!relayEnabled_()||!checked)return {};
   if(!window.repairDrive?.enabled&&media.length)throw Error("附件接收器未就緒，請勿送出新版 LINE 通知");
