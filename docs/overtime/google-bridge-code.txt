@@ -1,5 +1,5 @@
 /**
- * 正道業務加班 Google 同步器 V1.9.5（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
+ * 正道業務加班 Google 同步器 V1.9.6（雙端駁回驗證＋Google Sheets API 讀回＋每 1 分鐘補同步）
  * 附掛到正式「2026-加班及請假時數登記表」Google 試算表。
  * 執行者：具備該表編輯權限的廠務室 Google 帳號。
  * 安全：主管核准前只寫「業務假日或臨時加班登記」；原 E4/E5 工時禁止提前修改。
@@ -445,7 +445,8 @@ function otCancelApproved_(ss,r){
  // 同一批次更新：只清除已核准的工時格、來源 J 欄及 P 欄。
  otGoogleBatch_([
   {updateCells:{start:{sheetId:t.sheetId,rowIndex:t.row-1,columnIndex:t.col-1},
-   rows:[{values:[{}]}],fields:"userEnteredValue,note"}},
+   rows:[{values:[otIsComp_(reason)?{userEnteredFormat:{textFormat:{foregroundColorStyle:{rgbColor:{red:0,green:0,blue:0}}}}}:{}]}],
+   fields:otIsComp_(reason)?"userEnteredValue,note,userEnteredFormat.textFormat.foregroundColorStyle":"userEnteredValue,note"}},
   {updateCells:{start:{sheetId:OT_BRIDGE.SOURCE_ID,rowIndex:src.row-1,columnIndex:9},
    rows:[{values:[{userEnteredValue:{stringValue:"不需同步"}}]}],fields:"userEnteredValue"}},
   {updateCells:{start:{sheetId:OT_BRIDGE.SOURCE_ID,rowIndex:src.row-1,columnIndex:15},
@@ -453,6 +454,7 @@ function otCancelApproved_(ss,r){
  ]);
  var check=otCellReadApi_(t),after=otSourceReadApi_(src.row);
  if(check.kind!=="blank"||check.formula!==""||check.note!==""||
+    (otIsComp_(reason)&&!otColorMatches_(check,""))||
     String(after[0])!==r.request_no||String(after[15])!=="已取消"||
     String(after[9])!=="不需同步"||String(after[16])!==String(v[16]))
   throw Error("取消後 Google 讀回不一致，停止處理以免重複修改。");
@@ -571,7 +573,7 @@ function otRegisteredSource_(ss,r,allowHistorical){
  */
 function otCellReadApi_(target){
  var range="'"+target.name.replace(/'/g,"''")+"'!"+target.a1;
- var fields="spreadsheetId,sheets(properties(sheetId),data(startRow,startColumn,rowData(values(userEnteredValue,note))))";
+ var fields="spreadsheetId,sheets(properties(sheetId),data(startRow,startColumn,rowData(values(userEnteredValue,note,effectiveFormat(textFormat(foregroundColor,foregroundColorStyle))))))";
  var url="https://sheets.googleapis.com/v4/spreadsheets/"+OT_BRIDGE.SPREADSHEET_ID+
   "?ranges="+encodeURIComponent(range)+"&fields="+encodeURIComponent(fields);
  var failures=[];
@@ -602,7 +604,10 @@ function otCellReadApi_(target){
     Object.prototype.hasOwnProperty.call(v,"boolValue")?"bool":"blank";
    return {kind:kind,number:kind==="number"?v.numberValue:null,
     formula:kind==="formula"?String(v.formulaValue):"",
-    note:String(cell.note||"")};
+    note:String(cell.note||""),
+    textColor:(cell.effectiveFormat&&cell.effectiveFormat.textFormat&&
+      (cell.effectiveFormat.textFormat.foregroundColorStyle&&cell.effectiveFormat.textFormat.foregroundColorStyle.rgbColor||
+       cell.effectiveFormat.textFormat.foregroundColor))||{}};
   }
   failures.push(code);
   if([429,500,502,503,504].indexOf(code)<0||attempt===3)break;
@@ -615,6 +620,13 @@ function otCellReadApi_(target){
  * 工單編號放在隱藏來源表 A 欄及 Supabase，避免顯示 BUS-SYNC。
  * 為防重複核准，正式工時與來源表 J 欄在同一個 batchUpdate 內原子寫入。
  */
+function otIsComp_(reason){return String(reason||"").trimEnd().endsWith("\n（加班換補休）");}
+function otOvertimeColor_(reason){return {red:otIsComp_(reason)?1:0,green:0,blue:0};}
+function otColorMatches_(cell,reason){
+ var c=cell.textColor||{};
+ return Math.abs(Number(c.red||0)-(otIsComp_(reason)?1:0))<0.001&&
+   Math.abs(Number(c.green||0))<0.001&&Math.abs(Number(c.blue||0))<0.001;
+}
 function otApprove_(ss,r){
  if(!r.manager_name||!r.manager_time)throw Error("後端沒有主管核准人或核准時間。");
  var src=otRegisteredSource_(ss,r),values=src.values,target=src.target;
@@ -628,6 +640,8 @@ function otApprove_(ss,r){
  var sourceSynced=String(values[9])==="已同步";
  var already=before.kind==="number"&&Number(before.number)===Number(r.hours)&&
   before.note===expectedNote&&before.formula===""&&sourceSynced;
+ if(already&&otIsComp_(expectedNote)&&!otColorMatches_(before,expectedNote))
+  throw Error("補休時數未通過紅字驗證，禁止標記已核准。");
  if(!already){
   if(before.kind!=="blank"||before.note!=="")
    throw Error("原工時格已有工時／公式／註解，禁止覆蓋或重複加時數。");
@@ -635,8 +649,9 @@ function otApprove_(ss,r){
    throw Error("Google 來源同步狀態與空白工時格不一致，禁止重複寫入。");
   var update={updateCells:{
    start:{sheetId:target.sheetId,rowIndex:target.row-1,columnIndex:target.col-1},
-   rows:[{values:[{userEnteredValue:{numberValue:r.hours},note:expectedNote}]}],
-   fields:"userEnteredValue,note"
+   rows:[{values:[{userEnteredValue:{numberValue:r.hours},note:expectedNote,
+    userEnteredFormat:{textFormat:{foregroundColorStyle:{rgbColor:otOvertimeColor_(expectedNote)}}}}]}],
+   fields:"userEnteredValue,note,userEnteredFormat.textFormat.foregroundColorStyle"
   }};
   // 同一 Google batchUpdate 內同步寫入原工時與來源 J/K/L，成功才有冪等依據。
   var status={updateCells:{
@@ -650,11 +665,11 @@ function otApprove_(ss,r){
  for(var attempt=0;attempt<3;attempt++){
   checked=otCellReadApi_(target);
   if(checked.kind==="number"&&Number(checked.number)===Number(r.hours)&&
-     checked.formula===""&&checked.note===expectedNote)break;
+     checked.formula===""&&checked.note===expectedNote&&(already&&!otIsComp_(expectedNote)||otColorMatches_(checked,expectedNote)))break;
   if(attempt<2)Utilities.sleep(350*(attempt+1));
  }
  if(checked.kind!=="number"||Number(checked.number)!==Number(r.hours)||
-    checked.formula!==""||checked.note!==expectedNote)
+    checked.formula!==""||checked.note!==expectedNote||(!(already&&!otIsComp_(expectedNote))&&!otColorMatches_(checked,expectedNote)))
   throw Error("正式工時與加班原因 Note 讀回不一致，禁止標示已核准。");
  // 核准前再次驗證來源表已同步及申請編號、目的儲存格相符。
  var afterHours=otSourceReadApi_(src.row);

@@ -152,8 +152,13 @@ function renderSupervisorCancel(){
    for(const r of rows){
     const row=node("div",undefined,"overtime-backend-item");
     row.style.padding="12px";row.style.marginBottom="10px";
-    row.append(node("strong",r.date+" · "+r.employee_name+" · "+r.hours+" 小時"));
-    row.append(node("div",r.department+" · "+r.reason+"｜"+r.status,"helper"));
+    const hoursNode=node("strong",r.date+" · "+r.employee_name+" · "+r.hours+" 小時");
+    if(window.isCompOvertimeReason?.(r.reason))hoursNode.classList.add("comp-hours");
+    row.append(hoursNode);
+    const reasonNode=node("div",undefined,"helper");
+    if(window.renderOvertimeReason)window.renderOvertimeReason(reasonNode,r.reason,r.department+" · "+r.status+"｜");
+    else reasonNode.textContent=r.department+" · "+r.reason+"｜"+r.status;
+    row.append(reasonNode);
     if(r.cancellation_reason)row.append(node("div","取消原因："+r.cancellation_reason,"helper"));
     const actions=node("div");actions.style.display="flex";actions.style.gap="8px";actions.style.flexWrap="wrap";
     if(["已核准","取消待審核"].includes(r.status)){
@@ -224,8 +229,13 @@ function renderEmployeeCancel(){
    for(const row of records){
     const r=row.remote,card=node("div",undefined,"overtime-backend-item");
     card.style.padding="10px";card.style.marginTop="8px";
-    card.append(node("strong",r.date+" · "+r.employee_name+" · "+r.hours+" 小時"));
-    card.append(node("div","狀態："+r.status+"｜"+r.reason,"helper"));
+    const hoursNode=node("strong",r.date+" · "+r.employee_name+" · "+r.hours+" 小時");
+    if(window.isCompOvertimeReason?.(r.reason))hoursNode.classList.add("comp-hours");
+    card.append(hoursNode);
+    const reasonNode=node("div",undefined,"helper");
+    if(window.renderOvertimeReason)window.renderOvertimeReason(reasonNode,r.reason,"狀態："+r.status+"｜");
+    else reasonNode.textContent="狀態："+r.status+"｜"+r.reason;
+    card.append(reasonNode);
     if(r.status==="已核准"){
      const request=btn("申請取消",async()=>{
       const reason=prompt("請填寫臨時取消加班的原因：","");
