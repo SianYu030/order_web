@@ -128,7 +128,7 @@
      try{
        const v=await oldJsonp("listTestOrders",{},20000);
        const r=(v.orders||[]).find(x=>x.no===body.orderNo);
-       if(!r)continue;
+       if(!r||(current?.photoEpoch&&r.photoEpoch!==current.photoEpoch))continue;
        if(body.action==="saveRepair"&&r.type===body.repairType&&r.classification===body.classification&&
           r.technician===u.account&&r.content===body.content&&r.note===body.note)return true;
        if(body.action==="setStatus"&&r.status===body.status&&r.technician===u.account)return true;
