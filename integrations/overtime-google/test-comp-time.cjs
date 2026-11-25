@@ -43,7 +43,7 @@ for(const [reason,red] of [[normal,0],[comp,1]]){
  const t=mockApproval(reason);assert.equal(t.run().row,2);const u=t.updates[0].updateCells;
  const cell=u.rows[0].values[0];
  assert.equal(cell.userEnteredValue.numberValue,8);
- assert.equal(cell.note,reason);
+ assert.equal(cell.note,red?normal+"\n🔴（加班換補休）":reason);
  assert.equal(cell.userEnteredFormat.textFormat.foregroundColorStyle.rgbColor.red,red);
  assert.equal(t.row[15],"已核准");
  assert.equal(t.run().row,2);
@@ -84,3 +84,7 @@ assert.equal(el.children[1].className,"comp-reason-line");
 const css=fs.readFileSync(path.join(root,"overtime/style.css"),"utf8");
 assert.ok(/\.comp-reason-line\{[^}]*display:block;[^}]*color:#ff0000/.test(css));
 console.log("PASS: web marker red separate line, original reason plain text, normal resets, HTML-like reasons remain inert");
+
+assert.equal(context.otDisplayNote_(normal),normal);
+assert.equal(context.otDisplayNote_(comp),normal+"\n🔴（加班換補休）");
+console.log("PASS red dot only in Google note");
