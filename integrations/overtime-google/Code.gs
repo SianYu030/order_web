@@ -573,7 +573,7 @@ function otRegisteredSource_(ss,r,allowHistorical){
  */
 function otCellReadApi_(target){
  var range="'"+target.name.replace(/'/g,"''")+"'!"+target.a1;
- var fields="spreadsheetId,sheets(properties(sheetId),data(startRow,startColumn,rowData(values(userEnteredValue,note,effectiveFormat(textFormat(foregroundColor,foregroundColorStyle)))))";
+ var fields="spreadsheetId,sheets(properties(sheetId),data(startRow,startColumn,rowData(values(userEnteredValue,note,effectiveFormat(textFormat(foregroundColor,foregroundColorStyle))))))";
  var url="https://sheets.googleapis.com/v4/spreadsheets/"+OT_BRIDGE.SPREADSHEET_ID+
   "?ranges="+encodeURIComponent(range)+"&fields="+encodeURIComponent(fields);
  var failures=[];
