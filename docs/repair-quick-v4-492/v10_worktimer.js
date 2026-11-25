@@ -302,14 +302,15 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
         catch(mediaError){byId("saveRepairMsg").textContent="⚠️ 結案已確認，但附件／LINE 通知未確認："+mediaError.message;}
         return;
       }
-      if(photos.length){
-        byId("saveRepairMsg").textContent="⏳ 結案成功，維修照片上傳 0/"+photos.length+"…";
+      if(media.length){
+        byId("saveRepairMsg").textContent="⏳ 結案成功，維修附件上傳 0/"+media.length+"…";
         try{
-          await uploadPhotoFiles_(photos,repairState.order.no,"維修照片",(i,total)=>{
-            byId("saveRepairMsg").textContent="⏳ 結案成功，維修照片上傳 "+i+"/"+total+"…";
-          },repairState.order.photoEpoch||"");
+          await (window.repairDrive?.enabled?window.repairDrive.uploadFiles:uploadPhotoFiles_)(media,order.no,"維修照片",(i,total)=>{
+            byId("saveRepairMsg").textContent="⏳ 結案成功，維修附件上傳 "+i+"/"+total+"…";
+          },order.photoEpoch||"",order.mediaLayout===2?2:1);
           clearRepairPhotoSelection_();
-          byId("saveRepairMsg").textContent="✅ 結案與工時已驗證｜📷 維修照片已排入 NAS 歸檔";
+          if(window.repairDrive?.enabled)window.repairDrive.clearVideo("repair");
+          byId("saveRepairMsg").textContent="✅ 結案與工時已驗證｜附件已提交歸檔";
         }catch(photoError){
           byId("saveRepairMsg").textContent="⚠️ 工單已結案，照片未成功上傳："+photoError.message;
           alert("工單已成功結案，但維修照片需要重新上傳："+photoError.message);
