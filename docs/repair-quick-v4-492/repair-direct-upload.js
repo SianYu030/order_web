@@ -86,6 +86,9 @@
   const files={report:null,repair:null},preview={report:null,repair:null};
   const $=id=>document.getElementById(id);
   let uploading=false,preflightPromise=null;
+  // Stay compatible with the existing 2 MiB receiver; larger chunks require explicit server advertisement.
+  function negotiatedChunk_(health){return health?.maxChunkBytes===4*MB?4*MB:CHUNK;}
+  function receiptDelay_(poll){return poll===0?350:poll===1?650:950;}
   let preflightCache=null,preflightCacheAt=0;
   // Keep receipts for this page so retry never sends verified files twice.
   const confirmedFiles=new WeakMap();
@@ -319,12 +322,13 @@
     }
     document.body.append(sink,form);
     const started=Date.now();
+    let receiptPoll=0;
     try{
       form.submit();
       // Google may block iframe rendering after POST, yet doPost may already
       // have processed the request. Only a positive receipt proves success.
       while(Date.now()-started<timeoutMs){
-        await new Promise(resolve=>setTimeout(resolve,950));
+        await new Promise(resolve=>setTimeout(resolve,receiptDelay_(receiptPoll++)));
         let reply;
         try{reply=await jsonp('receipt',{rid},16000)}
         catch(err){
@@ -361,7 +365,7 @@
   function receiptResult_(session,kind){
     return {driveId:session.fileId,category:kind,md5:session.md5,sessionId:session.sessionId,fileName:session.fileName,size:session.size,orderEpoch:session.orderEpoch,mediaLayout:session.mediaLayout};
   }
-  async function uploadOne(file,mr,kind,onPart,photoEpoch,mediaLayout=1) {
+  async function uploadOne(file,mr,kind,onPart,photoEpoch,mediaLayout=1,chunkBytes=CHUNK) {
     if(!file||!file.size)throw new Error('附件空白');
     if(!/^MR20\d{8}$/.test(mr))throw new Error('正式 MR 工單號不合法，不能上傳');
     const identity=attachmentIdentity_(mr,photoEpoch,mediaLayout);
@@ -398,7 +402,7 @@
     let tries=0;
     while(session.offset<file.size){
       const offset=session.offset;
-      const bytes=file.slice(offset,Math.min(file.size,offset+CHUNK));
+      const bytes=file.slice(offset,Math.min(file.size,offset+chunkBytes));
       const base64=base64Chunk(await bytes.arrayBuffer());
       try {
         const next=verifySession(await command('chunk',{sessionId:session.sessionId,offset,base64},145000),session.sessionId);
@@ -449,7 +453,7 @@
           const result=await uploadOne(f,orderNo,kind,(done,total)=>{
             const el=$(originalKind==='報修照片'?'submitBtn':'saveRepairMsg');
             if(el)el.textContent='正在上傳 '+f.name+'（'+Math.floor(100*done/total)+'%）';
-          },photoEpoch,mediaLayout);
+          },photoEpoch,mediaLayout,negotiatedChunk_(access));
           results.push(result);
         }catch(err){
           failures.push({name:f?.name||('第 '+(i+1)+' 個附件'),reason:String(err?.message||err)});
