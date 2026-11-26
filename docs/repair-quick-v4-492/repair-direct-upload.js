@@ -386,7 +386,28 @@
   function receiptResult_(session,kind){
     return {driveId:session.fileId,category:kind,md5:session.md5,sessionId:session.sessionId,fileName:session.fileName,size:session.size,orderEpoch:session.orderEpoch,mediaLayout:session.mediaLayout};
   }
-  async function uploadOne(file,mr,kind,onPart,photoEpoch,mediaLayout=1,chunkBytes=CHUNK) {
+  function makeStartQueue_(){
+    let tail=Promise.resolve();
+    return task=>{
+      const running=tail.then(task);
+      tail=running.catch(()=>{});
+      return running;
+    };
+  }
+  async function uploadOrderedPairs_(list,task,width=2){
+    const outcomes=new Array(list.length);
+    let cursor=0;
+    async function lane(){
+      while(cursor<list.length){
+        const i=cursor++;
+        try{outcomes[i]={ok:true,result:await task(list[i],i)};}
+        catch(error){outcomes[i]={ok:false,error};}
+      }
+    }
+    await Promise.all(Array.from({length:Math.min(width,list.length)},lane));
+    return outcomes;
+  }
+  async function uploadOne(file,mr,kind,onPart,photoEpoch,mediaLayout=1,chunkBytes=CHUNK,withStart=task=>task()) {
     if(!file||!file.size)throw new Error('附件空白');
     if(!/^MR20\d{8}$/.test(mr))throw new Error('正式 MR 工單號不合法，不能上傳');
     const identity=attachmentIdentity_(mr,photoEpoch,mediaLayout);
@@ -396,8 +417,10 @@
     if(file.size>max)throw new Error(file.name+' 超過 '+Math.floor(max/MB)+' MB');
     const uploadName=uploadMediaName(file,kind);
     const key='repairDirectV65_'+JSON.stringify([identity,kind,file.name,file.size,file.lastModified]);
-    let session=null;
-    const old=identity?storageGet(key):null;
+    let old=null;
+    let session=await withStart(async()=>{
+      let session=null;
+      old=identity?storageGet(key):null;
     if(old){
       try{session=await retryBusy_(()=>command('query',{sessionId:old},65000))}
       catch(err){throw new Error('原附件續傳狀態尚未確認，已保留原工作階段，不會重建或重複上傳：'+String(err?.message||err));}
@@ -409,6 +432,8 @@
       if(!session||!session.sessionId)throw new Error('Google 未建立上傳工作階段');
       if(identity)storageSet(key,session.sessionId);
     }
+      return session;
+    });
     function verifySession(value,expectedId){
       if(!value||value.sessionId!==expectedId||value.size!==file.size||!Number.isSafeInteger(value.offset)||value.offset<0||value.offset>file.size||(value.complete&&value.offset!==file.size))throw new Error('雲端附件工作階段資料不一致，停止傳輸');
       return verifyReceiptIdentity_(value,mr,kind,qaMode?'':photoEpoch,qaMode?1:mediaLayout);
@@ -470,22 +495,30 @@
       if(!qaMode&&!access.productionAllowed)
         throw new Error('公開附件接收器沒有確認上傳權限');
       const list=[...(selected||[])],results=[],failures=[];
-      for(let i=0;i<list.length;i++){
-        const f=list[i];
-        if(onProgress)onProgress(i+1,list.length);
-        try{
-          const kind=suffix(f,originalKind);
-          const result=await uploadOne(f,orderNo,kind,(done,total)=>{
-            const el=$(originalKind==='報修照片'?'submitBtn':'saveRepairMsg');
-            if(el)el.textContent='正在上傳 '+f.name+'（'+Math.floor(100*done/total)+'%）';
-          },photoEpoch,mediaLayout,negotiatedChunk_(access));
-          results.push(result);
-        }catch(err){
+      const withStart=makeStartQueue_();
+      // Same-file resume keys must never be opened in two lanes at once.
+      const keys=list.map(f=>JSON.stringify([suffix(f,originalKind),f?.name,f?.size,f?.lastModified]));
+      const width=(!qaMode&&mediaLayout===2&&new Set(keys).size===keys.length)?2:1;
+      let completed=0;
+      if(list.length&&onProgress)onProgress(1,list.length);
+      const outcomes=await uploadOrderedPairs_(list,async(f,i)=>{
+        const kind=suffix(f,originalKind);
+        const result=await uploadOne(f,orderNo,kind,(done,total)=>{
+          const el=$(originalKind==='報修照片'?'submitBtn':'saveRepairMsg');
+          if(el)el.textContent='正在上傳 '+f.name+'（'+Math.floor(100*done/total)+'%）';
+        },photoEpoch,mediaLayout,negotiatedChunk_(access),withStart);
+        completed++;
+        if(onProgress)onProgress(Math.min(completed+1,list.length),list.length);
+        return result;
+      },width);
+      outcomes.forEach((out,i)=>{
+        if(out.ok)results.push(out.result);
+        else{
+          const f=list[i],err=out.error;
           failures.push({name:f?.name||('第 '+(i+1)+' 個附件'),reason:String(err?.message||err)});
           console.warn('MR_MEDIA_NOT_CONFIRMED',orderNo,i+1,String(err?.message||err));
-          // Continue other files. A later retry skips already confirmed files.
         }
-      }
+      });
       if(failures.length){
         const error=new Error(failures.length+' 個附件未確認：'+failures.map(x=>x.name+'（'+x.reason+'）').join('；'));
         error.completed=results.length;
