@@ -2769,7 +2769,7 @@ function videoQualityInfo_(file,w,h,d){
   const details=(known?w+" × "+h:"解析度未取得")+(rate!==null?"｜"+d.toFixed(1)+" 秒｜平均 "+rate.toFixed(1)+" Mbps":"");
   return details+(known&&(Math.min(w,h)<1080||Math.max(w,h)<1920)?"｜⚠️ 未達 1080p，畫質優先請用手機相機 App 錄製後選取原檔":"");
 }
-function select(state,file,poster){
+function select(state,file,poster,verified){
   // Cancel or reject an invalid replacement without losing the previous video.
   if(!file)return;
   if(!accepted(file)){alert("無法辨識影片格式，請選擇 MP4、MOV、WEBM 等影片。");return;}
@@ -2779,11 +2779,15 @@ function select(state,file,poster){
   state.file=file;
   el(state.prefix+"VideoSelected").hidden=false;
   function renderInfo(){if(state.file!==file)return;el(state.prefix+"VideoDetails").textContent="已選取："+file.name+"（"+mb(file.size)+"）"+(state.videoInfo?"｜"+state.videoInfo:"")+(window.repairDrive?.enabled?"｜送出後自動上傳 Google Drive":(previewOnly?"｜測試預覽，不會上傳":"｜等待 Google Drive 接收器確認"));}
+  const reuse=!!(verified&&verified.file===file&&verified.video&&typeof verified.url==="string"&&verified.url.startsWith("blob:")&&verified.width>0&&verified.height>0);
+  state.url=reuse?verified.url:URL.createObjectURL(file);
+  var video=reuse?verified.video:document.createElement("video");
+  video.controls=true;video.playsInline=true;video.preload="metadata";if(typeof poster==='string'&&poster.startsWith('data:image/jpeg;base64,')&&poster.length<300000)video.poster=poster;
+  function refreshMetadata(){if(state.file!==file)return;state.videoInfo=videoQualityInfo_(file,video.videoWidth,video.videoHeight,video.duration);renderInfo();}
+  video.addEventListener("loadedmetadata",refreshMetadata);
+  video.addEventListener("durationchange",function(){if(video.videoWidth>0&&video.videoHeight>0)refreshMetadata();});
+  if(reuse){state.videoInfo=videoQualityInfo_(file,verified.width,verified.height,verified.duration);}else{video.src=state.url;}
   renderInfo();
-  state.url=URL.createObjectURL(file);
-  var video=document.createElement("video");
-  video.controls=true;video.playsInline=true;video.preload="metadata";if(typeof poster==='string'&&poster.startsWith('data:image/jpeg;base64,')&&poster.length<300000)video.poster=poster;video.src=state.url;
-  video.addEventListener("loadedmetadata",function(){if(state.file!==file)return;state.videoInfo=videoQualityInfo_(file,video.videoWidth,video.videoHeight,video.duration);renderInfo();});
   el(state.prefix+"VideoPreview").appendChild(video);
 }
 ["report","repair"].forEach(function(prefix){
@@ -2806,9 +2810,9 @@ function select(state,file,poster){
 });
 window.repairVideoTestBridge={
   // Internal same-page attachment hook; never posts an order or sends LINE.
-  acceptCameraFile:function(prefix,file,poster){
+  acceptCameraFile:function(prefix,file,poster,verified){
     if(!items[prefix]||!file||!accepted(file)||!file.size||file.size>MAX_BYTES)return false;
-    select(items[prefix],file,poster);
+    select(items[prefix],file,poster,verified);
     return items[prefix].file===file;
   },
   getFile:function(prefix){return items[prefix]&&items[prefix].file||null;},
@@ -2855,7 +2859,7 @@ document.addEventListener("click",function(ev){
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
 <script src="./repair-direct-upload.js?v=20261126-two-lane-v70" defer></script>
 <script src="./maintenance-report.js?v=20261119-wrench-title-fix3" defer></script>
-<script src="./camera-bridge-formal.js?v=20261126-fullscreen-hd-03" defer></script>
+<script src="./camera-bridge-formal.js?v=20261126-fullscreen-hd-04-fast" defer></script>
 
 
 </body>
