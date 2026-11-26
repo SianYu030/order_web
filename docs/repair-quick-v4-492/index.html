@@ -2392,23 +2392,48 @@ function relaySelection_(photos,media,checked,epoch){
   if(photos.length>12||media.length-photos.length>1)throw Error("LINE 整批通知最多 12 張照片及 1 部影片，請調整附件數量");
   return {lineMode:"relay-v2",lineNotify:"1",linePhotoCount:String(photos.length),lineVideoCount:String(media.length-photos.length),photoEpoch:epoch||""};
 }
+const relayCommitAttempts_=new Map();
+function relayReceiptMatches_(r,eventId,orderNo,count){
+  return r?.ok===true&&r.queued===true&&r.eventId===eventId&&r.orderNo===orderNo&&r.attachments===count;
+}
+function relayReadTransient_(err){return /^(同步逾時|無法連線同步 API)$/.test(String(err?.message||err));}
 async function relayCommit_(orderNo,epoch,eventId,receipts,createRequestId){
   if(!eventId)throw Error("尚未取得通知事件識別碼");
   const ids=receipts.map(x=>x.sessionId);
   if(ids.some(x=>!x)||new Set(ids).size!==ids.length)throw Error("附件回執不完整，暫停 LINE 派送");
+  const identity=JSON.stringify([orderNo,epoch,[...ids].sort()]);
+  const previous=relayCommitAttempts_.get(eventId);
+  if(previous&&previous.identity!==identity)throw Error("原通知附件識別不一致，停止重試");
+  const deadline=Date.now()+18000;
+  const read=async(requestId)=>jsonp_("lineRelayCommitResultV2",{requestId},Math.min(6000,Math.max(1,deadline-Date.now())));
+  if(previous){
+    let receipt=null;
+    try{receipt=await read(previous.requestId);}catch(err){if(!relayReadTransient_(err))throw err;}
+    if(relayReceiptMatches_(receipt,eventId,orderNo,ids.length))return receipt;
+    if(receipt&&!receipt.pending)throw Error("通知回執內容不符");
+    if(!previous.settled)throw Error("原通知仍在確認，請稍後查詢，不要重建工單");
+  }
   const requestId=crypto.randomUUID();
   const body={action:"lineRelayCommitV2",orderNo,epoch,eventId,requestId,sessionIds:ids};
   if(createRequestId)body.createRequestId=createRequestId;
   else body.sessionToken=v10AuthToken_();
-  await fetch(SYNC_API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)}).catch(()=>null);
-  const deadline=Date.now()+30000;
+  const attempt={identity,requestId,settled:false};
+  relayCommitAttempts_.set(eventId,attempt);
+  if(relayCommitAttempts_.size>32)relayCommitAttempts_.delete(relayCommitAttempts_.keys().next().value);
+  // Poll the receipt concurrently with the opaque POST, not after its redirect.
+  // Only a verified receipt indicates success. No automatic repost.
+  void fetch(SYNC_API_URL,{method:"POST",mode:"no-cors",keepalive:true,headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
+    .catch(()=>null).finally(()=>{attempt.settled=true});
+  await new Promise(resolve=>setTimeout(resolve,350));
   while(Date.now()<deadline){
-    const r=await jsonp_("lineRelayCommitResultV2",{requestId},Math.min(9000,Math.max(1000,deadline-Date.now())));
-    if(r.queued&&r.eventId===eventId&&r.orderNo===orderNo&&r.attachments===ids.length)return r;
-    if(!r.pending)throw Error("通知事件提交未確認");
-    await new Promise(r=>setTimeout(r,500));
+    try{
+      const r=await read(requestId);
+      if(relayReceiptMatches_(r,eventId,orderNo,ids.length))return r;
+      if(!r?.pending)throw Error("通知回執內容不符");
+    }catch(err){if(!relayReadTransient_(err))throw err;}
+    if(Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,Math.min(650,deadline-Date.now())));
   }
-  throw Error("通知排程結果未確認，請勿重複建立工單");
+  throw Error("通知已提交，回執尚未確認，請勿重複建立工單");
 }
 const pendingRepairRelays_=new Map();
 function repairRelayKey_(order){return order.no+":"+(order.photoEpoch||"");}
@@ -2518,6 +2543,7 @@ el("submitBtn").onclick=async()=>{
     };
     reportProcessing=true;
     pendingReportMediaRetry=null;
+    el("retryReportMediaBtn").textContent="🔄 重試未完成的照片／影片（不重建工單）";
     el("retryReportMediaBtn").hidden=true;
     el("retryReportMediaStatus").hidden=true;
     el("retryReportMediaLater").hidden=true;
@@ -2618,14 +2644,16 @@ el("submitBtn").onclick=async()=>{
       mediaResult=await runMedia_();
       lineResult={message:"｜LINE 等待完整附件",ms:0};
       if(!pendingReportMediaRetry){
+        const relayBegan=performance.now();
+        stage.line="確認通知排程中";renderReportStages_();
         try{
           await relayCommit_(data.orderNo,data.photoEpoch,data.lineRelayEventId,relayReceipts,state.requestId);
           stage.line="已排入整批派送（待發送確認）";
           lineResult.message="｜LINE 已排入整批派送（待確認）";
         }catch(err){
           stage.line="排程未確認";lineResult.message="｜⚠️ LINE 排程未確認："+err.message;
-          if(data.lineRelayEventId){pendingReportMediaRetry={files:[],receipts:relayReceipts,orderNo:data.orderNo,photoEpoch:data.photoEpoch,mediaLayout:data.mediaLayout===2?2:1,relayEventId:data.lineRelayEventId,createRequestId:state.requestId,lineMsg:""};el("retryReportMediaBtn").hidden=false;el("retryReportMediaStatus").hidden=false;el("retryReportMediaStatus").textContent="附件已保存，請重試原通知排程，不要重建工單。";}
-        }
+          if(data.lineRelayEventId){pendingReportMediaRetry={files:[],receipts:relayReceipts,orderNo:data.orderNo,photoEpoch:data.photoEpoch,mediaLayout:data.mediaLayout===2?2:1,relayEventId:data.lineRelayEventId,createRequestId:state.requestId,lineMsg:""};el("retryReportMediaBtn").textContent="🔄 確認原 LINE 通知（不重傳附件）";el("retryReportMediaBtn").hidden=false;el("retryReportMediaStatus").hidden=false;el("retryReportMediaStatus").textContent="附件已保存，LINE 通知結果尚未確認，不要重建工單或重傳附件。";}
+        }finally{lineResult.ms=Math.round(performance.now()-relayBegan);}
       }
       renderReportStages_();
     }else{
@@ -2634,12 +2662,12 @@ el("submitBtn").onclick=async()=>{
     if(pendingReportMediaRetry)pendingReportMediaRetry.lineMsg=lineResult.message;
     const totalMs=Math.round(performance.now()-requestStartAt);
     el("successTitle").textContent=pendingReportMediaRetry?
-      "工單已建立，附件待補傳":"報修工單已建立";
+      (pendingReportMediaRetry.receipts?"工單及附件已保存，LINE 待確認":"工單已建立，附件待補傳"):"報修工單已建立";
     el("successText").textContent=
       "✅ 已寫入正式「機修維修單」並完成回讀驗證"+
       mediaResult.message+lineResult.message+
       "。\n⏱ 工單 "+(mrMs/1000).toFixed(1)+
-      " 秒｜LINE "+(lineResult.ms/1000).toFixed(1)+
+      " 秒｜"+(relaySelection.lineMode==="relay-v2"?"LINE 排程確認":"LINE")+" "+(lineResult.ms/1000).toFixed(1)+
       " 秒｜附件 "+(mediaResult.ms/1000).toFixed(1)+
       " 秒｜總計 "+(totalMs/1000).toFixed(1)+" 秒。";
     try{
@@ -2678,8 +2706,8 @@ el("retryReportMediaBtn").onclick=async()=>{
   if(!pending||(!pending.receipts&&!window.repairDrive?.enabled))return;
   const btn=el("retryReportMediaBtn"),info=el("retryReportMediaStatus");
   btn.disabled=true;
-  btn.textContent="⏳ 正在確認未完成的附件…";
-  info.textContent="正在補傳原工單 "+pending.orderNo+"，請不要離開此頁。";
+  btn.textContent=pending.receipts?"⏳ 正在確認原 LINE 通知…":"⏳ 正在確認未完成的附件…";
+  info.textContent=(pending.receipts?"正在確認原通知 ":"正在補傳原工單 ")+pending.orderNo+"，請不要離開此頁。";
   info.hidden=false;
   try{
     const current=await jsonp_("listTestOrders",{},30000);
@@ -2698,16 +2726,16 @@ el("retryReportMediaBtn").onclick=async()=>{
     el("successTitle").textContent="報修工單已建立";
     el("successText").textContent="✅ "+pending.orderNo+" 已建立｜☁️ 照片及影片已取得 Drive 完整回執，F 槽待同步核對"+pending.lineMsg+"。";
   }catch(error){
-    info.textContent="⚠️ 仍有附件未確認："+String(error?.message||error)+"；原工單已保留，請在此頁再次補傳。";
+    info.textContent=(pending.receipts?"⚠️ 附件已保存，LINE 回執尚未確認：":"⚠️ 仍有附件未確認：")+String(error?.message||error)+"；原工單已保留。";
     info.style.color="#9b3e15";
   }finally{
     btn.disabled=false;
-    btn.textContent="🔄 重試未完成的照片／影片（不重建工單）";
+    btn.textContent=pendingReportMediaRetry?.receipts?"🔄 確認原 LINE 通知（不重傳附件）":"🔄 重試未完成的照片／影片（不重建工單）";
   }
 };
 function returnHomeAfterReport_(){
   if(reportProcessing){alert("LINE 或附件仍在處理，請維持此頁開啟至完成。");return;}
-  if(pendingReportMediaRetry&&!window.confirm("這筆工單還有附件未完成歸檔。離開後可從「原工單附件補傳」頁面重新選取缺少的照片／影片，確定離開？"))return;
+  if(pendingReportMediaRetry&&!window.confirm(pendingReportMediaRetry.receipts?"工單及附件均已保存，LINE 通知回執尚未確認。請勿重新送單，確定返回首頁？":"這筆工單還有附件未完成歸檔。離開後可從「原工單附件補傳」頁面重新選取缺少的照片／影片，確定離開？"))return;
   pendingReportMediaRetry=null;
   // This function only handles an already verified, fully processed report
   // success screen. It must never post a new report or resend LINE/photos.
