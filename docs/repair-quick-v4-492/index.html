@@ -704,7 +704,7 @@ html,body{background:#f5f7f8}
               <input id="reportVideoFile" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.3gpp,.webm,.mkv">
             </label>
           </div>
-          <div class="photo-note video-hint" role="status" aria-live="polite">拍照與錄影使用手機系統相機。錄影畫質由手機系統決定；影片上限 100 MB。</div>
+          <div class="photo-note video-hint" role="status" aria-live="polite">iPhone 相機錄影採全螢幕高畫質模式，拍照及其他裝置沿用原流程；影片上限 100 MB。</div>
           <div class="video-preview-wrap" id="reportVideoSelected" hidden>
             <div class="video-pilot-detail" id="reportVideoDetails" role="status"></div>
             <div id="reportVideoPreview"></div>
@@ -967,7 +967,7 @@ html,body{background:#f5f7f8}
               <input id="repairVideoFile" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.3gpp,.webm,.mkv">
             </label>
           </div>
-          <div class="photo-note video-hint" role="status" aria-live="polite">相機錄影與拍照皆使用手機系統相機。保留手機回傳的影片，不在網頁轉檔；影片上限 100 MB。</div>
+          <div class="photo-note video-hint" role="status" aria-live="polite">iPhone 相機錄影採全螢幕高畫質模式，拍照及其他裝置沿用原流程；影片上限 100 MB。</div>
           <div class="video-preview-wrap" id="repairVideoSelected" hidden>
             <div class="video-pilot-detail" id="repairVideoDetails" role="status"></div>
             <div id="repairVideoPreview"></div>
@@ -2828,7 +2828,7 @@ window.repairVideoTestBridge={
       if(!pilot)return;
       pilot.hidden=false;
       var hint=pilot.querySelector(".video-hint");
-      if(hint)hint.textContent="相機錄影與拍照皆使用手機系統相機。保留手機回傳的影片，不在網頁轉檔；影片上限 100 MB。";
+      if(hint)hint.textContent="iPhone 相機錄影採全螢幕高畫質模式，拍照及其他裝置沿用原流程；影片上限 100 MB。";
       var selected=items[prefix];
       if(selected&&selected.file)
         el(prefix+"VideoDetails").textContent="已選取："+selected.file.name+
@@ -2855,6 +2855,7 @@ document.addEventListener("click",function(ev){
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
 <script src="./repair-direct-upload.js?v=20261126-two-lane-v70" defer></script>
 <script src="./maintenance-report.js?v=20261119-wrench-title-fix3" defer></script>
+<script src="./camera-bridge-formal.js?v=20261126-fullscreen-hd-03" defer></script>
 
 
 </body>
