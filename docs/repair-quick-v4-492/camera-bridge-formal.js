@@ -6,6 +6,8 @@ const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==="
 if(!ios||!hook)return;
 const MAX=100*1024*1024, LIMIT=92*1024*1024;
 let active=null;
+const stamp=()=>w.performance?.now?.()??Date.now();
+function timing(s,key){s.timings[key]=Math.round(stamp()-s.openedAt);w.__repairCameraTiming={...s.timings};}
 function get(id){return d.getElementById(id)}
 function context(kind){
  const mode=get(kind==="report"?"reportMode":"repairMode");
@@ -28,14 +30,16 @@ function close(s,message){
  if(message)alert(message);
 }
 function elem(tag,txt,style){const e=d.createElement(tag);if(txt)e.textContent=txt;Object.assign(e.style,style||{});return e}
-function readMetadata(file){
+function readMetadata(file,poster){
  return new Promise((resolve,reject)=>{
   const v=d.createElement("video"),url=URL.createObjectURL(file);
-  let done=false;
-  function finish(error,data){if(done)return;done=true;clearTimeout(timer);v.removeAttribute("src");v.load();URL.revokeObjectURL(url);error?reject(error):resolve(data)}
+  let done=false,disposed=false;
+  function dispose(){if(disposed)return;disposed=true;v.removeAttribute("src");v.load();URL.revokeObjectURL(url)}
+  function finish(error){if(done)return;done=true;clearTimeout(timer);v.onloadedmetadata=null;v.onerror=null;if(error){dispose();reject(error)}else resolve({file,video:v,url,width:v.videoWidth,height:v.videoHeight,duration:v.duration,dispose})}
   const timer=setTimeout(()=>finish(Error("無法確認錄影解析度")),10000);
-  v.preload="metadata";v.playsInline=true;
-  v.onloadedmetadata=()=>finish(null,{width:v.videoWidth,height:v.videoHeight});
+  v.preload="metadata";v.playsInline=true;v.controls=true;
+  if(typeof poster==="string"&&poster.startsWith("data:image/jpeg;base64,")&&poster.length<300000)v.poster=poster;
+  v.onloadedmetadata=()=>finish();
   v.onerror=()=>finish(Error("無法讀取錄影檔案"));
   v.src=url;
  });
@@ -44,24 +48,29 @@ function fullHD(width,height){return Math.min(width,height)>=1080&&Math.max(widt
 function setStatus(s,message){if(active===s)s.status.textContent=message}
 function requestStop(s){
  if(active!==s||!s.recorder||s.recorder.state!=="recording")return;
- s.record.disabled=true;clearInterval(s.clockTimer);setStatus(s,"正在確認影片畫質…");clearTimeout(s.timer);
+ timing(s,"stopRequestedMs");s.record.disabled=true;clearInterval(s.clockTimer);setStatus(s,"正在確認影片畫質…");clearTimeout(s.timer);
  try{s.recorder.stop()}catch(_){close(s,"停止錄影失敗，原影片保留。")}
 }
 async function finish(s){
  if(!same(s)){close(s);return}
+ let verified=null,handedOff=false;
  try{
+  timing(s,"recorderStoppedMs");
   const type=(s.recorder.mimeType||s.mime).split(";")[0];
   if(type!=="video/mp4")throw Error("錄影格式不是 MP4");
-  const blob=new Blob(s.chunks,{type});
-  if(!blob.size||blob.size>MAX)throw Error("影片空白或超過 100 MB");
-  const file=new File([blob],"camera_"+Date.now()+".mp4",{type});
+  if(!s.bytes||s.bytes>MAX)throw Error("影片空白或超過 100 MB");
+  const file=new File(s.chunks,"camera_"+Date.now()+".mp4",{type});
+  if(!file.size||file.size>MAX)throw Error("影片空白或超過 100 MB");
+  s.chunks=[];
   release(s);
-  const dimensions=await readMetadata(file);
+  verified=await readMetadata(file,s.poster);
+  timing(s,"metadataReadyMs");
   if(!same(s)){close(s);return}
-  if(!fullHD(dimensions.width,dimensions.height))throw Error("實際影片未達 1080p，未替換原影片");
-  if(!hook.acceptCameraFile(s.kind,file,s.poster))throw Error("原頁面未接收影片");
-  close(s);
+  if(!fullHD(verified.width,verified.height))throw Error("實際影片未達 1080p，未替換原影片");
+  if(!hook.acceptCameraFile(s.kind,file,s.poster,verified))throw Error("原頁面未接收影片");
+  handedOff=true;timing(s,"attachedMs");close(s);
  }catch(e){close(s,String(e.message||e)+"。原影片保留。")}
+ finally{if(verified&&!handedOff)verified.dispose()}
 }
 function capturePoster(s){try{const v=s.preview,w=v.videoWidth,h=v.videoHeight;if(!w||!h)return '';const c=d.createElement('canvas'),scale=Math.min(1,480/Math.max(w,h));c.width=Math.max(1,Math.round(w*scale));c.height=Math.max(1,Math.round(h*scale));const ctx=c.getContext('2d');if(!ctx)return '';ctx.drawImage(v,0,0,c.width,c.height);return c.toDataURL('image/jpeg',0.82)}catch(_){return ''}}
 function start(s){
@@ -74,17 +83,17 @@ function start(s){
   r.ondataavailable=e=>{if(active!==s||s.cancelled||!e.data?.size)return;s.chunks.push(e.data);s.bytes+=e.data.size;if(s.bytes>=LIMIT)requestStop(s)};
   r.onerror=()=>close(s,"錄影發生錯誤，原影片保留。");
   r.onstop=()=>{if(active===s&&!s.cancelled)void finish(s)};
-  r.start(1000);
+  r.start(1000);timing(s,"recordStartedMs");
   s.poster=capturePoster(s);
   s.record.setAttribute('aria-label','停止錄影');s.record.title='停止錄影';s.recordMark.style.borderRadius='6px';s.recordMark.style.transform='scale(.62)';s.record.onclick=()=>requestStop(s);
-  const started=Date.now();const tick=()=>{const sec=Math.floor((Date.now()-started)/1000);s.clock.textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')};tick();s.clock.style.background='#c5222b';s.clockTimer=setInterval(tick,250);
+  const started=Date.now();const tick=()=>{const sec=Math.floor((Date.now()-started)/1000);s.clock.textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')};tick();s.clock.style.background='#c5222b';s.clockTimer=setInterval(tick,1000);
   setStatus(s,"錄影中｜1080p");
   s.timer=setTimeout(()=>requestStop(s),90000);
  }catch(e){close(s,"無法啟動高畫質錄影："+String(e.message||e))}
 }
 async function open(kind){
  if(active)return;
- const ctx=context(kind);if(!ctx){alert("請先確認目前報修或維修頁面。");return}
+ const openedAt=stamp();const ctx=context(kind);if(!ctx){alert("請先確認目前報修或維修頁面。");return}
  if(!w.isSecureContext||!navigator.mediaDevices?.getUserMedia||!w.MediaRecorder){alert("此瀏覽器無法使用網頁高畫質錄影，未啟動低畫質錄影。");return}
  const mime=["video/mp4;codecs=avc1.42001f,mp4a.40.2","video/mp4"].find(t=>MediaRecorder.isTypeSupported(t));
  if(!mime){alert("此瀏覽器未提供 MP4 錄影功能。");return}
@@ -105,12 +114,12 @@ async function open(kind){
  controls.append(cancel,record,quality);overlay.append(preview,top,controls);
  const oldHtmlOverflow=d.documentElement.style.overflow,oldBodyOverflow=d.body.style.overflow;
  d.documentElement.style.overflow="hidden";d.body.style.overflow="hidden";d.body.append(overlay);
- const s={kind,context:ctx,previous:hook.getFile(kind),overlay,preview,status,clock,record,recordMark,mime,cancelled:false,stream:null,recorder:null,timer:null,clockTimer:null,oldHtmlOverflow,oldBodyOverflow};
+ const s={kind,context:ctx,previous:hook.getFile(kind),overlay,preview,status,clock,record,recordMark,mime,cancelled:false,stream:null,recorder:null,timer:null,clockTimer:null,oldHtmlOverflow,oldBodyOverflow,openedAt,timings:{}};
  active=s;record.onclick=()=>start(s);cancel.onclick=()=>close(s);
  try{
   const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30,max:30}}});
   if(!same(s)){stream.getTracks().forEach(t=>t.stop());close(s);return}
-  s.stream=stream;
+  s.stream=stream;timing(s,"streamReadyMs");
   const track=stream.getVideoTracks()[0];if(!track)throw Error("找不到相機影像");
   const settings=track.getSettings();
   if(settings.facingMode==="user")throw Error("無法取得後置相機");
@@ -120,7 +129,7 @@ async function open(kind){
   if(!same(s)){close(s);return}
   if(!fullHD(preview.videoWidth,preview.videoHeight))throw Error("實際相機畫面未達 1080p");
   setStatus(s,"高畫質相機就緒｜"+preview.videoWidth+" × "+preview.videoHeight);
-  record.disabled=false;record.style.opacity='1';
+  record.disabled=false;record.style.opacity='1';timing(s,"previewReadyMs");
  }catch(e){close(s,"無法開啟 1080p 錄影："+String(e.message||e)+"。原影片保留。")}
 }
 for(const kind of ["report","repair"]){
