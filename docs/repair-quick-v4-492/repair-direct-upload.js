@@ -397,15 +397,37 @@
   async function uploadOrderedPairs_(list,task,width=2){
     const outcomes=new Array(list.length);
     let cursor=0;
+    const order=list.map((_,i)=>i);
+    if(width>1)order.sort((a,b)=>(list[b]?.size||0)-(list[a]?.size||0)||a-b);
     async function lane(){
       while(cursor<list.length){
-        const i=cursor++;
+        const i=order[cursor++];
         try{outcomes[i]={ok:true,result:await task(list[i],i)};}
         catch(error){outcomes[i]={ok:false,error};}
       }
     }
     await Promise.all(Array.from({length:Math.min(width,list.length)},lane));
     return outcomes;
+  }
+  // One bounded lookahead per lane; failed speculative encoding is consumed safely.
+  function makeChunkEncoder_(file){
+    let prepared=null;
+    function prime(offset,chunkBytes){
+      if(offset>=file.size)return;
+      if(prepared?.offset===offset&&prepared.chunkBytes===chunkBytes)return;
+      prepared={offset,chunkBytes,promise:Promise.resolve().then(async()=>{
+        const bytes=file.slice(offset,Math.min(file.size,offset+chunkBytes));
+        return {bytes,base64:await encodeBlob_(bytes)};
+      }).then(value=>({ok:true,value}),error=>({ok:false,error}))};
+    }
+    async function take(offset,chunkBytes){
+      prime(offset,chunkBytes);
+      const item=prepared;prepared=null;
+      const result=await item.promise;
+      if(!result.ok)throw result.error;
+      return result.value;
+    }
+    return {prime,take,clear(){prepared=null;}};
   }
   async function uploadOne(file,mr,kind,onPart,photoEpoch,mediaLayout=1,chunkBytes=CHUNK,withStart=task=>task()) {
     if(!file||!file.size)throw new Error('附件空白');
@@ -417,6 +439,8 @@
     if(file.size>max)throw new Error(file.name+' 超過 '+Math.floor(max/MB)+' MB');
     const uploadName=uploadMediaName(file,kind);
     const key='repairDirectV65_'+JSON.stringify([identity,kind,file.name,file.size,file.lastModified]);
+    const encoder=makeChunkEncoder_(file);
+    if(!identity||!storageGet(key))encoder.prime(0,chunkBytes);
     let old=null;
     let session=await withStart(async()=>{
       let session=null;
@@ -449,9 +473,9 @@
     let activeChunkBytes=chunkBytes;
     while(session.offset<file.size){
       const offset=session.offset;
-      const bytes=file.slice(offset,Math.min(file.size,offset+activeChunkBytes));
-      const base64=await encodeBlob_(bytes);
+      const {bytes,base64}=await encoder.take(offset,activeChunkBytes);
       try {
+        encoder.prime(offset+bytes.size,activeChunkBytes);
         const next=verifySession(await command('chunk',{sessionId:session.sessionId,offset,base64},145000),session.sessionId);
         if(next.offset<=offset||next.offset>offset+bytes.size)
           throw new Error('Drive 上傳進度不符，先確認雲端實際位置');
@@ -460,6 +484,7 @@
         tries=0;
       }catch(err){
         tries++;
+        encoder.clear();
         // A lost receipt is not proof of upload failure. Query Drive's confirmed
         // offset before resuming; never replay a possibly accepted chunk blindly.
         const sessionId=session.sessionId;
