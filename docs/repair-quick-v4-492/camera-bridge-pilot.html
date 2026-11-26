@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><title>設備維修中心 | 原生錄影橋接驗證</title>
+<style>body{font:16px system-ui,sans-serif;background:#f6f8fb;color:#173246;margin:0;padding:20px}main{max-width:520px;margin:auto;background:white;border:1px solid #dbe2e8;border-radius:18px;padding:20px}h1{font-size:23px;margin:0 0 10px}p{line-height:1.6}label{display:block;margin-top:14px}input,button{box-sizing:border-box;width:100%;padding:12px;border-radius:10px;border:1px solid #aebdc7;font:inherit;margin-top:5px}button{font-weight:650;background:#16364a;color:white;cursor:pointer}button:disabled{opacity:.45;cursor:default}video{width:100%;max-height:55vh;border-radius:10px;background:#000}#message{white-space:pre-wrap;overflow-wrap:anywhere;background:#eff5f7;padding:12px;border-radius:10px}small{color:#526372}a{color:#123f70}</style></head>
+<body><main><h1>原生錄影橋接驗證</h1><p>隔離測試頁，只使用非機密測試影片。不建立工單、不派送 LINE。正式報修及維修仍使用原有相機入口。</p>
+<label for="uploadTicket">一次性上傳授權</label><input id="uploadTicket" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64">
+<label for="readTicket">一次性接收授權</label><input id="readTicket" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64">
+<button id="check">驗證授權</button><button id="record" disabled>🎥 相機錄影</button><button id="refresh" disabled>檢查影片回傳</button>
+<p id="message" role="status" aria-live="polite">需要管理端核發一次性測試授權，以及首次安裝「正道報修相機」捷徑。</p><video id="preview" controls playsinline hidden></video><p id="details"></p>
+<button id="ack" disabled>確認已接收，清除測試暫存</button><small>錄影完成後返回原瀏覽頁面，頁面會嘗試自動接收；LINE 內建瀏覽器是否保留原頁面仍需實機驗證。測試上限 20 MiB。</small>
+<p><a href="./">返回正式報修系統</a></p></main>
+<script>
+"use strict";
+const API="https://ppjbjenlzbpatzoabzxr.supabase.co/functions/v1/repair-camera-bridge-pilot",MAX=20*1024*1024,NAME="正道報修相機";
+function validTicket(s){return typeof s==="string"&&/^[a-f0-9]{64}$/.test(s)}
+function shortcutURL(upload){if(!validTicket(upload))throw Error("上傳授權格式不符");return "shortcuts://run-shortcut?name="+encodeURIComponent(NAME)+"&input=text&text="+encodeURIComponent(JSON.stringify({endpoint:API+"?op=upload",ticket:upload}))}
+function hex(bytes){return Array.from(new Uint8Array(bytes),x=>x.toString(16).padStart(2,"0")).join("")}
+async function call(op,ticket,extra={}){
+ if(!validTicket(ticket))throw Error("授權格式不符");
+ const headers={"X-Camera-Ticket":ticket,...extra.headers};
+ const r=await fetch(API+"?op="+op,{method:extra.method||"GET",headers,cache:"no-store",credentials:"omit",redirect:"error"});
+ if(!r.ok){let code="HTTP "+r.status;try{code=(await r.json()).error||code}catch(_){}throw Error(code)}
+ return r;
+}
+async function checkStatus(ticket){const data=await (await call("status",ticket)).json();if(!data.ok||!["waiting","uploading","ready","failed","consumed"].includes(data.state))throw Error("伺服器狀態無法確認");return data}
+async function fetchVideo(ticket,status){
+ if(status.state!=="ready"||!Number.isInteger(status.size)||status.size<16||status.size>MAX||!validTicket(status.sha256)||!["video/mp4","video/quicktime"].includes(status.mime))throw Error("影片中繼資料不完整");
+ const r=await call("read",ticket);
+ if(r.headers.get("X-Camera-Sha256")!==status.sha256||r.headers.get("Content-Type")?.split(";")[0]!==status.mime)throw Error("回傳資料不一致");
+ const bytes=await r.arrayBuffer();
+ if(bytes.byteLength!==status.size||hex(await crypto.subtle.digest("SHA-256",bytes))!==status.sha256)throw Error("影片完整性驗證失敗");
+ return new File([bytes],status.mime==="video/quicktime"?"capture.mov":"capture.mp4",{type:status.mime});
+}
+const el=id=>document.getElementById(id);
+let tickets=null,busy=false,received=null,receipt=null,objectURL=null;
+function message(s){el("message").textContent=s}
+function controls(){el("check").disabled=busy;el("record").disabled=busy||!tickets||tickets.state!=="waiting";el("refresh").disabled=busy||!tickets;el("ack").disabled=busy||!received||!receipt||!tickets}
+async function refresh(){
+ if(!tickets||busy)return;
+ busy=true;controls();
+ try{const status=await checkStatus(tickets.read);tickets.state=status.state;
+ if(status.state==="ready"&&!received){
+  const file=await fetchVideo(tickets.read,status);
+  if(objectURL)URL.revokeObjectURL(objectURL);
+  received=file;receipt=status.sha256;objectURL=URL.createObjectURL(file);el("preview").src=objectURL;el("preview").hidden=false;
+  el("details").textContent="原檔 "+(file.size/1048576).toFixed(2)+" MiB｜SHA-256 比對成功";
+  message("影片已接收，請檢查播放畫質，完成驗收後清除暫存。");
+ }else if(status.state==="waiting")message("授權有效，請點相機錄影。");
+ else if(status.state==="uploading")message("原生影片上傳中，返回此頁將繼續檢查。");
+ else if(status.state==="failed")message("這次回傳失敗，不能視為成功；需重新核發授權。");
+ else if(status.state==="consumed")message("此授權已使用，不會再次取得影片。");
+ }catch(err){message("尚未確認回傳："+err.message)}finally{busy=false;controls()}
+}
+el("check").onclick=async()=>{
+ if(busy)return;
+ const upload=el("uploadTicket").value.trim(),read=el("readTicket").value.trim();
+ if(!validTicket(upload)||!validTicket(read)||upload===read){message("需要兩組不同的有效授權。");return}
+ if(received){message("請先完成本次驗收，不要覆蓋已接收影片。");return}
+ tickets={upload,read,state:"unknown"};await refresh();
+};
+el("record").onclick=()=>{if(busy||tickets?.state!=="waiting")return;message("已請求開啟原生相機捷徑，錄完返回本頁。");location.href=shortcutURL(tickets.upload)};
+el("refresh").onclick=refresh;
+el("ack").onclick=async()=>{
+ if(busy||!tickets||!receipt||!received)return;busy=true;controls();
+ try{const r=await call("ack",tickets.read,{method:"POST",headers:{"X-Camera-Receipt":receipt}});const data=await r.json();if(!data.consumed)throw Error("清除結果未確認");tickets.state="consumed";receipt=null;tickets=null;el("uploadTicket").value="";el("readTicket").value="";message("驗收完成，伺服器已確認清除暫存。")}
+ catch(err){message("暫存清除尚未確認："+err.message+"；本機預覽仍保留。")}finally{busy=false;controls()}
+};
+el("preview").addEventListener("loadedmetadata",()=>{if(received)el("details").textContent+="｜"+el("preview").videoWidth+" × "+el("preview").videoHeight});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
+window.addEventListener("focus",refresh);window.addEventListener("pageshow",refresh);
+setInterval(()=>{if(!document.hidden&&tickets&&["waiting","uploading"].includes(tickets.state))refresh()},3000);
+window.addEventListener("pagehide",()=>{if(objectURL)URL.revokeObjectURL(objectURL)});
+</script></body></html>
