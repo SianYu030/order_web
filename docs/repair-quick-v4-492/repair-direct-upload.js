@@ -92,6 +92,14 @@
   let preflightCache=null,preflightCacheAt=0;
   // Keep receipts for this page so retry never sends verified files twice.
   const confirmedFiles=new WeakMap();
+  const fastResume=new Map();
+  const FAST_API='https://ppjbjenlzbpatzoabzxr.supabase.co/functions/v1/repair-fast-intake-v1';
+  async function fastApi_(op,data){
+    const res=await fetch(FAST_API+'?op='+op,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,guestSecret}),credentials:'omit',cache:'no-store',redirect:'error'});
+    const out=await res.json();
+    if(!res.ok||out.ok!==true){const e=new Error('雲端直傳未確認：'+String(out.error||'HTTP_'+res.status));e.code=out.error;e.status=res.status;throw e;}
+    return out;
+  }
   const TRANSIENT_BUSY=/附件接收忙碌|附件上傳繁忙|其他傳輸正在進行|正在處理其他分段|資料正被其他上傳使用/;
   async function retryBusy_(operation){
     const delays=[1000,2000,4000,6000];
@@ -429,7 +437,7 @@
     }
     return {prime,take,clear(){prepared=null;}};
   }
-  async function uploadOne(file,mr,kind,onPart,photoEpoch,mediaLayout=1,chunkBytes=CHUNK,withStart=task=>task()) {
+  async function uploadOne(file,mr,kind,onPart,photoEpoch,mediaLayout=1,chunkBytes=CHUNK,withStart=task=>task(),fastAllowed=false) {
     if(!file||!file.size)throw new Error('附件空白');
     if(!/^MR20\d{8}$/.test(mr))throw new Error('正式 MR 工單號不合法，不能上傳');
     const identity=attachmentIdentity_(mr,photoEpoch,mediaLayout);
@@ -468,6 +476,26 @@
       const result=receiptResult_(session,kind);
       if(identity)confirmedFiles.set(file,{identity,kind,result});
       return result;
+    }
+    const fastKey=key+':fast-intake-v1';
+    const wasFast=identity&&storageGet(fastKey)==='1';
+    const eligible=publicGuest&&mediaLayout===2&&file.size<=50*MB&&session.offset===0;
+    if(wasFast||(eligible&&fastAllowed&&window.repairFastIntakeV1)){
+      if(!eligible||!window.repairFastIntakeV1)throw new Error('原雲端直傳工作階段待確認，停止重傳');
+      let reserved=!!wasFast;
+      try{
+        storageSet(fastKey,'1');
+        const cloud=await window.repairFastIntakeV1.upload(file,{sessionId:session.sessionId,orderNo:mr,epoch:String(photoEpoch||'')},async(op,data)=>{
+          const out=await fastApi_(op,data);
+          if(op==='reserve'||out.uploadState==='reserved'||out.uploadState==='verified')reserved=true;
+          return out;
+        },{resume:fastResume,progress:onPart});
+        const result={source:'fast-intake',archiveState:cloud.archiveState,category:kind,md5:cloud.md5,sessionId:session.sessionId,fileName:session.fileName,size:file.size,orderEpoch:photoEpoch,mediaLayout};
+        confirmedFiles.set(file,{identity,kind,result});return result;
+      }catch(err){
+        if(!reserved&&!wasFast&&['INTAKE_NOT_ENABLED','INTAKE_CAPACITY_FULL'].includes(err.code)){storageDel(fastKey);}
+        else throw new Error('原雲端直傳未確認，請補傳原工單，不會另開附件：'+String(err.message||err));
+      }
     }
     let tries=0;
     let activeChunkBytes=chunkBytes;
@@ -511,7 +539,7 @@
     if(identity)confirmedFiles.set(file,{identity,kind,result});
     return result;
   }
-  async function uploadFiles(selected,orderNo,originalKind,onProgress,photoEpoch,mediaLayout=1) {
+  async function uploadFiles(selected,orderNo,originalKind,onProgress,photoEpoch,mediaLayout=1,allowFast=false) {
     if((selected||[]).length)attachmentIdentity_(orderNo,photoEpoch,mediaLayout);
     if(uploading)throw new Error('附件正在上傳，請勿重複操作');
     uploading=true;
@@ -531,7 +559,7 @@
         const result=await uploadOne(f,orderNo,kind,(done,total)=>{
           const el=$(originalKind==='報修照片'?'submitBtn':'saveRepairMsg');
           if(el)el.textContent='正在上傳 '+f.name+'（'+Math.floor(100*done/total)+'%）';
-        },photoEpoch,mediaLayout,negotiatedChunk_(access),withStart);
+        },photoEpoch,mediaLayout,negotiatedChunk_(access),withStart,allowFast&&access.fastIntakeReady===true&&window.__mrRelayV2Ready===true);
         completed++;
         if(onProgress)onProgress(Math.min(completed+1,list.length),list.length);
         return result;
