@@ -2769,7 +2769,7 @@ function videoQualityInfo_(file,w,h,d){
   const details=(known?w+" × "+h:"解析度未取得")+(rate!==null?"｜"+d.toFixed(1)+" 秒｜平均 "+rate.toFixed(1)+" Mbps":"");
   return details+(known&&(Math.min(w,h)<1080||Math.max(w,h)<1920)?"｜⚠️ 未達 1080p，畫質優先請用手機相機 App 錄製後選取原檔":"");
 }
-function select(state,file){
+function select(state,file,poster){
   // Cancel or reject an invalid replacement without losing the previous video.
   if(!file)return;
   if(!accepted(file)){alert("無法辨識影片格式，請選擇 MP4、MOV、WEBM 等影片。");return;}
@@ -2782,7 +2782,7 @@ function select(state,file){
   renderInfo();
   state.url=URL.createObjectURL(file);
   var video=document.createElement("video");
-  video.controls=true;video.playsInline=true;video.preload="metadata";video.src=state.url;
+  video.controls=true;video.playsInline=true;video.preload="metadata";if(typeof poster==='string'&&poster.startsWith('data:image/jpeg;base64,')&&poster.length<300000)video.poster=poster;video.src=state.url;
   video.addEventListener("loadedmetadata",function(){if(state.file!==file)return;state.videoInfo=videoQualityInfo_(file,video.videoWidth,video.videoHeight,video.duration);renderInfo();});
   el(state.prefix+"VideoPreview").appendChild(video);
 }
@@ -2806,9 +2806,9 @@ function select(state,file){
 });
 window.repairVideoTestBridge={
   // Internal same-page attachment hook; never posts an order or sends LINE.
-  acceptCameraFile:function(prefix,file){
+  acceptCameraFile:function(prefix,file,poster){
     if(!items[prefix]||!file||!accepted(file)||!file.size||file.size>MAX_BYTES)return false;
-    select(items[prefix],file);
+    select(items[prefix],file,poster);
     return items[prefix].file===file;
   },
   getFile:function(prefix){return items[prefix]&&items[prefix].file||null;},
@@ -2856,6 +2856,6 @@ document.addEventListener("click",function(ev){
 <script src="./repair-direct-upload.js?v=20261126-two-lane-v70" defer></script>
 <script src="./maintenance-report.js?v=20261119-wrench-title-fix3" defer></script>
 <script src="./camera-bridge-integration.candidate.js?v=f474f67f2c5e" defer></script>
-<script src="./camera-bridge-formal.js?v=20261126-ios-web-hd-01" defer></script>
+<script src="./camera-bridge-formal.js?v=20261126-ios-web-hd-02" defer></script>
 </body>
 </html>

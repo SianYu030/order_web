@@ -18,7 +18,7 @@ function context(kind){
  return JSON.stringify([cameraContextRevision_,state.dept,state.person,state.machine,state.requestId]);
 }
 function same(s){return active===s&&context(s.kind)===s.context&&hook.getFile(s.kind)===s.previous}
-function release(s){clearTimeout(s.timer);if(s.stream)s.stream.getTracks().forEach(t=>t.stop());s.preview.srcObject=null}
+function release(s){clearTimeout(s.timer);if(s.stream){s.stream.getTracks().forEach(t=>t.stop());s.stream=null} s.preview.srcObject=null}
 function close(s,message){
  if(active!==s)return;
  s.cancelled=true;active=null;release(s);
@@ -58,10 +58,11 @@ async function finish(s){
   const dimensions=await readMetadata(file);
   if(!same(s)){close(s);return}
   if(!fullHD(dimensions.width,dimensions.height))throw Error("實際影片未達 1080p，未替換原影片");
-  if(!hook.acceptCameraFile(s.kind,file))throw Error("原頁面未接收影片");
+  if(!hook.acceptCameraFile(s.kind,file,s.poster))throw Error("原頁面未接收影片");
   close(s);
  }catch(e){close(s,String(e.message||e)+"。原影片保留。")}
 }
+function capturePoster(s){try{const v=s.preview,w=v.videoWidth,h=v.videoHeight;if(!w||!h)return '';const c=d.createElement('canvas'),scale=Math.min(1,480/Math.max(w,h));c.width=Math.max(1,Math.round(w*scale));c.height=Math.max(1,Math.round(h*scale));const ctx=c.getContext('2d');if(!ctx)return '';ctx.drawImage(v,0,0,c.width,c.height);return c.toDataURL('image/jpeg',0.82)}catch(_){return ''}}
 function start(s){
  if(!same(s)){close(s);return}
  if(!s.stream||s.recorder)return;
@@ -73,6 +74,7 @@ function start(s){
   r.onerror=()=>close(s,"錄影發生錯誤，原影片保留。");
   r.onstop=()=>{if(active===s&&!s.cancelled)void finish(s)};
   r.start(1000);
+  s.poster=capturePoster(s);
   s.record.textContent="停止錄影";s.record.onclick=()=>requestStop(s);
   setStatus(s,"錄影中｜目標 1080p / 30 fps");
   s.timer=setTimeout(()=>requestStop(s),90000);
