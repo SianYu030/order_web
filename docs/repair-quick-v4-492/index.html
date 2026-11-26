@@ -703,7 +703,7 @@ html,body{background:#f5f7f8}
             </label>
             <input id="reportVideoCapture" type="file" accept="video/*" capture="environment" hidden>
           </div>
-          <div class="photo-note video-hint" role="status" aria-live="polite">支援 iPhone／Android 常見 MOV、MP4、3GP、WebM、MKV。原始影片保留，上限 100 MB；勾選 LINE 通知後整批派送。</div>
+          <div class="photo-note video-hint" role="status" aria-live="polite">畫質優先：先用手機相機 App 錄製 1080p，再從相簿選影片。網頁相機可能被系統壓縮。保留所選影片，上限 100 MB。</div>
           <div class="video-preview-wrap" id="reportVideoSelected" hidden>
             <div class="video-pilot-detail" id="reportVideoDetails" role="status"></div>
             <div id="reportVideoPreview"></div>
@@ -965,7 +965,7 @@ html,body{background:#f5f7f8}
             </label>
             <input id="repairVideoCapture" type="file" accept="video/*" capture="environment" hidden>
           </div>
-          <div class="photo-note video-hint" role="status" aria-live="polite">支援 iPhone／Android 常見 MOV、MP4、3GP、WebM、MKV。原始影片保留，上限 100 MB；勾選 LINE 通知後整批派送。</div>
+          <div class="photo-note video-hint" role="status" aria-live="polite">畫質優先：先用手機相機 App 錄製 1080p，再從相簿選影片。網頁相機可能被系統壓縮。保留所選影片，上限 100 MB。</div>
           <div class="video-preview-wrap" id="repairVideoSelected" hidden>
             <div class="video-pilot-detail" id="repairVideoDetails" role="status"></div>
             <div id="repairVideoPreview"></div>
@@ -2757,6 +2757,12 @@ function clearVideo(state){
   el(state.prefix+"VideoSelected").hidden=true;
   el(state.prefix+"VideoDetails").textContent="";
 }
+function videoQualityInfo_(file,w,h,d){
+  const known=Number.isFinite(w)&&Number.isFinite(h)&&w>0&&h>0;
+  const rate=Number.isFinite(d)&&d>0?file.size*8/d/1000000:null;
+  const details=(known?w+" × "+h:"解析度未取得")+(rate!==null?"｜"+d.toFixed(1)+" 秒｜平均 "+rate.toFixed(1)+" Mbps":"");
+  return details+(known&&(Math.min(w,h)<1080||Math.max(w,h)<1920)?"｜⚠️ 未達 1080p，畫質優先請用手機相機 App 錄製後選取原檔":"");
+}
 function select(state,file){
   // Cancel or reject an invalid replacement without losing the previous video.
   if(!file)return;
@@ -2771,7 +2777,7 @@ function select(state,file){
   state.url=URL.createObjectURL(file);
   var video=document.createElement("video");
   video.controls=true;video.playsInline=true;video.preload="metadata";video.src=state.url;
-  video.addEventListener("loadedmetadata",function(){if(state.file!==file)return;var w=video.videoWidth,h=video.videoHeight,d=video.duration;state.videoInfo=(w&&h?w+" × "+h:"解析度未取得")+(Number.isFinite(d)&&d>0?"｜"+d.toFixed(1)+" 秒｜平均 "+(file.size*8/d/1000000).toFixed(1)+" Mbps":"");renderInfo();});
+  video.addEventListener("loadedmetadata",function(){if(state.file!==file)return;state.videoInfo=videoQualityInfo_(file,video.videoWidth,video.videoHeight,video.duration);renderInfo();});
   el(state.prefix+"VideoPreview").appendChild(video);
 }
 function openNativeCamera(state){
@@ -2818,7 +2824,7 @@ window.repairVideoTestBridge={
       if(!pilot)return;
       pilot.hidden=false;
       var hint=pilot.querySelector(".video-hint");
-      if(hint)hint.textContent="相機錄影使用手機原生介面，影片上限 100 MB。送出後上傳 Google Drive，F 槽由歸檔排程核對。";
+      if(hint)hint.textContent="畫質優先：先用手機相機 App 錄製 1080p，再從相簿選影片。網頁相機可能被系統壓縮。保留所選影片，上限 100 MB。";
       var selected=items[prefix];
       if(selected&&selected.file)
         el(prefix+"VideoDetails").textContent="已選取："+selected.file.name+
