@@ -606,7 +606,6 @@ body.mr-camera-open{overflow:hidden!important;overscroll-behavior:none}
 .mr-camera-status{font-size:12px;color:#ddd;min-height:18px}
 .mr-camera-timer{font-variant-numeric:tabular-nums;font-size:18px;font-weight:700;padding:6px 12px;background:#222;border-radius:8px}
 .mr-camera-timer[data-recording="true"]{background:#c62828}
-.video-hd{grid-column:1/-1;background:#eaf3ff;color:#123b70;border-color:#9ab8e1}
 .video-pilot .video-preview-wrap video{max-height:60vh;max-height:60dvh;object-fit:contain}
 .video-record-controls{margin-top:9px;padding:10px;border:1px solid var(--line);border-radius:12px;background:#f8fbff}
 .video-record-controls video{display:block;width:100%;max-height:220px;border-radius:12px;background:#101820}
@@ -715,19 +714,17 @@ body.mr-camera-open{overflow:hidden!important;overscroll-behavior:none}
       <div class="photo-grid" id="photoPreview"></div><div class="photo-note" id="photoCount"></div><div class="photo-note">照片選填。拍照或從相簿選取都會累加、不覆蓋；送出後依 MR 工單號歸檔。</div>
         <div class="video-pilot" id="reportVideoPilot">
           <div class="video-actions">
-            <button type="button" class="filebox video-picker video-hd" id="reportVideoHdStart">🎥 1080p 高畫質錄影</button>
             <button type="button" class="filebox video-picker" id="reportVideoRecordStart">🎥 相機錄影</button>
             <label class="filebox video-picker">🎞️ 從相簿選影片
               <input id="reportVideoFile" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.3gpp,.webm,.mkv">
             </label>
-            <input id="reportVideoCapture" type="file" accept="video/*" capture="environment" hidden>
           </div>
           <div class="mr-camera-overlay" id="reportVideoRecording" role="dialog" aria-modal="true" aria-label="1080p 高畫質錄影" hidden>
             <div class="mr-camera-top"><button type="button" class="mr-camera-cancel" id="reportVideoCancel" aria-label="取消錄影">✕</button><span id="reportVideoTimer" class="mr-camera-timer">00:00</span><span>高畫質</span></div>
             <div class="mr-camera-view"><video id="reportVideoCamera" muted autoplay playsinline></video></div>
             <div class="mr-camera-bottom"><div id="reportVideoRecordingStatus" class="mr-camera-status" role="status">正在開啟相機…</div><button type="button" class="mr-camera-shutter" id="reportVideoRecordStop" aria-label="開始錄影" disabled><span></span></button><div id="reportVideoShutterLabel" class="mr-camera-label">開始錄影</div></div>
           </div>
-          <div class="photo-note video-hint" role="status" aria-live="polite">1080p 高畫質模式會檢查錄影解析度；原生相機快捷錄影可能被瀏覽器壓縮。也可用手機相機 App 錄製後從相簿選取。影片上限 100 MB。</div>
+          <div class="photo-note video-hint" role="status" aria-live="polite">相機錄影預設高畫質 1080p，錄影前後皆檢查解析度。影片上限 100 MB。</div>
           <div class="video-preview-wrap" id="reportVideoSelected" hidden>
             <div class="video-pilot-detail" id="reportVideoDetails" role="status"></div>
             <div id="reportVideoPreview"></div>
@@ -983,19 +980,17 @@ body.mr-camera-open{overflow:hidden!important;overscroll-behavior:none}
         <div class="photo-note" id="repairPhotoCount">目前尚未選擇維修照片。</div><div class="photo-note">照片選填。拍照或從相簿選取都會累加、不覆蓋；儲存後依 MR 工單號歸檔。</div>
         <div class="video-pilot" id="repairVideoPilot">
           <div class="video-actions">
-            <button type="button" class="filebox video-picker video-hd" id="repairVideoHdStart">🎥 1080p 高畫質錄影</button>
             <button type="button" class="filebox video-picker" id="repairVideoRecordStart">🎥 相機錄影</button>
             <label class="filebox video-picker">🎞️ 從相簿選影片
               <input id="repairVideoFile" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.3gpp,.webm,.mkv">
             </label>
-            <input id="repairVideoCapture" type="file" accept="video/*" capture="environment" hidden>
           </div>
           <div class="mr-camera-overlay" id="repairVideoRecording" role="dialog" aria-modal="true" aria-label="1080p 高畫質錄影" hidden>
             <div class="mr-camera-top"><button type="button" class="mr-camera-cancel" id="repairVideoCancel" aria-label="取消錄影">✕</button><span id="repairVideoTimer" class="mr-camera-timer">00:00</span><span>高畫質</span></div>
             <div class="mr-camera-view"><video id="repairVideoCamera" muted autoplay playsinline></video></div>
             <div class="mr-camera-bottom"><div id="repairVideoRecordingStatus" class="mr-camera-status" role="status">正在開啟相機…</div><button type="button" class="mr-camera-shutter" id="repairVideoRecordStop" aria-label="開始錄影" disabled><span></span></button><div id="repairVideoShutterLabel" class="mr-camera-label">開始錄影</div></div>
           </div>
-          <div class="photo-note video-hint" role="status" aria-live="polite">1080p 高畫質模式會檢查錄影解析度；原生相機快捷錄影可能被瀏覽器壓縮。也可用手機相機 App 錄製後從相簿選取。影片上限 100 MB。</div>
+          <div class="photo-note video-hint" role="status" aria-live="polite">相機錄影預設高畫質 1080p，錄影前後皆檢查解析度。影片上限 100 MB。</div>
           <div class="video-preview-wrap" id="repairVideoSelected" hidden>
             <div class="video-pilot-detail" id="repairVideoDetails" role="status"></div>
             <div id="repairVideoPreview"></div>
@@ -2782,7 +2777,7 @@ function releaseCamera(state){
   clearInterval(state.timer);state.timer=null;
   if(state.stream){state.stream.getTracks().forEach(t=>t.stop());state.stream=null;}
   var camera=el(state.prefix+"VideoCamera");camera.pause();camera.srcObject=null;
-  el(state.prefix+"VideoRecording").hidden=true;el(state.prefix+"VideoHdStart").disabled=false;
+  el(state.prefix+"VideoRecording").hidden=true;el(state.prefix+"VideoRecordStart").disabled=false;
   var shutter=el(state.prefix+"VideoRecordStop");shutter.disabled=true;shutter.dataset.recording="false";shutter.setAttribute("aria-label","開始錄影");
   el(state.prefix+"VideoShutterLabel").textContent="開始錄影";el(state.prefix+"VideoTimer").dataset.recording="false";
   if(Object.values(items).every(x=>el(x.prefix+"VideoRecording").hidden))document.body.classList.remove("mr-camera-open");
@@ -2798,7 +2793,6 @@ function clearVideo(state){
   state.file=null;state.videoInfo="";
   if(state.url){URL.revokeObjectURL(state.url);state.url=null;}
   el(state.prefix+"VideoFile").value="";
-  el(state.prefix+"VideoCapture").value="";
   el(state.prefix+"VideoPreview").replaceChildren();
   el(state.prefix+"VideoSelected").hidden=true;
   el(state.prefix+"VideoDetails").textContent="";
@@ -2831,13 +2825,6 @@ function select(state,file){
   video.addEventListener("loadedmetadata",function(){if(state.file!==file)return;state.videoInfo=videoQualityInfo_(file,video.videoWidth,video.videoHeight,video.duration);renderInfo();});
   el(state.prefix+"VideoPreview").appendChild(video);
 }
-function openNativeCamera(state){
-  // Keep the call synchronous with the user's click for iOS/Android.
-  // capture=environment requests the device's native rear-camera video UI.
-  var input=el(state.prefix+"VideoCapture");
-  input.value="";
-  try{input.click();}catch(_){alert("此瀏覽器無法開啟相機錄影，請使用手機相機錄製後，再從相簿選影片。");}
-}
 function verifyHdFile_(state,file){
  if(!file.size||file.size>MAX_BYTES){alert("錄影檔案空白或超過上限，原先選取的影片已保留。");return;}
  const checkId=state.attempt=(state.attempt||0)+1;
@@ -2858,7 +2845,7 @@ async function startRecording(state){
   if(state.starting||state.recorder||state.stream||Object.values(items).some(x=>x!==state&&(x.starting||x.stream||x.recorder)))return;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.MediaRecorder){alert("此瀏覽器不支援可控制畫質的錄影，請用手機相機 App 錄製 1080p 後從相簿選取。");return;}
   var stream=null,attempt=state.attempt=(state.attempt||0)+1;
-  state.starting=true;state.discard=false;el(state.prefix+"VideoHdStart").disabled=true;
+  state.starting=true;state.discard=false;el(state.prefix+"VideoRecordStart").disabled=true;
   el(state.prefix+"VideoRecording").hidden=false;document.body.classList.add("mr-camera-open");
   el(state.prefix+"VideoTimer").textContent="00:00";el(state.prefix+"VideoRecordingStatus").textContent="正在開啟相機…";
   try{
@@ -2902,12 +2889,9 @@ function toggleRecording(state){
   items[prefix]=state;
   document.body.appendChild(el(prefix+"VideoRecording"));
   el(prefix+"VideoPilot").hidden=false;
-  ["VideoFile","VideoCapture"].forEach(function(suffix){
-    var input=el(prefix+suffix);
-    input.addEventListener("change",function(){select(state,input.files&&input.files[0]);});
-  });
-  el(prefix+"VideoRecordStart").addEventListener("click",function(){state.attempt=(state.attempt||0)+1;openNativeCamera(state);});
-  el(prefix+"VideoHdStart").addEventListener("click",function(){startRecording(state);});
+  var input=el(prefix+"VideoFile");
+  input.addEventListener("change",function(){select(state,input.files&&input.files[0]);});
+  el(prefix+"VideoRecordStart").addEventListener("click",function(){startRecording(state);});
   el(prefix+"VideoRecordStop").addEventListener("click",function(){toggleRecording(state);});
   el(prefix+"VideoCancel").addEventListener("click",function(){if(state.recorder&&state.recorder.state!=="inactive"&&!confirm("取消這次錄影？"))return;cancelRecording(state);});
   el(prefix+"VideoSave").addEventListener("click",function(){
@@ -2938,7 +2922,7 @@ window.repairVideoTestBridge={
       if(!pilot)return;
       pilot.hidden=false;
       var hint=pilot.querySelector(".video-hint");
-      if(hint)hint.textContent="1080p 高畫質模式會檢查錄影解析度；原生相機快捷錄影可能被瀏覽器壓縮。也可用手機相機 App 錄製後從相簿選取。影片上限 100 MB。";
+      if(hint)hint.textContent="相機錄影預設高畫質 1080p，錄影前後皆檢查解析度。影片上限 100 MB。";
       var selected=items[prefix];
       if(selected&&selected.file)
         el(prefix+"VideoDetails").textContent="已選取："+selected.file.name+
