@@ -87,7 +87,7 @@
   const $=id=>document.getElementById(id);
   let uploading=false,preflightPromise=null;
   // Stay compatible with the existing 2 MiB receiver; larger chunks require explicit server advertisement.
-  function negotiatedChunk_(health){return health?.maxChunkBytes===4*MB?4*MB:CHUNK;}
+  function negotiatedChunk_(health){const n=health?.maxChunkBytes;return n===8*MB?8*MB:n===4*MB?4*MB:CHUNK;}
   function receiptDelay_(poll){return poll===0?350:poll===1?650:950;}
   let preflightCache=null,preflightCacheAt=0;
   // Keep receipts for this page so retry never sends verified files twice.
@@ -421,9 +421,10 @@
       return result;
     }
     let tries=0;
+    let activeChunkBytes=chunkBytes;
     while(session.offset<file.size){
       const offset=session.offset;
-      const bytes=file.slice(offset,Math.min(file.size,offset+chunkBytes));
+      const bytes=file.slice(offset,Math.min(file.size,offset+activeChunkBytes));
       const base64=await encodeBlob_(bytes);
       try {
         const next=verifySession(await command('chunk',{sessionId:session.sessionId,offset,base64},145000),session.sessionId);
@@ -445,6 +446,9 @@
         if(!recovered)throw new Error('傳輸中斷，已保留工作階段，尚未確認雲端進度：'+String(lastError?.message||lastError));
         if(recovered.offset<offset)throw new Error('雲端回報進度倒退，已停止傳輸');
         session=recovered;
+        // On an 8 MiB request failure, downgrade only AFTER the server confirms
+        // the exact saved offset. Never resend bytes on an uncertain receipt.
+        if(activeChunkBytes===8*MB&&!session.complete&&session.offset===offset)activeChunkBytes=4*MB;
         if(tries>=2 && !session.complete && session.offset<=offset)
           throw new Error('雲端未確認新進度：'+err.message);
       }
