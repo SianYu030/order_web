@@ -2427,14 +2427,14 @@ async function relayRepairMedia_(order,photos,media,eventId){
     if(!window.repairDrive?.enabled)throw Error("附件接收器未就緒");
     receipts=await window.repairDrive.uploadFiles(media,order.no,"維修照片",(i,total)=>{
       el("saveRepairMsg").textContent="⏳ 維修附件 "+i+"/"+total+"…";
-    },order.photoEpoch||"",order.mediaLayout===2?2:1);
+    },order.photoEpoch||"",order.mediaLayout===2?2:1,!!eventId);
   }
   pending.receipts=receipts;
   if(eventId)await relayCommit_(order.no,order.photoEpoch,eventId,receipts);
   pendingRepairRelays_.delete(key);el("retryRepairRelayBtn").hidden=true;
   clearRepairPhotoSelection_();
   if(window.repairDrive?.enabled)window.repairDrive.clearVideo("repair");
-  el("saveRepairMsg").textContent="✅ 維修資料已回讀"+(media.length?"｜附件已確認寫入 Drive":"")+(eventId?"｜LINE 已排入整批派送（尚未發送確認）":"");
+  el("saveRepairMsg").textContent="✅ 維修資料已回讀"+(media.length?(receipts.some(r=>r.source==="fast-intake")?"｜附件已在私有雲端驗證，Drive／F 槽待歸檔":"｜附件已確認寫入 Drive"):"")+(eventId?"｜LINE 已排入整批派送（尚未發送確認）":"");
 }
 
 el("retryRepairRelayBtn").onclick=async()=>{
@@ -2591,10 +2591,10 @@ el("submitBtn").onclick=async()=>{
           reportMediaFiles,data.orderNo,"報修照片",(i,total)=>{
             stage.media="上傳中 "+i+"/"+total+"（照片＋影片）";
             renderReportStages_();
-          },data.photoEpoch||"",data.mediaLayout===2?2:1
+          },data.photoEpoch||"",data.mediaLayout===2?2:1,relaySelection.lineMode==="relay-v2"
         );
         result=window.repairDrive?.enabled?
-          ("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，F 槽待排程核對"):
+          (relayReceipts.some(r=>r.source==="fast-intake")?"｜☁️ "+reportMediaFiles.length+" 個附件已驗證保存，Drive／F 槽待歸檔":("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，F 槽待排程核對")):
           ("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
         stage.media="已確認 "+reportMediaFiles.length+" 個附件";
       }catch(photoErr){
@@ -2694,15 +2694,15 @@ el("retryReportMediaBtn").onclick=async()=>{
     if(!pending.photoEpoch||!active||active.photoEpoch!==pending.photoEpoch||(active.mediaLayout===2?2:1)!==pending.mediaLayout)throw new Error("原工單已刪除、重建或建立識別碼尚未確認，禁止補傳舊附件");
     const saved=pending.receipts||await window.repairDrive.uploadFiles(pending.files,pending.orderNo,"報修照片",(i,total)=>{
       info.textContent="正在核對附件 "+i+"/"+total+"…";
-    },pending.photoEpoch,pending.mediaLayout);
+    },pending.photoEpoch,pending.mediaLayout,!!pending.relayEventId);
     if(pending.relayEventId){pending.receipts=saved;await relayCommit_(pending.orderNo,pending.photoEpoch,pending.relayEventId,saved,pending.createRequestId);pending.lineMsg="｜LINE 已排入整批派送（待確認）";}
     pendingReportMediaRetry=null;
     btn.hidden=true;
     el("retryReportMediaLater").hidden=true;
-    info.textContent="✅ "+saved.length+" 個附件已確認在 Google Drive；F 槽將由排程同步。";
+    info.textContent=saved.some(r=>r.source==="fast-intake")?"✅ "+saved.length+" 個附件已驗證保存，Drive／F 槽待歸檔。":"✅ "+saved.length+" 個附件已確認在 Google Drive；F 槽將由排程同步。";
     info.style.color="#0e8a4a";
     el("successTitle").textContent="報修工單已建立";
-    el("successText").textContent="✅ "+pending.orderNo+" 已建立｜☁️ 照片及影片已取得 Drive 完整回執，F 槽待同步核對"+pending.lineMsg+"。";
+    el("successText").textContent="✅ "+pending.orderNo+" 已建立｜"+(saved.some(r=>r.source==="fast-intake")?"☁️ 附件已驗證保存，Drive／F 槽待歸檔":"☁️ 照片及影片已取得 Drive 完整回執，F 槽待同步核對")+pending.lineMsg+"。";
   }catch(error){
     info.textContent=(pending.receipts?"⚠️ 附件已保存，LINE 回執尚未確認：":"⚠️ 仍有附件未確認：")+String(error?.message||error)+"；原工單已保留。";
     info.style.color="#9b3e15";
@@ -2857,7 +2857,8 @@ document.addEventListener("click",function(ev){
 </script>
 <script src="./v10_version_gate.js?v=20261125-relay-v2" defer></script>
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
-<script src="./repair-direct-upload.js?v=20261126-media-pipeline-v71" defer></script>
+<script src="./repair-fast-intake-client.js?v=20261126-candidate2" defer></script>
+<script src="./repair-direct-upload.js?v=20261126-fast-intake-candidate2" defer></script>
 <script src="./maintenance-report.js?v=20261119-wrench-title-fix3" defer></script>
 <script src="./camera-bridge-formal.js?v=20261126-fullscreen-hd-04-fast" defer></script>
 
