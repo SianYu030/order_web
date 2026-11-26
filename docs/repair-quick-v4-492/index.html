@@ -1105,6 +1105,7 @@ function canUseSpecialMachine_(){
 }
 const state={dept:"",person:"",area:"",machine:"",stop:"",level:"",requestId:""};
 const repairState={order:null,type:"",classification:"",start:"",end:"",status:"",store:null,pendingStatus:""};
+let cameraContextRevision_=0;
 const SYNC_API_URL="https://script.google.com/macros/s/AKfycbwo0-nCm0hVVBhAgAIkBK5RGzpl8K1aGhbbBDCN_JAkXqZY82AenX9L7o702LLmnMYx/exec";
 const PHOTO_API_BASE="https://api-v2.appdeploy.ai/app/repair-photo-relay-op0w93/api";
 const EXPECTED_SPREADSHEET_ID="13qpQWg3tKOXd1BC0XPsK7DsIxG1sBaVI6-yRpERIRMQ";
@@ -1454,6 +1455,7 @@ el("repairLogoutBtn").onclick=()=>{
 el("repairLoginUser").textContent="—";
 
 function switchMode(mode){
+  cameraContextRevision_++;
   if(mode==="repair" && !repairAuth){showRepairLogin();return;}
   const isReport=mode==="report";
   const isRepair=mode==="repair";
@@ -1585,6 +1587,7 @@ function renderRepairOrders(){
   }
 }
 function openRepairOrder(o){
+  cameraContextRevision_++;
   const s=storeFor(o);
   if(el("retryRepairRelayBtn"))el("retryRepairRelayBtn").hidden=!repairRelayPending_(o);
   repairState.order=o;repairState.store=s;repairState.type=s.type;repairState.classification=s.classification;repairState.status=s.status;repairState.pendingStatus="";
@@ -2726,6 +2729,7 @@ el("successHomeBtn").onclick=returnHomeAfterReport_;
 el("againBtn").onclick=returnHomeAfterReport_;
 el("resetBtn").onclick=reset;
 function reset(){
+  cameraContextRevision_++;
   Object.keys(state).forEach(k=>state[k]="");
   el("lineNotify").checked=true;
   reportPhotoFiles=[];
@@ -2801,6 +2805,12 @@ function select(state,file){
   el(prefix+"VideoClear").addEventListener("click",function(){clearVideo(state);});
 });
 window.repairVideoTestBridge={
+  // Internal same-page attachment hook; never posts an order or sends LINE.
+  acceptCameraFile:function(prefix,file){
+    if(!items[prefix]||!file||!accepted(file)||!file.size||file.size>MAX_BYTES)return false;
+    select(items[prefix],file);
+    return items[prefix].file===file;
+  },
   getFile:function(prefix){return items[prefix]&&items[prefix].file||null;},
   clear:function(prefix){if(items[prefix])clearVideo(items[prefix]);},
   showUnavailable:function(){
@@ -2845,5 +2855,7 @@ document.addEventListener("click",function(ev){
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
 <script src="./repair-direct-upload.js?v=20261126-two-lane-v70" defer></script>
 <script src="./maintenance-report.js?v=20261119-wrench-title-fix3" defer></script>
+<script src="./camera-bridge-integration.candidate.js?v=f474f67f2c5e" defer></script>
+<script src="./camera-bridge-formal.js?v=20261126-01" defer></script>
 </body>
 </html>
