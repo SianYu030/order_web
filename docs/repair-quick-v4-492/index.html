@@ -2404,6 +2404,20 @@ function relaySelection_(photos,media,checked,epoch){
   if(photos.length>12||media.length-photos.length>1)throw Error("LINE 整批通知最多 12 張照片及 1 部影片，請調整附件數量");
   return {lineMode:"relay-v2",lineNotify:"1",linePhotoCount:String(photos.length),lineVideoCount:String(media.length-photos.length),photoEpoch:epoch||""};
 }
+const recoveryV1=(()=>{
+ const ttl=7*86400000, uuid=x=>typeof x==="string"&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(x);
+ const key=(no,epoch)=>"repairRelayRecoveryV1:"+no+":"+epoch;
+ const sign=f=>[String(f.name),Number(f.size),Number(f.lastModified),String(f.type||"")];
+ function valid(x,no,epoch){return !!x&&x.v===1&&/^MR20\d{8}$/.test(no)&&uuid(epoch)&&x.no===no&&x.epoch===epoch&&uuid(x.eventId)&&uuid(x.createRequestId)&&x.layout===2&&Number.isFinite(x.at)&&Date.now()-x.at<=ttl&&x.at<=Date.now()+60000&&Array.isArray(x.files)&&x.files.length<=13&&x.files.every(f=>Array.isArray(f)&&f.length===4&&typeof f[0]==="string"&&Number.isSafeInteger(f[1])&&f[1]>0&&Number.isFinite(f[2])&&typeof f[3]==="string");}
+ function sameFiles(x,files){return JSON.stringify(x.files)===JSON.stringify(files.map(sign));}
+ function validReceipts(x,rs){return Array.isArray(rs)&&rs.length===x.files.length&&rs.every(r=>uuid(r?.sessionId)&&r.orderEpoch===x.epoch&&r.mediaLayout===x.layout&&/^[a-f0-9]{32}$/i.test(r.md5||""))&&new Set(rs.map(r=>r.sessionId)).size===rs.length;}
+ function load(no,epoch){try{const x=JSON.parse(localStorage.getItem(key(no,epoch))||"null");return valid(x,no,epoch)?x:null;}catch{return null;}}
+ function save(x){if(!valid(x,x.no,x.epoch))return false;try{const k=key(x.no,x.epoch),s=JSON.stringify(x);localStorage.setItem(k,s);return localStorage.getItem(k)===s;}catch{return false;}}
+ function begin(no,epoch,eventId,createRequestId,files,layout){const x={v:1,no,epoch,eventId,createRequestId,files:files.map(sign),layout,at:Date.now()};return save(x)?x:null;}
+ function complete(x,rs){if(!validReceipts(x,rs))throw Error("整批附件回執不一致，停止 LINE 派送");x.receipts=rs.map(r=>({sessionId:r.sessionId,orderEpoch:r.orderEpoch,mediaLayout:r.mediaLayout,md5:r.md5}));return save(x);}
+ function clear(x){try{localStorage.removeItem(key(x.no,x.epoch));}catch{}}
+ return {begin,load,complete,clear,sameFiles,validReceipts};
+})();
 const relayCommitAttempts_=new Map();
 function relayReceiptMatches_(r,eventId,orderNo,count){
   return r?.ok===true&&r.queued===true&&r.eventId===eventId&&r.orderNo===orderNo&&r.attachments===count;
@@ -2572,6 +2586,7 @@ el("submitBtn").onclick=async()=>{
     renderReportStages_();
     el("success").classList.remove("hidden");
     let relayReceipts=[];
+    const recoveryIntent=relaySelection.lineMode==="relay-v2"&&data.lineRelayEventId&&data.mediaLayout===2?recoveryV1.begin(data.orderNo,data.photoEpoch,data.lineRelayEventId,state.requestId,reportMediaFiles,2):null;
     const runLine_=async()=>{
       const began=performance.now();
       let result="｜➖ 未發送 LINE";
@@ -2663,7 +2678,9 @@ el("submitBtn").onclick=async()=>{
         const relayBegan=performance.now();
         stage.line="確認通知排程中";renderReportStages_();
         try{
+          if(recoveryIntent)recoveryV1.complete(recoveryIntent,relayReceipts);
           await relayCommit_(data.orderNo,data.photoEpoch,data.lineRelayEventId,relayReceipts,state.requestId);
+          if(recoveryIntent)recoveryV1.clear(recoveryIntent);
           stage.line="已排入整批派送（待發送確認）";
           lineResult.message="｜LINE 已排入整批派送（待確認）";
         }catch(err){
@@ -2733,7 +2750,7 @@ el("retryReportMediaBtn").onclick=async()=>{
     const saved=pending.receipts||await window.repairDrive.uploadFiles(pending.files,pending.orderNo,"報修照片",(i,total)=>{
       info.textContent="正在核對附件 "+i+"/"+total+"…";
     },pending.photoEpoch,pending.mediaLayout,!!pending.relayEventId);
-    if(pending.relayEventId){pending.receipts=saved;await relayCommit_(pending.orderNo,pending.photoEpoch,pending.relayEventId,saved,pending.createRequestId);pending.lineMsg="｜LINE 已排入整批派送（待確認）";}
+    if(pending.relayEventId){pending.receipts=saved;const rec=recoveryV1.load(pending.orderNo,pending.photoEpoch);if(rec)recoveryV1.complete(rec,saved);await relayCommit_(pending.orderNo,pending.photoEpoch,pending.relayEventId,saved,pending.createRequestId);if(rec)recoveryV1.clear(rec);pending.lineMsg="｜LINE 已排入整批派送（待確認）";}
     pendingReportMediaRetry=null;
     btn.hidden=true;
     el("retryReportMediaLater").hidden=true;
