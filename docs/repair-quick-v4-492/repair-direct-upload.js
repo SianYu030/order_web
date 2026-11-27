@@ -100,7 +100,7 @@
   };
   async function fastNewReady_(){
     const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),3500);
-    try{const r=await fetch(FAST_API+'?op=health',{cache:'no-store',credentials:'omit',signal:ctl.signal});const j=await r.json();return {ready:r.ok&&j.ok===true&&j.acceptNew===true&&j.lineReady===true&&j.archiveReady===true,batch:j.batchV2===true};}
+    try{const r=await fetch(FAST_API+'?op=health',{cache:'no-store',credentials:'omit',signal:ctl.signal});const j=await r.json();return {ready:r.ok&&j.ok===true&&j.acceptNew===true&&j.lineReady===true&&j.archiveReady===true&&j.capacitySlots===256&&j.capacityBytes===681574400&&j.capacityTests===4,batch:j.batchV2===true};}
     catch(_){return {ready:false,batch:false};}finally{clearTimeout(timer);}
   }
   const FAST_API='https://ppjbjenlzbpatzoabzxr.supabase.co/functions/v1/repair-fast-intake-v1';
@@ -595,7 +595,7 @@
     for(const k of keys){storageSet(k+':fast-intake-v1','1');if(storageGet(k+':fast-intake-v1')!=='1')throw Error('無法保留直傳續傳狀態')}
     const entries=list.map((file,i)=>({file,sessionId:sessions[i].sessionId}));
     const outcomes=await window.repairFastIntakeV1.uploadBatch(entries,mr,epoch,fastApi_,{resume:fastResume,progress:(i,done,total)=>{
-      const el=$(kind==='報修照片'?'submitBtn':'saveRepairMsg');if(el)el.textContent='批次上傳 '+list[i].name+'（'+Math.floor(100*done/total)+'%）';
+      const el=$(kind==='報修照片'?'submitBtn':'saveRepairMsg');if(el)el.textContent='批次上傳 '+list[i].name+'（'+(done>=total?'已傳輸，核對中':Math.min(99,Math.floor(100*done/total))+'%')+'）';
     }});
     let completed=0;
     return outcomes.map((v,i)=>{
@@ -624,7 +624,7 @@
         const kind=suffix(f,originalKind);
         const result=await uploadOne(f,orderNo,kind,(done,total)=>{
           const el=$(originalKind==='報修照片'?'submitBtn':'saveRepairMsg');
-          if(el)el.textContent='正在上傳 '+f.name+'（'+Math.floor(100*done/total)+'%）';
+          if(el)el.textContent='正在上傳 '+f.name+'（'+(done>=total?'已傳輸，核對中':Math.min(99,Math.floor(100*done/total))+'%')+'）';
         },photoEpoch,mediaLayout,negotiatedChunk_(access),withStart,allowFast&&access.fastIntakeReady===true&&window.__mrRelayV2Ready===true);
         completed++;
         if(onProgress)onProgress(Math.min(completed+1,list.length),list.length);
