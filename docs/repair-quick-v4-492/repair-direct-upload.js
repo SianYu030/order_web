@@ -92,6 +92,33 @@
   let preflightCache=null,preflightCacheAt=0;
   // Keep receipts for this page so retry never sends verified files twice.
   const confirmedFiles=new WeakMap();
+  // Android capture providers can return the same name, length and timestamp
+  // for multiple selections. Give each occurrence a distinct resumable slot.
+  function mediaKeys_(list,identity,originalKind){
+    const seen=new Map();
+    return list.map(file=>{
+      const kind=suffix(file,originalKind),base='repairDirectV65_'+JSON.stringify([identity,kind,file.name,file.size,file.lastModified]);
+      const n=seen.get(base)||0;seen.set(base,n+1);
+      return n===0?base:base+':occurrence:'+n;
+    });
+  }
+  function cachedReceipt_(file,key){
+    return confirmedFiles.get(file)?.get(key)||null;
+  }
+  function cacheReceipt_(file,key,result){
+    let receipts=confirmedFiles.get(file);
+    if(!receipts){receipts=new Map();confirmedFiles.set(file,receipts);}
+    receipts.set(key,result);
+  }
+  function validateUploadReceipts_(results,count,epoch,layout){
+    const ids=new Set();
+    if(results.length!==count)throw Error('附件回執數量不一致，請保留原工單補傳');
+    for(const r of results){
+      if(!r||!/^[a-f0-9-]{36}$/i.test(r.sessionId||'')||ids.has(r.sessionId)||!/^[a-f0-9]{32}$/i.test(r.md5||'')||r.orderEpoch!==epoch||r.mediaLayout!==layout)throw Error('附件識別碼缺少、重複或與工單不符，請保留原工單補傳');
+      ids.add(r.sessionId);
+    }
+    return results;
+  }
   // Preserve the exact resumable session on reload; never persist the signed upload token.
   const fastResume={
     get(key){return storageGet('repairFastResumeV1:'+key)||undefined;},
@@ -451,16 +478,16 @@
     }
     return {prime,take,clear(){prepared=null;}};
   }
-  async function uploadOne(file,mr,kind,onPart,photoEpoch,mediaLayout=1,chunkBytes=CHUNK,withStart=task=>task(),fastAllowed=false) {
+  async function uploadOne(file,mr,kind,onPart,photoEpoch,mediaLayout=1,chunkBytes=CHUNK,withStart=task=>task(),fastAllowed=false,sessionKey=null) {
     if(!file||!file.size)throw new Error('附件空白');
     if(!/^MR20\d{8}$/.test(mr))throw new Error('正式 MR 工單號不合法，不能上傳');
     const identity=attachmentIdentity_(mr,photoEpoch,mediaLayout);
-    const already=confirmedFiles.get(file);
-    if(identity&&already&&already.identity===identity&&already.kind===kind)return already.result;
+    const key=sessionKey||mediaKeys_([file],identity,kind)[0];
+    const already=identity?cachedReceipt_(file,key):null;
+    if(already)return already;
     const max=kind.endsWith('影片')?MAX_VIDEO:MAX_PHOTO;
     if(file.size>max)throw new Error(file.name+' 超過 '+Math.floor(max/MB)+' MB');
     const uploadName=uploadMediaName(file,kind);
-    const key='repairDirectV65_'+JSON.stringify([identity,kind,file.name,file.size,file.lastModified]);
     const encoder=makeChunkEncoder_(file);
     if(!(publicGuest&&mediaLayout===2&&file.size<=50*MB&&fastAllowed)&&(!identity||!storageGet(key)))encoder.prime(0,chunkBytes);
     let old=null;
@@ -488,7 +515,7 @@
     if(session.complete){
       if(!session.fileId||!/^[0-9a-f]{32}$/i.test(session.md5||''))throw new Error('雲端檔案確認資料不完整');
       const result=receiptResult_(session,kind);
-      if(identity)confirmedFiles.set(file,{identity,kind,result});
+      if(identity)cacheReceipt_(file,key,result);
       return result;
     }
     const fastKey=key+':fast-intake-v1';
@@ -505,7 +532,7 @@
           return out;
         },{resume:fastResume,progress:onPart});
         const result={source:'fast-intake',archiveState:cloud.archiveState,category:kind,md5:cloud.md5,sessionId:session.sessionId,fileName:session.fileName,size:file.size,orderEpoch:photoEpoch,mediaLayout};
-        confirmedFiles.set(file,{identity,kind,result});return result;
+        if(identity)cacheReceipt_(file,key,result);return result;
       }catch(err){
         if((!reserved&&!wasFast&&['INTAKE_NOT_ENABLED','INTAKE_CAPACITY_FULL','INTAKE_NEW_DISABLED'].includes(err.code))||err.code==='INTAKE_NEW_DISABLED'){storageDel(fastKey);fastResume.delete(session.sessionId+':'+photoEpoch);}
         else throw new Error('原雲端直傳未確認，請補傳原工單，不會另開附件：'+String(err.message||err));
@@ -550,7 +577,7 @@
       throw new Error('Google Drive 尚未回傳完整檔案 ID／MD5，不可視為已備份');
     // Keep the verified session ID so same-file retry after reload can query it.
     const result=receiptResult_(session,kind);
-    if(identity)confirmedFiles.set(file,{identity,kind,result});
+    if(identity)cacheReceipt_(file,key,result);
     return result;
   }
   async function uploadFreshBatch_(list,mr,kind,epoch,onProgress,access,allowFast,layout){
@@ -558,8 +585,7 @@
     const identity=attachmentIdentity_(mr,epoch,layout);
     const metas=list.map(file=>{const mediaKind=suffix(file,kind);return {mediaKind,name:uploadMediaName(file,mediaKind),size:file.size}});
     if(metas.some(m=>!Number.isSafeInteger(m.size)||m.size<1||m.size>(m.mediaKind.endsWith('影片')?50:15)*MB)||metas.filter(m=>m.mediaKind.endsWith('影片')).length>1||metas.reduce((n,m)=>n+m.size,0)>300*MB)return null;
-    const keys=list.map((f,i)=>'repairDirectV65_'+JSON.stringify([identity,metas[i].mediaKind,f.name,f.size,f.lastModified]));
-    if(new Set(keys).size!==keys.length)return null;
+    const keys=mediaKeys_(list,identity,kind);
     const batchKey='repairDirectBatchV2_'+JSON.stringify([identity,keys]);
     const pending=storageGet(batchKey);
     const ready=allowFast&&access.fastIntakeReady&&access.fastBatchV2&&window.__mrRelayV2Ready===true&&window.repairFastIntakeV1?.uploadBatch;
@@ -601,7 +627,7 @@
     return outcomes.map((v,i)=>{
       if(!v?.ok){if(v?.error?.code==='INTAKE_CAPACITY_FULL'){storageDel(keys[i]+':fast-intake-v1');}return v||{ok:false,error:Error('批次附件未確認')}}
       const cloud=v.result,r=sessions[i],result={source:'fast-intake',archiveState:cloud.archiveState,category:metas[i].mediaKind,md5:cloud.md5,sessionId:r.sessionId,fileName:r.fileName,size:list[i].size,orderEpoch:epoch,mediaLayout:layout};
-      confirmedFiles.set(list[i],{identity,kind:metas[i].mediaKind,result});completed++;if(onProgress)onProgress(Math.min(completed+1,list.length),list.length);return {ok:true,result};
+      cacheReceipt_(list[i],keys[i],result);completed++;if(onProgress)onProgress(Math.min(completed+1,list.length),list.length);return {ok:true,result};
     });
   }
   async function uploadFiles(selected,orderNo,originalKind,onProgress,photoEpoch,mediaLayout=1,allowFast=false) {
@@ -615,8 +641,8 @@
       const list=[...(selected||[])],results=[],failures=[];
       const withStart=makeStartQueue_();
       // Same-file resume keys must never be opened in two lanes at once.
-      const keys=list.map(f=>JSON.stringify([suffix(f,originalKind),f?.name,f?.size,f?.lastModified]));
-      const width=(!qaMode&&mediaLayout===2&&new Set(keys).size===keys.length)?2:1;
+      const keys=mediaKeys_(list,attachmentIdentity_(orderNo,photoEpoch,mediaLayout),originalKind);
+      const width=(!qaMode&&mediaLayout===2)?2:1;
       let completed=0;
       if(list.length&&onProgress)onProgress(1,list.length);
       const batched=await uploadFreshBatch_(list,orderNo,originalKind,photoEpoch,onProgress,access,allowFast,mediaLayout);
@@ -625,7 +651,7 @@
         const result=await uploadOne(f,orderNo,kind,(done,total)=>{
           const el=$(originalKind==='報修照片'?'submitBtn':'saveRepairMsg');
           if(el)el.textContent='正在上傳 '+f.name+'（'+(done>=total?'已傳輸，核對中':Math.min(99,Math.floor(100*done/total))+'%')+'）';
-        },photoEpoch,mediaLayout,negotiatedChunk_(access),withStart,allowFast&&access.fastIntakeReady===true&&window.__mrRelayV2Ready===true);
+        },photoEpoch,mediaLayout,negotiatedChunk_(access),withStart,allowFast&&access.fastIntakeReady===true&&window.__mrRelayV2Ready===true,keys[i]);
         completed++;
         if(onProgress)onProgress(Math.min(completed+1,list.length),list.length);
         return result;
@@ -645,7 +671,7 @@
         error.failures=failures;
         throw error;
       }
-      return results;
+      return validateUploadReceipts_(results,list.length,qaMode?'':String(photoEpoch||'').trim(),qaMode?1:mediaLayout);
     }finally{uploading=false}
   }
   function clearVideo(prefix) {
