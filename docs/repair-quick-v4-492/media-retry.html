@@ -34,7 +34,7 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
 <header><strong>🔧 設備維修中心</strong><a href="./?v=20261120-media-retry" id="backToRepair">返回報修網站</a></header>
 <section class="card">
 <h1>原工單照片／影片補傳</h1>
-<p class="sub">請由原工單的補傳連結進入，只補上未成功保存的附件。<strong>不新增工單、不修改工單資料、不重送 LINE。</strong></p>
+<p class="sub">請由原工單的補傳連結進入，只補上未成功保存的附件。<strong>不新增工單、不修改工單資料；有原始未完成通知紀錄時，只確認原 LINE 事件。</strong></p>
 <form id="recoverForm" novalidate>
 <label for="mr">原本的 MR 工單號</label>
 <input id="mr" name="mr" type="text" required maxlength="12" placeholder="例如 MR2026112001" autocomplete="off" inputmode="text" autocapitalize="characters">
@@ -45,8 +45,8 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
 <input id="video" type="file" accept="video/*,.mp4,.mov,.m4v,.3gp,.3gpp,.webm,.mkv">
 <label for="videoCapture">🎥 重新錄製一段影片（原影片未存到手機時）</label>
 <input id="videoCapture" type="file" accept="video/*" capture="environment">
-<p class="sub">從相簿選影片或重新錄製，兩者選一。支援 iPhone／Android 常見 MOV、MP4、3GP、WebM、MKV；影片上限 100 MB。這個補傳頁不會另外重發已建立的 LINE 通知。</p>
-<div class="warning">補傳成功以完整附件回執為準。原直傳工作階段可能仍在等待 Drive／F 槽歸檔；本頁不重新建立工單或另發 LINE。</div>
+<p class="sub">從相簿選影片或重新錄製，兩者選一。支援 iPhone／Android 常見 MOV、MP4、3GP、WebM、MKV；影片上限 100 MB。已建立的 LINE 通知不會另開新事件；有原事件的本機紀錄時可恢復。</p>
+<div class="warning">補傳成功以完整附件回執為準。原直傳工作階段可能仍在等待 Drive／F 槽歸檔；本頁不重新建立工單；有原事件時核對完整附件後才提交原通知。</div>
 <button type="submit" id="recoverBtn" style="margin-top:16px">補傳到原工單（不重新報修）</button>
 </form>
 <div id="status" class="status" role="status" aria-live="polite" style="margin-top:14px">選擇缺少的附件，再按「補傳到原工單」。</div>
@@ -61,7 +61,7 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
 </section>
 </main>
 <script src="./repair-fast-intake-client.js?v=20261127-fast-release" defer></script>
-<script src="./repair-direct-upload.js?v=20261127-fast-release" defer></script>
+<script src="./repair-direct-upload.js?v=20261127-distinct-receipts-v1" defer></script>
 <script>
 (()=>{
   "use strict";
@@ -70,7 +70,23 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
   const q=new URLSearchParams(location.search);
   const supplied=String(q.get("mr")||"").trim().toUpperCase();
   const epoch=String(q.get("epoch")||"").trim();
+const recoveryV1=(()=>{
+ const ttl=7*86400000, uuid=x=>typeof x==="string"&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(x);
+ const key=(no,epoch)=>"repairRelayRecoveryV1:"+no+":"+epoch;
+ const sign=f=>[String(f.name),Number(f.size),Number(f.lastModified),String(f.type||"")];
+ function valid(x,no,epoch){return !!x&&x.v===1&&/^MR20\d{8}$/.test(no)&&uuid(epoch)&&x.no===no&&x.epoch===epoch&&uuid(x.eventId)&&uuid(x.createRequestId)&&x.layout===2&&Number.isFinite(x.at)&&Date.now()-x.at<=ttl&&x.at<=Date.now()+60000&&Array.isArray(x.files)&&x.files.length<=13&&x.files.every(f=>Array.isArray(f)&&f.length===4&&typeof f[0]==="string"&&Number.isSafeInteger(f[1])&&f[1]>0&&Number.isFinite(f[2])&&typeof f[3]==="string");}
+ function sameFiles(x,files){return JSON.stringify(x.files)===JSON.stringify(files.map(sign));}
+ function validReceipts(x,rs){return Array.isArray(rs)&&rs.length===x.files.length&&rs.every(r=>uuid(r?.sessionId)&&r.orderEpoch===x.epoch&&r.mediaLayout===x.layout&&/^[a-f0-9]{32}$/i.test(r.md5||""))&&new Set(rs.map(r=>r.sessionId)).size===rs.length;}
+ function load(no,epoch){try{const x=JSON.parse(localStorage.getItem(key(no,epoch))||"null");return valid(x,no,epoch)?x:null;}catch{return null;}}
+ function save(x){if(!valid(x,x.no,x.epoch))return false;try{const k=key(x.no,x.epoch),s=JSON.stringify(x);localStorage.setItem(k,s);return localStorage.getItem(k)===s;}catch{return false;}}
+ function begin(no,epoch,eventId,createRequestId,files,layout){const x={v:1,no,epoch,eventId,createRequestId,files:files.map(sign),layout,at:Date.now()};return save(x)?x:null;}
+ function complete(x,rs){if(!validReceipts(x,rs))throw Error("整批附件回執不一致，停止 LINE 派送");x.receipts=rs.map(r=>({sessionId:r.sessionId,orderEpoch:r.orderEpoch,mediaLayout:r.mediaLayout,md5:r.md5}));return save(x);}
+ function clear(x){try{localStorage.removeItem(key(x.no,x.epoch));}catch{}}
+ return {begin,load,complete,clear,sameFiles,validReceipts};
+})();
+  const intent=recoveryV1.load(supplied,epoch);
   if(/^MR20\d{8}$/.test(supplied)){mr.value=supplied;mr.readOnly=true;}
+  if(intent){status.textContent=intent.receipts?"原工單附件已保存，直接按下按鈕確認原 LINE 通知，不必重選附件。":"請依原順序選回全部原始附件（含已保存的檔案），以原工作階段核對及補傳；勿另外重建工單。";button.textContent="恢復原工單整批附件與 LINE";}
   const SYNC_API_URL="https://script.google.com/macros/s/AKfycbwo0-nCm0hVVBhAgAIkBK5RGzpl8K1aGhbbBDCN_JAkXqZY82AenX9L7o702LLmnMYx/exec";
   const EXPECTED_SPREADSHEET_ID="13qpQWg3tKOXd1BC0XPsK7DsIxG1sBaVI6-yRpERIRMQ";
   const EXPECTED_BACKEND_VERSION="V9-deletefix-20261005";
@@ -85,6 +101,7 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
         if(data?.ok===false||data?.spreadsheetId!==EXPECTED_SPREADSHEET_ID||data?.backendVersion!==EXPECTED_BACKEND_VERSION){finish(Error("無法確認正式後端，禁止補傳"));return;}
         const active=(data.orders||[]).find(o=>o.no===no);
         if(!active||active.photoEpoch!==epoch){finish(Error("原工單已刪除、重建或建立識別碼未確認，禁止補傳舊附件"));return;}
+        if(intent&&data.lineRelayV2===true)window.__mrRelayV2Ready=true;
         finish(null,active.mediaLayout===2?2:1);
       };
       script.onerror=()=>finish(Error("原工單驗證連線失敗"));
@@ -106,6 +123,25 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
     }
     throw Error("附件接收器尚未準備好，請確認網路後重試。");
   }
+  async function commitOriginal(x,receipts){
+    if(!recoveryV1.validReceipts(x,receipts))throw Error("原附件數量或回執不一致，未提交 LINE");
+    const requestId=crypto.randomUUID(),body={action:"lineRelayCommitV2",orderNo:x.no,epoch:x.epoch,eventId:x.eventId,requestId,createRequestId:x.createRequestId,sessionIds:receipts.map(r=>r.sessionId)};
+    void fetch(SYNC_API_URL,{method:"POST",mode:"no-cors",keepalive:true,headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)}).catch(()=>null);
+    const deadline=Date.now()+18000;
+    while(Date.now()<deadline){
+      const r=await new Promise((resolve,reject)=>{
+        const cb="repairRecoverRelay_"+crypto.randomUUID().replace(/-/g,""),s=document.createElement("script");
+        const finish=(e,v)=>{clearTimeout(timer);delete window[cb];s.remove();e?reject(e):resolve(v)};
+        const timer=setTimeout(()=>finish(Error("LINE 回執逾時")),Math.min(5000,Math.max(1,deadline-Date.now())));
+        window[cb]=v=>finish(null,v);s.onerror=()=>finish(Error("LINE 回執連線失敗"));
+        s.src=SYNC_API_URL+"?"+new URLSearchParams({action:"lineRelayCommitResultV2",requestId,callback:cb});document.body.appendChild(s);
+      }).catch(()=>null);
+      if(r?.ok===true&&r.queued===true&&r.eventId===x.eventId&&r.orderNo===x.no&&r.attachments===receipts.length)return;
+      if(r&&!r.pending)throw Error("原 LINE 事件未通過正式驗證");
+      await new Promise(resolve=>setTimeout(resolve,650));
+    }
+    throw Error("原 LINE 派送回執未確認；原附件已保留，請重試確認，勿建立新工單");
+  }
   document.getElementById("recoverForm").addEventListener("submit",async event=>{
     event.preventDefault();
     const no=mr.value.trim().toUpperCase();
@@ -115,16 +151,19 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
       return;
     }
     if(!/^MR20\d{8}$/.test(no)){update("請先填寫正確的 MR 工單號，例如 MR2026112001。","bad");return;}
-    if(!list.length){update("尚未選擇照片或影片，請只挑選缺少的附件。","bad");return;}
+    if(!list.length&&!intent?.receipts){update("尚未選擇照片或影片，請只挑選缺少的附件。","bad");return;}
     button.disabled=true;
     button.textContent="正在補傳，請勿關閉頁面…";
     update("正在驗證原工單及 Google Drive 接收器…");
     try{
       const mediaLayout=await verifyOriginal(no);
-      const bridge=await ready();
-      const results=await bridge.uploadFiles(list,no,"報修照片",(i,total)=>{
+      if(intent&&mediaLayout!==2)throw Error("工單資料夾版本不一致");
+      if(intent&&!intent.receipts&&!recoveryV1.sameFiles(intent,list))throw Error("請依原順序選回全部原始附件；無法核對時不會重傳或提交 LINE");
+      const bridge=intent?.receipts?null:await ready();
+      const results=intent?.receipts||await bridge.uploadFiles(list,no,"報修照片",(i,total)=>{
         update("正在處理第 "+i+"／"+total+" 個附件，請保持頁面開啟…");
-      },epoch,mediaLayout);
+      },epoch,mediaLayout,!!intent);
+      if(intent){if(!recoveryV1.complete(intent,results))throw Error("無法保存完整回執，停止 LINE 提交");await commitOriginal(intent,results);recoveryV1.clear(intent);update("原工單附件已核對，LINE 原事件已排入整批派送（待實際送達）。","ok");button.textContent="原工單 LINE 已排入派送";return;}
       update("✅ 已核對 "+results.length+" 個附件完整回執，MR 工單："+no+"。\n"+(results.some(r=>r.source==="fast-intake")?"附件已驗證保存，Drive／F 槽待歸檔。":"Drive 已保存，F 槽待同步核對。")+"\n工單沒有重建，LINE 沒有重送。","ok");
       button.textContent="附件已確認上傳成功";
     }catch(err){
