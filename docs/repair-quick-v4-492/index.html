@@ -603,6 +603,7 @@ html,body{background:#f5f7f8}
 .video-remove{display:block;margin-top:10px;width:100%;min-height:42px;background:#fff;border:1px solid #c9d7e5;color:#31577c}
 </style>
 <link rel="stylesheet" href="./maintenance-report.css?v=20261127-machine-picker-v4" />
+<style>body.non-report-mode #progress{display:none!important}</style>
 </head>
 <body>
 <div class="app">
@@ -1454,6 +1455,7 @@ function switchMode(mode){
   el("repairMode").classList.toggle("hidden",!isRepair);
   el("monthlyMode").classList.toggle("hidden",!isMonthly);
   document.body.classList.toggle("monthly-open",isMonthly);
+  document.body.classList.toggle("non-report-mode",!isReport);
   el("reportBottom").classList.toggle("hidden",!isReport);
   el("reportModeBtn").classList.toggle("active",isReport);
   el("repairModeBtn").classList.toggle("active",isRepair);
