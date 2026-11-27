@@ -92,7 +92,17 @@
   let preflightCache=null,preflightCacheAt=0;
   // Keep receipts for this page so retry never sends verified files twice.
   const confirmedFiles=new WeakMap();
-  const fastResume=new Map();
+  // Preserve the exact resumable session on reload; never persist the signed upload token.
+  const fastResume={
+    get(key){return storageGet('repairFastResumeV1:'+key)||undefined;},
+    set(key,value){storageSet('repairFastResumeV1:'+key,value);},
+    delete(key){storageDel('repairFastResumeV1:'+key);}
+  };
+  async function fastNewReady_(){
+    const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),3500);
+    try{const r=await fetch(FAST_API+'?op=health',{cache:'no-store',credentials:'omit',signal:ctl.signal});const j=await r.json();return r.ok&&j.ok===true&&j.acceptNew===true&&j.lineReady===true&&j.archiveReady===true;}
+    catch(_){return false;}finally{clearTimeout(timer);}
+  }
   const FAST_API='https://ppjbjenlzbpatzoabzxr.supabase.co/functions/v1/repair-fast-intake-v1';
   async function fastApi_(op,data){
     const res=await fetch(FAST_API+'?op='+op,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,guestSecret}),credentials:'omit',cache:'no-store',redirect:'error'});
@@ -186,6 +196,7 @@
     // the ticket/session/permissions for every actual upload command.
     if(preflightCache && Date.now()-preflightCacheAt<120000)return preflightCache;
     if(preflightPromise)return preflightPromise;
+    const fastHealth=publicGuest?fastNewReady_():Promise.resolve(false);
     preflightPromise=jsonp('health').then(r=>{
       if(!r||r.ok!==true||r.version!=='6.0'||r.testOnly!==false||r.chunkBytes!==CHUNK)
         throw new Error('MR 接收器版本不符或 Google Drive 尚無存取權');
@@ -207,7 +218,8 @@
           throw new Error('此裝置沒有隔離測試權限');
         return {...r,...authState};
       });
-    }).then(result=>{
+    }).then(async result=>{
+      result.fastIntakeReady=result.fastIntakeReady===true&&await fastHealth;
       preflightCache=result;
       preflightCacheAt=Date.now();
       return result;
@@ -479,8 +491,8 @@
     }
     const fastKey=key+':fast-intake-v1';
     const wasFast=identity&&storageGet(fastKey)==='1';
-    const eligible=publicGuest&&mediaLayout===2&&file.size<=50*MB&&session.offset===0;
-    if(wasFast||(eligible&&fastAllowed&&window.repairFastIntakeV1)){
+    const eligible=publicGuest&&mediaLayout===2&&file.size<=50*MB;
+    if(wasFast||(eligible&&session.offset===0&&fastAllowed&&window.repairFastIntakeV1)){
       if(!eligible||!window.repairFastIntakeV1)throw new Error('原雲端直傳工作階段待確認，停止重傳');
       let reserved=!!wasFast;
       try{
@@ -493,7 +505,7 @@
         const result={source:'fast-intake',archiveState:cloud.archiveState,category:kind,md5:cloud.md5,sessionId:session.sessionId,fileName:session.fileName,size:file.size,orderEpoch:photoEpoch,mediaLayout};
         confirmedFiles.set(file,{identity,kind,result});return result;
       }catch(err){
-        if(!reserved&&!wasFast&&['INTAKE_NOT_ENABLED','INTAKE_CAPACITY_FULL'].includes(err.code)){storageDel(fastKey);}
+        if((!reserved&&!wasFast&&['INTAKE_NOT_ENABLED','INTAKE_CAPACITY_FULL','INTAKE_NEW_DISABLED'].includes(err.code))||err.code==='INTAKE_NEW_DISABLED'){storageDel(fastKey);fastResume.delete(session.sessionId+':'+photoEpoch);}
         else throw new Error('原雲端直傳未確認，請補傳原工單，不會另開附件：'+String(err.message||err));
       }
     }
