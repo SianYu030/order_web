@@ -95,7 +95,7 @@ async function open(kind){
  if(active)return;
  const openedAt=stamp();const ctx=context(kind);if(!ctx){alert("請先確認目前報修或維修頁面。");return}
  if(!w.isSecureContext||!navigator.mediaDevices?.getUserMedia||!w.MediaRecorder){alert("此瀏覽器無法使用網頁高畫質錄影，未啟動低畫質錄影。");return}
- const mime=["video/mp4;codecs=avc1.42001f,mp4a.40.2","video/mp4"].find(t=>MediaRecorder.isTypeSupported(t));
+ const mime=["video/mp4;codecs=avc1.640028,mp4a.40.2","video/mp4;codecs=avc1.4d0028,mp4a.40.2","video/mp4;codecs=avc1.420028,mp4a.40.2","video/mp4"].find(t=>MediaRecorder.isTypeSupported(t));
  if(!mime){alert("此瀏覽器未提供 MP4 錄影功能。");return}
  const overlay=elem("div",null,{position:"fixed",inset:"0",zIndex:"2147483646",background:"#000",color:"#fff",overflow:"hidden",overscrollBehavior:"contain",touchAction:"manipulation",isolation:"isolate"});
  overlay.style.height="100vh";if(w.CSS?.supports("height","100dvh"))overlay.style.height="100dvh";
