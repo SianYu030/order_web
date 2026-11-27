@@ -100,8 +100,8 @@
   };
   async function fastNewReady_(){
     const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),3500);
-    try{const r=await fetch(FAST_API+'?op=health',{cache:'no-store',credentials:'omit',signal:ctl.signal});const j=await r.json();return r.ok&&j.ok===true&&j.acceptNew===true&&j.lineReady===true&&j.archiveReady===true;}
-    catch(_){return false;}finally{clearTimeout(timer);}
+    try{const r=await fetch(FAST_API+'?op=health',{cache:'no-store',credentials:'omit',signal:ctl.signal});const j=await r.json();return {ready:r.ok&&j.ok===true&&j.acceptNew===true&&j.lineReady===true&&j.archiveReady===true,batch:j.batchV2===true};}
+    catch(_){return {ready:false,batch:false};}finally{clearTimeout(timer);}
   }
   const FAST_API='https://ppjbjenlzbpatzoabzxr.supabase.co/functions/v1/repair-fast-intake-v1';
   async function fastApi_(op,data){
@@ -196,7 +196,7 @@
     // the ticket/session/permissions for every actual upload command.
     if(preflightCache && Date.now()-preflightCacheAt<120000)return preflightCache;
     if(preflightPromise)return preflightPromise;
-    const fastHealth=publicGuest?fastNewReady_():Promise.resolve(false);
+    const fastHealth=publicGuest?fastNewReady_():Promise.resolve({ready:false,batch:false});
     preflightPromise=jsonp('health').then(r=>{
       if(!r||r.ok!==true||r.version!=='6.0'||r.testOnly!==false||r.chunkBytes!==CHUNK)
         throw new Error('MR 接收器版本不符或 Google Drive 尚無存取權');
@@ -219,7 +219,9 @@
         return {...r,...authState};
       });
     }).then(async result=>{
-      result.fastIntakeReady=result.fastIntakeReady===true&&await fastHealth;
+      const cloudHealth=await fastHealth;
+      result.fastIntakeReady=result.fastIntakeReady===true&&cloudHealth.ready;
+      result.fastBatchV2=result.fastBatchV2===true&&cloudHealth.batch;
       preflightCache=result;
       preflightCacheAt=Date.now();
       return result;
@@ -552,7 +554,7 @@
     return result;
   }
   async function uploadFreshBatch_(list,mr,kind,epoch,onProgress,access,allowFast,layout){
-    if(!publicGuest||layout!==2||!allowFast||!access.fastIntakeReady||!access.fastBatchV2||window.__mrRelayV2Ready!==true||!window.repairFastIntakeV1?.uploadBatch||list.length<2||list.length>13)return null;
+    if(!publicGuest||layout!==2||list.length<2||list.length>13)return null;
     const identity=attachmentIdentity_(mr,epoch,layout);
     const metas=list.map(file=>{const mediaKind=suffix(file,kind);return {mediaKind,name:uploadMediaName(file,mediaKind),size:file.size}});
     if(metas.some(m=>!Number.isSafeInteger(m.size)||m.size<1||m.size>(m.mediaKind.endsWith('影片')?50:15)*MB)||metas.filter(m=>m.mediaKind.endsWith('影片')).length>1||metas.reduce((n,m)=>n+m.size,0)>300*MB)return null;
@@ -560,6 +562,8 @@
     if(new Set(keys).size!==keys.length)return null;
     const batchKey='repairDirectBatchV2_'+JSON.stringify([identity,keys]);
     const pending=storageGet(batchKey);
+    const ready=allowFast&&access.fastIntakeReady&&access.fastBatchV2&&window.__mrRelayV2Ready===true&&window.repairFastIntakeV1?.uploadBatch;
+    if(!ready){if(pending)throw Error('原批次回執尚未確認，暫停重建附件');return null;}
     if(!pending&&keys.some(k=>storageGet(k)))return null; // Existing sessions recover via the audited per-file path.
     let response;
     if(pending){
@@ -584,6 +588,7 @@
       sessions[i]=r;storageSet(keys[i],r.sessionId);
       if(storageGet(keys[i])!==r.sessionId)throw Error('附件續傳識別無法保存');
     }
+    if(new Set(sessions.filter(Boolean).map(r=>r.sessionId)).size!==sessions.filter(Boolean).length)throw Error('批次工作階段重複');
     storageDel(batchKey);
     if(sessions.filter(Boolean).length!==list.length)throw Error('部分批次工作階段未建立，已保留成功項目，請補傳原工單');
     // Mark every session BEFORE cloud reservation, so ambiguous network failures never switch transport.
