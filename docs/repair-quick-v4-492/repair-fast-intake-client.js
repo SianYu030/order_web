@@ -11,7 +11,8 @@ async function upload(file,context,api,opt={}){
  const fetcher=opt.fetch||fetch,signal=opt.signal,mem=opt.resume||new Map(),key=c.sessionId+':'+c.epoch;
  const hash=opt.hash||await hashFile(file);
  const assertReceipt=r=>{need(same(r,c)&&r.uploadState==='verified'&&r.sha256===hash&&/^[a-f0-9]{32}$/.test(r.md5||''),'CLOUD_RECEIPT_UNVERIFIED');mem.delete(key);return r};
- if(!opt.grant){const current=await api('status',{...c,sha256:hash});if(current?.uploadState==='verified')return assertReceipt(current);}
+ // A newly issued, never-used MR session can reserve directly. Existing sessions must still reconcile before any write.
+ if(!opt.grant&&opt.fresh!==true){const current=await api('status',{...c,sha256:hash});if(current?.uploadState==='verified')return assertReceipt(current);}
  const grant=opt.grant||await api('reserve',{...c,sha256:hash});
  if(grant?.uploadState==='verified')return assertReceipt(grant);
  need(same(grant,c)&&grant.bucket===BUCKET&&grant.object==='intake-v1/'+c.sessionId+'/original'&&typeof grant.token==='string'&&grant.token.length>20&&grant.token.length<4096&&typeof grant.mime==='string'&&/^[a-z0-9.+-]+\/[a-z0-9.+-]+$/i.test(grant.mime),'INVALID_SCOPED_GRANT');
@@ -60,5 +61,5 @@ async function uploadBatch(entries,orderNo,epoch,api,opt={}){
  }
  return out;
 }
-root.repairFastIntakeV1=Object.freeze({upload,uploadBatch,version:'batch-v2-20261127'});
+root.repairFastIntakeV1=Object.freeze({upload,uploadBatch,version:'batch-v2-fresh-20261127'});
 })(globalThis);
