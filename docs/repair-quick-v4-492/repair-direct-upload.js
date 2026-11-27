@@ -448,7 +448,8 @@
     const uploadName=uploadMediaName(file,kind);
     const key='repairDirectV65_'+JSON.stringify([identity,kind,file.name,file.size,file.lastModified]);
     const encoder=makeChunkEncoder_(file);
-    if(!identity||!storageGet(key))encoder.prime(0,chunkBytes);
+    const preferFast=publicGuest&&mediaLayout===2&&file.size<=50*MB&&fastAllowed&&window.repairFastIntakeV1;
+    if(!preferFast&&(!identity||!storageGet(key)))encoder.prime(0,chunkBytes);
     let old=null;
     let session=await withStart(async()=>{
       let session=null;
@@ -489,7 +490,7 @@
           const out=await fastApi_(op,data);
           if(op==='reserve'||out.uploadState==='reserved'||out.uploadState==='verified')reserved=true;
           return out;
-        },{resume:fastResume,progress:onPart});
+        },{resume:fastResume,progress:onPart,fresh:!old&&!wasFast});
         const result={source:'fast-intake',archiveState:cloud.archiveState,category:kind,md5:cloud.md5,sessionId:session.sessionId,fileName:session.fileName,size:file.size,orderEpoch:photoEpoch,mediaLayout};
         confirmedFiles.set(file,{identity,kind,result});return result;
       }catch(err){
