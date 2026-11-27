@@ -603,7 +603,7 @@ html,body{background:#f5f7f8}
 .video-remove{display:block;margin-top:10px;width:100%;min-height:42px;background:#fff;border:1px solid #c9d7e5;color:#31577c}
 </style>
 <link rel="stylesheet" href="./maintenance-report.css?v=20261127-machine-picker-v4" />
-<style id="banner-no-progress-v2">
+<style id="banner-mobile-photo-v3">
 /* Original artwork contains a painted progress stripe at y=440 of 512.
    Preserve image proportions and show only its upper 430px-equivalent. */
 body #progress{display:none!important}
@@ -614,7 +614,21 @@ body #progress{display:none!important}
  }
 }
 @media(max-width:500px){
- body .hero{background-size:100% 100%,auto 103%!important;background-position:center center,right top!important}
+ /* Keep the corporate photo unobscured; title and photo occupy separate rows. */
+ body .hero,body.monthly-open .hero{
+  display:block!important;aspect-ratio:auto!important;height:auto!important;min-height:0!important;
+  padding:12px 14px 0!important;background:#082e53!important;
+ }
+ body .hero .topline{position:relative!important;clip:auto!important;width:auto!important;height:auto!important;margin:0!important}
+ body .hero .system-brand{margin-bottom:4px!important}
+ body .hero .system-heading .title{font-size:23px!important;line-height:1.2!important}
+ body .hero .system-heading .subtitle{margin-top:4px!important;font-size:11px!important}
+ body .hero::after{
+  content:"";display:block;margin:10px -14px 0;
+  aspect-ratio:1608 / 525;
+  background:#082e53 url("./tachen-maintenance-banner-photo.webp") no-repeat center top;
+  background-size:100% auto;
+ }
 }
 </style>
 </head>
