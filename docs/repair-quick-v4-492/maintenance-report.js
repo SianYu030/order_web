@@ -22,7 +22,7 @@ const mrSvgIcon=(kind)=>{
  };
  return '<svg class="mr-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">'+(shapes[kind]||shapes.bars)+'</svg>';
 };
-const state={month:monthNow(),dept:"全部",machine:"",machinePeriod:"all",machinePage:0,orders:[],syncedAt:0,error:"",loaded:false,expanded:{done:false,open:false,special:false},page:{done:0,open:0,special:0},busy:false};
+const state={month:monthNow(),dept:"全部",machineCategory:"all",machine:"",machinePeriod:"all",machinePage:0,orders:[],syncedAt:0,error:"",loaded:false,expanded:{done:false,open:false,special:false},page:{done:0,open:0,special:0},busy:false};
 let root=null,initialised=false,loader=null;
 function recordDate(order){
  const time=String(order.time||"");
@@ -69,18 +69,40 @@ function deviceMasterMatch(dept,name){
  return verified.length===1?verified[0]:null;
 }
 function machineKey(dept,name){const d=String(dept||"").trim(),record=deviceMasterMatch(d,name);return record?"device:"+record.id:JSON.stringify([d,machineName(name,d)])}
+const MACHINE_CATEGORIES=[["cut","裁板／開料"],["edge","封邊"],["drill","鑽孔／CNC"],["door","手工門板加工"],["aluminum","鋁框／五金加工"],["pack","組立／整修／包裝"],["handling","升降／搬運"],["utility","集塵／空壓／公用設備"],["other","其他設備"],["review","歷史待歸類"]];
+function machineCategory(name,area,dept){
+ const n=String(name||"").normalize("NFKC");
+ if(/升降平台|拖板車|堆高機|機械手臂/.test(n))return "handling";
+ if(/集塵|空壓|乾燥機|抽水機/.test(n))return "utility";
+ if(dept==="空壓機室")return "utility";
+ if(dept==="W8整修&組立")return "pack";
+ if(area==="鋁框區"||dept==="E5")return "aluminum";
+ if(area==="手工造型門板區")return "door";
+ if(/裁板機|Nesting/i.test(n))return "cut";
+ if(/封邊/.test(n))return "edge";
+ if(/六面|工作站|ABD|CNC|鉸[鏈鍊]|鑽孔/i.test(n))return "drill";
+ if(/打包|包膜|組立|整修/.test(n))return "pack";
+ return "other";
+}
+function equipmentRank(x){
+ const n=x.name;
+ if(x.category==="cut"){if(/380裁板機/.test(n))return 1;if(/330裁板機/.test(n))return 2;if(/裁板機/.test(n))return 3;if(/Nesting/i.test(n))return 4;}
+ if(x.category==="edge"){if(/^直線封邊機/.test(n))return 1;if(/軟成型/.test(n))return 2;if(/六面無縫/.test(n))return 3;if(/窄邊/.test(n))return 4;if(/斜背/.test(n))return 5;if(/異形/.test(n))return 6;if(/貝特/.test(n))return 7;if(/豪美/.test(n))return 8;if(/洪業/.test(n))return 9;}
+ if(x.category==="drill"){if(/六面鑽單機/.test(n))return 1;if(/工作站/.test(n))return 2;if(/ABD/i.test(n))return 3;if(/CNC/i.test(n))return 4;if(/鉸[鏈鍊]/.test(n))return 5;}
+ return 100;
+}
 function currentMachines(){
  const map=new Map();
- if(typeof DATA!=="undefined")for(const [dept,entry] of Object.entries(DATA))for(const group of Object.values(entry.areas||{}))for(const name of group){
+ if(typeof DATA!=="undefined")for(const [dept,entry] of Object.entries(DATA))for(const [area,group] of Object.entries(entry.areas||{}))for(const name of group){
   if(!name||name===SPECIAL)continue;
   const key=machineKey(dept,name),master=deviceMasterMatch(dept,name);
-  if(!map.has(key))map.set(key,{key,dept,name:master?.name||String(name).trim(),deviceId:master?.id||"",count:0,current:true});
+  if(!map.has(key)){const label=master?.name||String(name).trim();map.set(key,{key,dept,name:label,area,category:machineCategory(label,area,dept),deviceId:master?.id||"",count:0,current:true});}
  }
  return map;
 }
 function reportMachine(o,catalog){
  const d=String(o.dept||"").trim(),key=machineKey(d,o.machine);
- return catalog.get(key)||{key:"review:"+d,dept:d,name:"待歸類歷史紀錄",count:0,current:false};
+ return catalog.get(key)||{key:"review:"+d,dept:d,name:"待歸類歷史紀錄",category:"review",count:0,current:false};
 }
 function sameMachine(o){return !state.machine||(!isSpecial(o)&&reportMachine(o,currentMachines()).key===state.machine)}
 function machineOptions(){
@@ -89,7 +111,7 @@ function machineOptions(){
   if(!o||isSpecial(o)||CLOSED.has(String(o.status||"").trim())||!sameDept(o))continue;
   const entry=reportMachine(o,catalog),item=map.get(entry.key)||{...entry};item.count++;map.set(entry.key,item);
  }
- return [...map.values()].sort((a,b)=>Number(b.current)-Number(a.current)||a.dept.localeCompare(b.dept,"zh-Hant")||a.name.localeCompare(b.name,"zh-Hant",{numeric:true}));
+ return [...map.values()].sort((a,b)=>a.dept.localeCompare(b.dept,"zh-Hant")||MACHINE_CATEGORIES.findIndex(x=>x[0]===a.category)-MACHINE_CATEGORIES.findIndex(x=>x[0]===b.category)||equipmentRank(a)-equipmentRank(b)||a.name.localeCompare(b.name,"zh-Hant",{numeric:true}));
 }
 function displayMachine(o){return currentMachines().get(machineKey(o.dept,o.machine))?.name||String(o.machine||"未明示").trim()||"未明示"}
 function repairParts(o){const result=[],seen=new Set();
@@ -202,11 +224,17 @@ function panelTrend(items){
   '<div class="mr-chart-labels">'+months.map(m=>'<span>'+Number(m.slice(5))+'月</span>').join("")+'</div>';
 }
 function renderMachineHistory(){
- const select=$("mrMachine"),period=$("mrMachinePeriod"),panel=$("mrMachineHistory"),choices=machineOptions();
- if(state.machine&&!choices.some(x=>x.key===state.machine)){state.machine="";state.machinePage=0;}
- const option=x=>'<option value="'+esc(x.key)+'">'+esc((state.dept==="全部"?(x.dept||"未明示")+"｜":"")+(x.deviceId?x.deviceId+"｜":"")+x.name+"（"+x.count+"筆）")+'</option>';
- const current=choices.filter(x=>x.current),archived=choices.filter(x=>!x.current);
- const options='<option value="">全部機台</option>'+(current.length?'<optgroup label="目前報修機台名單">'+current.map(option).join("")+'</optgroup>':'')+(archived.length?'<optgroup label="待核對紀錄（非現役機台）">'+archived.map(option).join("")+'</optgroup>':'');
+ const select=$("mrMachine"),category=$("mrMachineCategory"),period=$("mrMachinePeriod"),panel=$("mrMachineHistory"),choices=machineOptions();
+ const categories=MACHINE_CATEGORIES.filter(([key])=>choices.some(x=>x.category===key));
+ if(state.machineCategory!=="all"&&!categories.some(([key])=>key===state.machineCategory))state.machineCategory="all";
+ const categoryOptions='<option value="all">全部設備類別</option>'+categories.map(([key,label])=>'<option value="'+key+'">'+esc(label)+'</option>').join("");
+ if(category.innerHTML!==categoryOptions)category.innerHTML=categoryOptions;category.value=state.machineCategory;
+ const visible=choices.filter(x=>state.machineCategory==="all"?x.current:x.category===state.machineCategory);
+ if(state.machine&&!visible.some(x=>x.key===state.machine)){state.machine="";state.machinePage=0;}
+ const groups=new Map();
+ for(const x of visible){const label=(state.dept==="全部"?(x.dept||"未明示")+"｜":"")+(MACHINE_CATEGORIES.find(c=>c[0]===x.category)?.[1]||"其他設備");if(!groups.has(label))groups.set(label,[]);groups.get(label).push(x);}
+ const option=x=>'<option value="'+esc(x.key)+'">'+esc(x.name)+'</option>';
+ const options='<option value="">全部機台</option>'+[...groups].map(([label,items])=>'<optgroup label="'+esc(label)+'">'+items.map(option).join("")+'</optgroup>').join("");
  if(select.innerHTML!==options)select.innerHTML=options;select.value=state.machine;period.value=state.machinePeriod;period.disabled=!state.machine;
  if(!state.machine){panel.hidden=true;panel.innerHTML="";return;}panel.hidden=false;
  const selected=choices.find(x=>x.key===state.machine),items=machineHistory(),done=items.filter(isDone).length,parts=items.filter(o=>repairParts(o).length).length,perPage=20,pages=Math.max(1,Math.ceil(items.length/perPage));
@@ -254,12 +282,13 @@ function make(){
  if(initialised)return;
  root=$("monthlyReportRoot");if(!root)return;
  root.innerHTML='<div class="mr-title"><div><h2>' + mrSvgIcon("wrench") + '維修月報</h2><p>設備維修統計與'+esc(SPECIAL)+'</p></div><span class="mr-last">資料來源：正式機修維修單及歷史維修資料</span></div>'+
- '<div class="mr-control"><label for="mrMonth">月份</label><div class="mr-month"><button type="button" id="mrMonthPrev" aria-label="上一個月" title="上一個月"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><input id="mrMonth" type="month"><button type="button" id="mrMonthNext" aria-label="下一個月" title="下一個月"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div><label>廠區</label><div id="mrDepts" class="mr-dept">'+["全部","E3","E4","E5","W8","W8整修&組立","空壓機室"].map(n=>'<button type="button" data-dept="'+esc(n)+'">'+esc(n)+'</button>').join("")+'</div><button class="mr-reload" type="button" id="mrReload">↻ 更新資料</button><div class="mr-machine-control"><label for="mrMachine">機台</label><select id="mrMachine"><option value="">全部機台</option></select><label for="mrMachinePeriod">履歷範圍</label><select id="mrMachinePeriod"><option value="all">全部歷史月份</option><option value="month">所選月份</option></select></div></div>'+
+ '<div class="mr-control"><label for="mrMonth">月份</label><div class="mr-month"><button type="button" id="mrMonthPrev" aria-label="上一個月" title="上一個月"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><input id="mrMonth" type="month"><button type="button" id="mrMonthNext" aria-label="下一個月" title="下一個月"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div><label>廠區</label><div id="mrDepts" class="mr-dept">'+["全部","E3","E4","E5","W8","W8整修&組立","空壓機室"].map(n=>'<button type="button" data-dept="'+esc(n)+'">'+esc(n)+'</button>').join("")+'</div><button class="mr-reload" type="button" id="mrReload">↻ 更新資料</button><div class="mr-machine-control"><label for="mrMachineCategory">類別</label><select id="mrMachineCategory"><option value="all">全部設備類別</option></select><label for="mrMachine">機台</label><select id="mrMachine"><option value="">全部機台</option></select><label for="mrMachinePeriod">履歷範圍</label><select id="mrMachinePeriod"><option value="all">全部歷史月份</option><option value="month">所選月份</option></select></div></div>'+
  '<div class="mr-notice" id="mrFetchStatus">正在準備月報資料…</div><div class="mr-kpis" id="mrKpis"></div><div class="mr-panels" id="mrPanels"></div><article class="mr-list mr-machine-history" id="mrMachineHistory" hidden></article><div class="mr-lists" id="mrLists"></div>';
  $("mrMonthPrev").onclick=()=>{state.month=monthAdd(state.month,-1);state.machinePage=0;state.page={done:0,open:0,special:0};render()};
  $("mrMonthNext").onclick=()=>{state.month=monthAdd(state.month,1);state.machinePage=0;state.page={done:0,open:0,special:0};render()};
  $("mrMonth").onchange=e=>{if(monthRx.test(e.target.value)){state.month=e.target.value;state.machinePage=0;state.page={done:0,open:0,special:0};render()}};
- $("mrDepts").onclick=e=>{const btn=e.target.closest("button[data-dept]");if(btn){state.dept=btn.dataset.dept;state.machine="";state.machinePage=0;state.page={done:0,open:0,special:0};render()}};
+ $("mrDepts").onclick=e=>{const btn=e.target.closest("button[data-dept]");if(btn){state.dept=btn.dataset.dept;state.machineCategory="all";state.machine="";state.machinePage=0;state.page={done:0,open:0,special:0};render()}};
+ $("mrMachineCategory").onchange=e=>{state.machineCategory=e.target.value;state.machine="";state.machinePage=0;state.page={done:0,open:0,special:0};render()};
  $("mrMachine").onchange=e=>{state.machine=e.target.value;state.machinePage=0;state.page={done:0,open:0,special:0};render()};
  $("mrMachinePeriod").onchange=e=>{state.machinePeriod=e.target.value==="month"?"month":"all";state.machinePage=0;render()};
  $("mrMachineHistory").addEventListener("click",e=>{const b=e.target.closest("button[data-machine-page]");if(!b)return;state.machinePage=Math.max(0,state.machinePage+Number(b.dataset.machinePage));render()});
@@ -317,7 +346,7 @@ async function reload(){
  finally{state.busy=false;render();}
 }
 window.maintenanceReport={
- clear(){state.orders=[];state.machine="";state.machinePage=0;state.loaded=false;state.error="";render();},
+ clear(){state.orders=[];state.machineCategory="all";state.machine="";state.machinePage=0;state.loaded=false;state.error="";render();},
  open(options){
   loader=options;make();
   state.orders=[];state.loaded=false;state.error="";render();

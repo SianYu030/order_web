@@ -132,3 +132,10 @@ body.monthly-open .notice{display:none}
 #monthlyMode .mr-history-table .mr-wrap{white-space:pre-wrap}
 #monthlyMode .mr-muted{color:#64748b;font-size:12px}
 @media(max-width:699px){#monthlyMode .mr-machine-control{display:grid;grid-template-columns:auto minmax(0,1fr)}#monthlyMode #mrMachine{width:100%;max-width:none}#monthlyMode .mr-machine-summary{gap:6px}}
+
+/* Cleaner machine picker: group by production process; machine name only. */
+#monthlyMode #mrMachineCategory{flex:0 1 170px;min-width:135px}
+#monthlyMode #mrMachine{flex:1 1 210px;max-width:380px}
+#monthlyMode .mr-machine-control optgroup{font-weight:700;color:#294969}
+#monthlyMode .mr-machine-control option{font-weight:400;color:#1e4268}
+@media(max-width:699px){#monthlyMode #mrMachineCategory{width:100%;min-width:0}#monthlyMode #mrMachine{max-width:none}}
