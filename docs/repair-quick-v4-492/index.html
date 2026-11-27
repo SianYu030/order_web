@@ -2627,6 +2627,10 @@ el("submitBtn").onclick=async()=>{
             renderReportStages_();
           },data.photoEpoch||"",data.mediaLayout===2?2:1,relaySelection.lineMode==="relay-v2"
         );
+        if(relaySelection.lineMode==="relay-v2"){
+          const ids=relayReceipts.map(r=>r?.sessionId);
+          if(ids.length!==reportMediaFiles.length||ids.some(id=>!id)||new Set(ids).size!==ids.length)throw Error("附件回執缺少或重複，請補傳原工單");
+        }
         result=window.repairDrive?.enabled?
           (relayReceipts.some(r=>r.source==="fast-intake")?"｜☁️ "+reportMediaFiles.length+" 個附件已驗證保存，Drive／F 槽待歸檔":("｜☁️ "+reportMediaFiles.length+" 個附件已寫入 Google Drive，F 槽待排程核對")):
           ("｜📷 "+reportPhotos.length+" 張報修照片已排入 NAS 自動歸檔");
@@ -2892,7 +2896,7 @@ document.addEventListener("click",function(ev){
 <script src="./v10_version_gate.js?v=20261127-history-v1" defer></script>
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
 <script src="./repair-fast-intake-client.js?v=20261127-batch-v2" defer></script>
-<script src="./repair-direct-upload.js?v=20261127-capacity-guard-v1" defer></script>
+<script src="./repair-direct-upload.js?v=20261127-distinct-receipts-v1" defer></script>
 <script src="./maintenance-report.js?v=20261127-machine-picker-v4" defer></script>
 <script src="./camera-bridge-formal.js?v=20261126-fullscreen-hd-04-fast" defer></script>
 
