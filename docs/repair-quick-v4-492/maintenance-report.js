@@ -55,9 +55,11 @@ function machineKey(dept,name){return JSON.stringify([String(dept||"").trim(),ma
 function sameMachine(o){return !state.machine||machineKey(o.dept,o.machine)===state.machine}
 function machineOptions(){
  const map=new Map();
- function add(dept,name,count){const d=String(dept||"").trim(),n=machineName(name,d);if(!n||n===SPECIAL||!sameDept({dept:d}))return;
- const key=machineKey(d,name),item=map.get(key)||{key,dept:d,name:n,count:0};item.count+=count;map.set(key,item);}
- if(typeof DATA!=="undefined")for(const [dept,entry] of Object.entries(DATA))for(const group of Object.values(entry.areas||{}))for(const name of group)add(dept,name,0);
+ function add(dept,name,count,current=false){const d=String(dept||"").trim(),n=machineName(name,d);if(!n||n===SPECIAL||!sameDept({dept:d}))return;
+ const key=machineKey(d,name),item=map.get(key)||{key,dept:d,name:n,count:0,current:false};item.count+=count;
+ if(current){item.current=true;item.name=String(name||"").trim();}
+ map.set(key,item);}
+ if(typeof DATA!=="undefined")for(const [dept,entry] of Object.entries(DATA))for(const group of Object.values(entry.areas||{}))for(const name of group)add(dept,name,0,true);
  for(const o of state.orders)if(o&&!isSpecial(o)&&!CLOSED.has(String(o.status||"").trim()))add(o.dept,o.machine,1);
  return [...map.values()].sort((a,b)=>a.dept.localeCompare(b.dept,"zh-Hant")||a.name.localeCompare(b.name,"zh-Hant",{numeric:true}));
 }
@@ -173,7 +175,9 @@ function panelTrend(items){
 function renderMachineHistory(){
  const select=$("mrMachine"),period=$("mrMachinePeriod"),panel=$("mrMachineHistory"),choices=machineOptions();
  if(state.machine&&!choices.some(x=>x.key===state.machine)){state.machine="";state.machinePage=0;}
- const options='<option value="">全部機台</option>'+choices.map(x=>'<option value="'+esc(x.key)+'">'+esc((state.dept==="全部"?(x.dept||"未明示")+"｜":"")+x.name+"（"+x.count+"筆）")+'</option>').join("");
+ const option=x=>'<option value="'+esc(x.key)+'">'+esc((state.dept==="全部"?(x.dept||"未明示")+"｜":"")+x.name+"（"+x.count+"筆）")+'</option>';
+ const current=choices.filter(x=>x.current),archived=choices.filter(x=>!x.current);
+ const options='<option value="">全部機台</option>'+(current.length?'<optgroup label="目前報修機台名單">'+current.map(option).join("")+'</optgroup>':'')+(archived.length?'<optgroup label="其他歷史設備／舊名稱">'+archived.map(option).join("")+'</optgroup>':'');
  if(select.innerHTML!==options)select.innerHTML=options;select.value=state.machine;period.value=state.machinePeriod;period.disabled=!state.machine;
  if(!state.machine){panel.hidden=true;panel.innerHTML="";return;}panel.hidden=false;
  const selected=choices.find(x=>x.key===state.machine),items=machineHistory(),done=items.filter(isDone).length,parts=items.filter(o=>repairParts(o).length).length,perPage=20,pages=Math.max(1,Math.ceil(items.length/perPage));
@@ -182,7 +186,7 @@ function renderMachineHistory(){
   const related=repairParts(o),rawNote=String(o.note||"").trim(),hours=o._history?(o.historyHours==null?"未登錄":workHours(o).toFixed(2)+" 小時"):(String(o.work||"").trim()?workHours(o).toFixed(2)+" 小時":"未登錄");
   return '<tr><td class="mr-cell">'+esc(o.no)+'<small>'+esc(recordDate(o)||orderMonth(o))+'</small><small>'+esc(o.machine||"未明示")+'</small></td><td>'+status(o)+'<small>'+esc(o.type||"未分類")+'</small><small>'+esc(o.classification||"")+'</small></td><td class="mr-wrap">'+esc(o.issue||"未登錄")+'</td><td class="mr-wrap">'+esc(o.content||"未登錄")+'</td><td class="mr-wrap">'+(related.length?related.map(x=>'<div>'+esc(x)+'</div>').join(""):'<span class="mr-muted">未見明確零件文字</span>')+(rawNote?'<small class="mr-wrap">原始備註：'+esc(rawNote)+'</small>':'')+'</td><td>'+esc(o.technician||"未登錄")+'<small>'+esc(hours)+'</small></td></tr>';
  }).join("");
- panel.innerHTML='<div class="mr-listhead"><h3>'+esc((selected?.dept||"未明示")+"｜"+(selected?.name||"機台")+" 維修履歷")+'</h3><span class="mr-muted">'+esc(state.machinePeriod==="all"?"全部歷史月份":state.month)+'</span></div><div class="mr-machine-summary"><span>維修紀錄 <b>'+items.length+'</b> 件</span><span>已完成 <b>'+done+'</b> 件</span><span>含零件相關文字 <b>'+parts+'</b> 件</span></div>'+(items.length?'<div class="mr-tablescroll"><table class="mr-history-table"><thead><tr>'+["工單／日期","狀態／類型","故障描述","實際維修內容","更換零件／相關紀錄","處理人／工時"].map(x=>'<th>'+esc(x)+'</th>').join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="mr-empty">目前查詢範圍沒有該機台的維修紀錄。</div>')+(pages>1?'<div class="mr-pager"><button type="button" data-machine-page="-1" '+(state.machinePage===0?"disabled":"")+'>上一頁</button><span>第 '+(state.machinePage+1)+'／'+pages+' 頁，共 '+items.length+' 筆</span><button type="button" data-machine-page="1" '+(state.machinePage>=pages-1?"disabled":"")+'>下一頁</button></div>':'')+'<div class="mr-data-note">月報依上方月份統計，履歷預設顯示全部月份。零件欄摘錄維修內容與可取得的備註原文，可能包含請購、待更換或建議，非確認已更換清冊。無法辨識的歷史名稱不強制合併。</div>';
+ panel.innerHTML='<div class="mr-listhead"><h3>'+esc((selected?.dept||"未明示")+"｜"+(selected?.name||"機台")+" 維修履歷")+'</h3><span class="mr-muted">'+esc(state.machinePeriod==="all"?"全部歷史月份":state.month)+'</span></div><div class="mr-machine-summary"><span>維修紀錄 <b>'+items.length+'</b> 件</span><span>已完成 <b>'+done+'</b> 件</span><span>含零件相關文字 <b>'+parts+'</b> 件</span></div>'+(items.length?'<div class="mr-tablescroll"><table class="mr-history-table"><thead><tr>'+["工單／日期","狀態／類型","故障描述","實際維修內容","更換零件／相關紀錄","處理人／工時"].map(x=>'<th>'+esc(x)+'</th>').join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="mr-empty">目前查詢範圍沒有該機台的維修紀錄。</div>')+(pages>1?'<div class="mr-pager"><button type="button" data-machine-page="-1" '+(state.machinePage===0?"disabled":"")+'>上一頁</button><span>第 '+(state.machinePage+1)+'／'+pages+' 頁，共 '+items.length+' 筆</span><button type="button" data-machine-page="1" '+(state.machinePage>=pages-1?"disabled":"")+'>下一頁</button></div>':'')+'<div class="mr-data-note">月報依上方月份統計，履歷預設顯示全部月份。零件欄摘錄維修內容與可取得的備註原文，可能包含請購、待更換或建議，非確認已更換清冊。目前名單跟隨報修申請的機台清單；其他歷史設備及舊名稱另列。原始紀錄缺少設備唯一編號時，不能判斷同名機台是否已換新。</div>';
 }
 function render(){
  if(!root)return;
