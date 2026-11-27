@@ -530,7 +530,7 @@
           const out=await fastApi_(op,data);
           if(op==='reserve'||out.uploadState==='reserved'||out.uploadState==='verified')reserved=true;
           return out;
-        },{resume:fastResume,progress:onPart});
+        },{resume:fastResume,progress:onPart,fresh:!old&&!wasFast&&session.offset===0});
         const result={source:'fast-intake',archiveState:cloud.archiveState,category:kind,md5:cloud.md5,sessionId:session.sessionId,fileName:session.fileName,size:file.size,orderEpoch:photoEpoch,mediaLayout};
         if(identity)cacheReceipt_(file,key,result);return result;
       }catch(err){
