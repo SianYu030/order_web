@@ -45,8 +45,8 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
 <input id="video" type="file" accept="video/*,.mp4,.mov,.m4v,.3gp,.3gpp,.webm,.mkv">
 <label for="videoCapture">🎥 重新錄製一段影片（原影片未存到手機時）</label>
 <input id="videoCapture" type="file" accept="video/*" capture="environment">
-<p class="sub">從相簿選影片或重新錄製，兩者選一。支援 iPhone／Android 常見 MOV、MP4、3GP、WebM、MKV；影片上限 100 MB。LINE 影片通知尚未啟用。</p>
-<div class="warning">補傳成功以 Google Drive 完整上傳回執為準。F 槽由既有排程同步，需另行核對。LINE 群組目前只發送原報修的文字與照片，不會自動發送影片。</div>
+<p class="sub">從相簿選影片或重新錄製，兩者選一。支援 iPhone／Android 常見 MOV、MP4、3GP、WebM、MKV；影片上限 100 MB。這個補傳頁不會另外重發已建立的 LINE 通知。</p>
+<div class="warning">補傳成功以完整附件回執為準。原直傳工作階段可能仍在等待 Drive／F 槽歸檔；本頁不重新建立工單或另發 LINE。</div>
 <button type="submit" id="recoverBtn" style="margin-top:16px">補傳到原工單（不重新報修）</button>
 </form>
 <div id="status" class="status" role="status" aria-live="polite" style="margin-top:14px">選擇缺少的附件，再按「補傳到原工單」。</div>
@@ -60,7 +60,8 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
 </ul>
 </section>
 </main>
-<script src="./repair-direct-upload.js?v=20261125-receipt-v66" defer></script>
+<script src="./repair-fast-intake-client.js?v=20261127-fast-release" defer></script>
+<script src="./repair-direct-upload.js?v=20261127-fast-release" defer></script>
 <script>
 (()=>{
   "use strict";
@@ -124,7 +125,7 @@ ul{padding-left:20px;line-height:1.8;margin:6px 0}
       const results=await bridge.uploadFiles(list,no,"報修照片",(i,total)=>{
         update("正在處理第 "+i+"／"+total+" 個附件，請保持頁面開啟…");
       },epoch,mediaLayout);
-      update("✅ 已核對 "+results.length+" 個附件的 Google Drive 完整回執，MR 工單："+no+"。\n工單沒有重建，LINE 沒有重送。F 槽由排程同步，仍需核對檔案。","ok");
+      update("✅ 已核對 "+results.length+" 個附件完整回執，MR 工單："+no+"。\n"+(results.some(r=>r.source==="fast-intake")?"附件已驗證保存，Drive／F 槽待歸檔。":"Drive 已保存，F 槽待同步核對。")+"\n工單沒有重建，LINE 沒有重送。","ok");
       button.textContent="附件已確認上傳成功";
     }catch(err){
       const details=String(err?.message||err);
