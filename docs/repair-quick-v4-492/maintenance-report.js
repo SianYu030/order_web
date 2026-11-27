@@ -35,11 +35,12 @@ function recordDate(order){
  }
  return "";
 }
-function orderMonth(o){return recordDate(o).slice(0,7)}
+function orderMonth(o){return o._history&&monthRx.test(o.historyMonth||"")?o.historyMonth:recordDate(o).slice(0,7)}
 function isDone(o){return DONE.has(String(o.status||"").trim())}
 function isSpecial(o){return String(o.machine||"").trim()===SPECIAL}
 function sameDept(o){return state.dept==="全部"||String(o.dept||"").trim()===state.dept}
 function workHours(o){
+ if(o._history)return typeof o.historyHours==="number"&&Number.isFinite(o.historyHours)&&o.historyHours>=0?o.historyHours:0;
  const s=String(o.work||"").trim();
  if(!s)return 0;
  let m=s.match(/(\d+)\s*時\s*(\d+)?\s*分?/);
@@ -62,7 +63,7 @@ function getScoped(){
  const monthly=regular.filter(o=>orderMonth(o)===state.month);
  const special=active.filter(o=>isSpecial(o)&&orderMonth(o)===state.month);
  // Open orders are not limited by selected month, including prior years.
- const open=regular.filter(o=>!isDone(o)).sort((a,b)=>recordDate(a).localeCompare(recordDate(b))||String(a.no).localeCompare(String(b.no)));
+ const open=regular.filter(o=>!o._history&&!isDone(o)).sort((a,b)=>recordDate(a).localeCompare(recordDate(b))||String(a.no).localeCompare(String(b.no)));
  // Without a full dated completion timestamp, the completion group is by
  // report/ticket month, not an invented actual completion month.
  const done=monthly.filter(isDone).sort((a,b)=>recordDate(b).localeCompare(recordDate(a))||String(b.no).localeCompare(String(a.no)));
@@ -86,7 +87,7 @@ function baseRows(items,type){
   if(type==="open"){
    return '<tr><td class="mr-cell">'+esc(o.no)+'</td><td>'+date+'</td><td>'+esc(o.dept||"—")+'</td><td>'+esc(o.machine||"—")+'</td><td>'+status(o)+'</td><td>'+esc(overdue(o))+'</td></tr>';
   }
-  return '<tr><td class="mr-cell">'+esc(o.no)+'</td><td>'+date+'</td><td>'+esc(o.dept||"—")+'</td><td>'+esc(o.machine||"—")+'</td><td>'+title+'</td><td>'+esc(o.technician||"—")+'</td><td>'+workHours(o).toFixed(1)+'</td></tr>';
+  return '<tr><td class="mr-cell">'+esc(o.no)+'</td><td>'+date+'</td><td>'+esc(o.dept||"—")+'</td><td>'+esc(o.machine||"—")+'</td><td>'+title+'</td><td>'+esc(o.technician||"—")+'</td><td>'+(o._history&&o.historyHours==null?'未登錄':workHours(o).toFixed(1))+'</td></tr>';
  }).join("");
 }
 function renderList(type,items,title){
@@ -104,16 +105,20 @@ function renderList(type,items,title){
  return '<article class="mr-list '+type+'"><div class="mr-listhead"><h3>'+title+'</h3>'+controls+'</div>'+
    (items.length?'<div class="mr-tablescroll"><table><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+baseRows(showing,type)+'</tbody></table></div>':'<div class="mr-empty">目前沒有符合條件的紀錄。</div>')+pager+note+'</article>';
 }
+function renderHistoryPending(items){
+ return '<article class="mr-list open"><div class="mr-listhead"><h3>歷史狀態待核對（'+items.length+' 件）</h3></div><div class="mr-tablescroll"><table><thead><tr>'+["工單編號","報修日期","廠區","設備","原始狀態"].map(x=>'<th>'+esc(x)+'</th>').join("")+'</tr></thead><tbody>'+items.map(o=>'<tr><td>'+esc(o.no)+'</td><td>'+esc(dateShort(recordDate(o)))+'</td><td>'+esc(o.dept||"未明示")+'</td><td>'+esc(o.machine||"未明示")+'</td><td>'+esc(o.status||"未登錄")+'</td></tr>').join("")+'</tbody></table></div><div class="mr-data-note">歷史封存狀態僅供查詢，不計入目前待修清單。</div></article>';
+}
 function countsBy(items,key){const x=new Map();items.forEach(o=>{const k=String(o[key]||"未分類").trim()||"未分類";x.set(k,(x.get(k)||0)+1)});return [...x].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"zh-Hant"))}
 function panelBars(items){
  const map=new Map();["E3","E4","E5","W8","W8整修&組立","空壓機室"].forEach(d=>map.set(d,0));
- items.forEach(o=>{const d=String(o.dept||"").trim();map.set(d,(map.get(d)||0)+1)});
+ items.forEach(o=>{const d=String(o.dept||"").trim()||"未明示";map.set(d,(map.get(d)||0)+1)});
  const values=[...map].filter(([dept,n])=>n>0||["E3","E4","E5","W8"].includes(dept));
  const max=Math.max(1,...values.map(([,n])=>n));
  return values.map(([k,n])=>'<div class="mr-pair"><b>'+esc(k)+'</b><strong>'+n+' 件</strong></div><div class="mr-meter"><i style="width:'+(100*n/max).toFixed(1)+'%"></i></div>').join("")||'<div class="mr-empty">本月沒有設備報修。</div>';
 }
 function panelDonut(items){
- const data=countsBy(items,"type").slice(0,5);
+ const all=countsBy(items,"type");
+ const data=all.length>5?[...all.slice(0,5),["其他",all.slice(5).reduce((n,x)=>n+x[1],0)]]:all;
  const sum=items.length;
  if(!sum)return '<div class="mr-empty">本月沒有維修類型資料。</div>';
  let angle=0;
@@ -140,14 +145,15 @@ function panelTrend(items){
 function render(){
  if(!root)return;
  const {regular,monthly,special,open,done}=getScoped();
- const pendingMonth=monthly.filter(o=>!isDone(o)).length;
+ const historyPending=monthly.filter(o=>o._history&&!isDone(o));
+ const unknownHours=monthly.filter(o=>o._history&&o.historyHours==null).length;
  const stop=monthly.filter(o=>String(o.stop||"").trim()==="是").length;
  const total=monthly.length,hours=monthly.reduce((n,o)=>n+workHours(o),0),rate=total?done.length/total*100:0;
  $("mrKpis").innerHTML=kpi("報修總數",total,"件","blue",state.month+" 報修")+
   kpi("已完成",done.length,"件","green","所選月份的工單")+
   kpi("未完成",open.length,"件","orange","全部未結，跨月")+
   kpi("通報停機",stop,"件","red","報修時勾選")+
-  kpi("登錄維修工時",Number(hours.toFixed(1)),"小時","purple","不代表停機時數")+
+  kpi("登錄維修工時",Number(hours.toFixed(1)),"小時","purple",unknownHours?"另有 "+unknownHours+" 筆未登錄":"不代表停機時數")+
   kpi("完成率",rate.toFixed(1),"%","teal","依所選月份工單")+
   kpi(SPECIAL,special.length,"件","special","本月合計");
  $("mrPanels").innerHTML='<div class="mr-panel"><h3>' + mrSvgIcon("bars") + '各廠區報修件數</h3>'+panelBars(monthly)+'</div>'+
@@ -156,14 +162,14 @@ function render(){
    '<div class="mr-panel"><h3>' + mrSvgIcon("trend") + '近六個月報修趨勢</h3>'+panelTrend(regular)+'</div>';
  $("mrLists").innerHTML=renderList("done",done,'✓ 已完成工單（所選月份：'+done.length+' 件）')+
   renderList("open",open,'◷ 未完成工單（所有未結：'+open.length+' 件）')+
-  renderList("special",special,'▣ '+esc(SPECIAL)+'（本月共 '+special.length+' 件）');
+  renderList("special",special,'▣ '+esc(SPECIAL)+'（本月共 '+special.length+' 件）')+(historyPending.length?renderHistoryPending(historyPending):"");
  const notice=$("mrFetchStatus");
- if(state.busy){notice.className="mr-notice";notice.textContent="正在從正式「機修維修單」更新月報…";}
+ if(state.busy){notice.className="mr-notice";notice.textContent="正在從正式工單及歷史封存更新月報…";}
  else if(state.error){
   notice.className="mr-notice alert";
-  notice.textContent="目前無法讀取最新工單："+state.error+"。下方如有資料，是先前快取，不代表即時統計。";
+  notice.textContent="目前無法完整讀取月報："+state.error+"。下方如有資料，是先前快取，不代表即時統計。";
  }else if(state.loaded){
-  notice.className="mr-notice";notice.textContent="正式工單資料已同步｜"+new Date(state.syncedAt).toLocaleString("zh-TW",{timeZone:"Asia/Taipei"})+"｜設備報修與「"+SPECIAL+"」分開計算。";
+  notice.className="mr-notice";notice.textContent="正式工單及歷史封存已同步｜"+new Date(state.syncedAt).toLocaleString("zh-TW",{timeZone:"Asia/Taipei"})+"｜設備報修與「"+SPECIAL+"」分開計算。";
  }else{notice.className="mr-notice alert";notice.textContent="尚未確認最新正式工單，請按「更新資料」。";}
  $("mrMonth").value=state.month;
  $("mrDepts").querySelectorAll("button").forEach(b=>{const selected=b.dataset.dept===state.dept;b.classList.toggle("sel",selected);b.setAttribute("aria-pressed",selected)});
@@ -171,7 +177,7 @@ function render(){
 function make(){
  if(initialised)return;
  root=$("monthlyReportRoot");if(!root)return;
- root.innerHTML='<div class="mr-title"><div><h2>' + mrSvgIcon("wrench") + '維修月報</h2><p>設備維修統計與'+esc(SPECIAL)+'</p></div><span class="mr-last">資料來源：正式機修維修單</span></div>'+
+ root.innerHTML='<div class="mr-title"><div><h2>' + mrSvgIcon("wrench") + '維修月報</h2><p>設備維修統計與'+esc(SPECIAL)+'</p></div><span class="mr-last">資料來源：正式機修維修單及歷史維修資料</span></div>'+
  '<div class="mr-control"><label for="mrMonth">月份</label><div class="mr-month"><button type="button" id="mrMonthPrev" aria-label="上一個月">‹</button><input id="mrMonth" type="month"><button type="button" id="mrMonthNext" aria-label="下一個月">›</button></div><label>廠區</label><div id="mrDepts" class="mr-dept">'+["全部","E3","E4","E5","W8","W8整修&組立","空壓機室"].map(n=>'<button type="button" data-dept="'+esc(n)+'">'+esc(n)+'</button>').join("")+'</div><button class="mr-reload" type="button" id="mrReload">↻ 更新資料</button></div>'+
  '<div class="mr-notice" id="mrFetchStatus">正在準備月報資料…</div><div class="mr-kpis" id="mrKpis"></div><div class="mr-panels" id="mrPanels"></div><div class="mr-lists" id="mrLists"></div>';
  $("mrMonthPrev").onclick=()=>{state.month=monthAdd(state.month,-1);state.page={done:0,open:0,special:0};render()};
@@ -190,6 +196,30 @@ function make(){
  });
  initialised=true;render();
 }
+function mergeReportOrders(live,history){
+ const map=new Map();
+ for(const o of history)if(o&&/^(?:MR20\d{8}|[A-Za-z]\d{6,14})$/.test(String(o.no||""))&&monthRx.test(o.historyMonth||""))map.set(o.no,{...o,_history:true});
+ for(const o of live)map.set(o.no,{...o,_history:false});
+ return [...map.values()];
+}
+async function loadHistory(token){
+ if(!globalThis.crypto?.getRandomValues)throw Error("瀏覽器不支援安全查詢");
+ const bytes=crypto.getRandomValues(new Uint8Array(32));
+ const requestId=Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");
+ await fetch(SYNC_API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"prepareMonthlyHistoryV1",requestId,sessionToken:token})});
+ for(let i=0;i<20;i++){
+  if(v10AuthToken_()!==token)throw Error("登入狀態已變更");
+  const result=await jsonp_("monthlyHistoryResultV1",{requestId,part:"meta"},12000);
+  if(result.pending){await new Promise(r=>setTimeout(r,500));continue;}
+  if(result.spreadsheetId!==EXPECTED_SPREADSHEET_ID||!Number.isInteger(result.parts)||result.parts<0||result.parts>100)throw Error("歷史資料來源錯誤");
+  const parts=await Promise.all(Array.from({length:result.parts},(_,part)=>jsonp_("monthlyHistoryResultV1",{requestId,part:String(part)},12000)));
+  if(parts.some((p,i)=>p.pending||p.part!==i||!Array.isArray(p.orders)))throw Error("歷史資料讀取不完整");
+  const rows=parts.flatMap(p=>p.orders);
+  if(rows.length!==result.count)throw Error("歷史資料件數不符");
+  return rows;
+ }
+ throw Error("歷史資料查詢逾時");
+}
 async function reload(){
  if(state.busy||!loader)return;
  state.busy=true;state.error="";render();
@@ -197,17 +227,24 @@ async function reload(){
   await loader.load();
   const records=loader.get();
   if(!Array.isArray(records))throw Error("後端未回傳工單清單");
-  state.orders=records.filter(o=>o&&typeof o==="object"&&/^MR20\d{8}$/.test(String(o.no||"")));
+  const live=records.filter(o=>o&&typeof o==="object"&&/^MR20\d{8}$/.test(String(o.no||"")));
+  const token=typeof v10AuthToken_==="function"?v10AuthToken_():"";
+  if(!token)throw Error("請重新登入以查詢歷史維修資料");
+  const history=await loadHistory(token);
+  if(v10AuthToken_()!==token)throw Error("登入狀態已變更，請重新查詢");
+  state.orders=mergeReportOrders(live,history);
   state.loaded=true;state.syncedAt=Date.now();state.error="";
  }catch(err){state.error=String(err?.message||err||"同步失敗");}
  finally{state.busy=false;render();}
 }
 window.maintenanceReport={
+ clear(){state.orders=[];state.loaded=false;state.error="";render();},
  open(options){
   loader=options;make();
+  state.orders=[];state.loaded=false;state.error="";render();
   // Existing cache may appear only as a clearly marked fallback.
   const cache=loader?.get?.();
-  if(Array.isArray(cache)&&cache.length&&!state.loaded){state.orders=cache;render()}
+  if(Array.isArray(cache)&&cache.length&&!state.loaded){state.orders=cache.filter(o=>!o._history);render()}
   reload();
  },
  inspect(){

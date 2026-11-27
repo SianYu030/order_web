@@ -12,7 +12,7 @@
   if(!repairBtn) return;
   const oldTitle=repairBtn.getAttribute("title")||"";
   const oldButtonLabel=repairBtn.textContent;
-  const scriptVersion="20261125-relay-v2";
+  const scriptVersion="20261127-history-v1";
   window.__mrRelayV2Ready=false;
   window.__mrRelayGateChecked=false;
   repairBtn.disabled=true;

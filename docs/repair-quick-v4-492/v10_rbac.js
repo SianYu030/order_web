@@ -55,7 +55,7 @@
      repairAuth=true;currentRepairUser=account;
      el("repairLoginUser").textContent=account+"｜機修管理員";
      el("repairLoginPassword").value="";
-     hideRepairLogin();switchMode("repair");
+     hideRepairLogin();const targetMode=pendingMonthlyLogin?"monthly":"repair";pendingMonthlyLogin=false;switchMode(targetMode);
    }catch(e){
      auth=null;repairAuth=false;currentRepairUser="";
      hint.textContent="登入失敗："+e.message;hint.classList.remove("hidden");
@@ -100,7 +100,7 @@
      if(!result.ok||!result.changed||result.account!==actor.account)
        throw Error(result.error||"後端沒有確認修改成功");
      // A password update revokes all sessions because the backend stores a password-hash epoch.
-     auth=null;repairAuth=false;currentRepairUser="";
+     auth=null;repairAuth=false;currentRepairUser="";window.maintenanceReport?.clear?.();
      el("repairLoginUser").textContent="—";
      el("changePasswordOld").value="";
      el("changePasswordNew").value="";
@@ -114,7 +114,7 @@
  };
  el("changePasswordSave").onclick=saveChangedPassword;
  el("repairLogoutBtn").onclick=()=>{
-   const prev=auth;auth=null;repairAuth=false;currentRepairUser="";
+   const prev=auth;auth=null;repairAuth=false;currentRepairUser="";window.maintenanceReport?.clear?.();
    el("repairLoginUser").textContent="—";switchMode("report");
    if(prev)post({action:"authLogout",sessionToken:prev.sessionToken}).catch(()=>{});
  };
