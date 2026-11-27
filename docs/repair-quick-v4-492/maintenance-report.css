@@ -109,3 +109,26 @@ body.monthly-open .notice{display:none}
  body.monthly-open .hero{height:230px!important;aspect-ratio:auto!important;background-size:100% auto!important;background-position:center 50%!important}
  body.monthly-open .mode-btn{font-size:17px;min-height:48px;font-weight:850}
 }
+
+/* Machine history: responsive, read-only, scoped to monthly mode. */
+#monthlyMode .mr-machine-control{display:flex;flex:1 0 100%;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid #e5edf7;padding-top:10px;min-width:0}
+#monthlyMode .mr-machine-control select{box-sizing:border-box;min-height:40px;border:1px solid #c8d9eb;border-radius:9px;padding:7px 10px;color:#1e4268;background:white;font:inherit;font-size:14px;max-width:100%;min-width:0}
+#monthlyMode #mrMachine{flex:1 1 230px;max-width:480px}
+#monthlyMode #mrMachinePeriod:disabled{opacity:.55}
+#monthlyMode .mr-machine-history{margin:0 0 12px;border-top:4px solid #1673d1}
+#monthlyMode .mr-machine-history[hidden]{display:none!important}
+#monthlyMode .mr-machine-summary{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 12px;font-size:13px;color:#345573}
+#monthlyMode .mr-machine-summary span{padding:8px 12px;border-radius:8px;background:#edf4fc}
+#monthlyMode .mr-machine-summary b{font-size:17px;color:#1159a8}
+#monthlyMode .mr-history-table{min-width:860px;table-layout:fixed}
+#monthlyMode .mr-history-table th:nth-child(1){width:17%}
+#monthlyMode .mr-history-table th:nth-child(2){width:13%}
+#monthlyMode .mr-history-table th:nth-child(3){width:19%}
+#monthlyMode .mr-history-table th:nth-child(4){width:23%}
+#monthlyMode .mr-history-table th:nth-child(5){width:18%}
+#monthlyMode .mr-history-table th:nth-child(6){width:10%}
+#monthlyMode .mr-history-table td{vertical-align:top;white-space:normal;overflow-wrap:anywhere}
+#monthlyMode .mr-history-table td small{display:block;color:#60758b;font-weight:500;margin-top:5px}
+#monthlyMode .mr-history-table .mr-wrap{white-space:pre-wrap}
+#monthlyMode .mr-muted{color:#64748b;font-size:12px}
+@media(max-width:699px){#monthlyMode .mr-machine-control{display:grid;grid-template-columns:auto minmax(0,1fr)}#monthlyMode #mrMachine{width:100%;max-width:none}#monthlyMode .mr-machine-summary{gap:6px}}

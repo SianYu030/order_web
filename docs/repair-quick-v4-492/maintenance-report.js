@@ -22,7 +22,7 @@ const mrSvgIcon=(kind)=>{
  };
  return '<svg class="mr-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true">'+(shapes[kind]||shapes.bars)+'</svg>';
 };
-const state={month:monthNow(),dept:"全部",orders:[],syncedAt:0,error:"",loaded:false,expanded:{done:false,open:false,special:false},page:{done:0,open:0,special:0},busy:false};
+const state={month:monthNow(),dept:"全部",machine:"",machinePeriod:"all",machinePage:0,orders:[],syncedAt:0,error:"",loaded:false,expanded:{done:false,open:false,special:false},page:{done:0,open:0,special:0},busy:false};
 let root=null,initialised=false,loader=null;
 function recordDate(order){
  const time=String(order.time||"");
@@ -39,6 +39,34 @@ function orderMonth(o){return o._history&&monthRx.test(o.historyMonth||"")?o.his
 function isDone(o){return DONE.has(String(o.status||"").trim())}
 function isSpecial(o){return String(o.machine||"").trim()===SPECIAL}
 function sameDept(o){return state.dept==="全部"||String(o.dept||"").trim()===state.dept}
+function machineName(raw,dept){
+ let n=String(raw||"").normalize("NFKC").trim().replace(/\s+/g,"");const d=String(dept||"").trim();
+ if(d&&n.toUpperCase().startsWith(d.toUpperCase()))n=n.slice(d.length).replace(/^廠/,"");
+ if(!n)return "";let m;
+ if((m=n.match(/^(?:裁板機(330|380)|(330|380)裁板機)$/)))return (m[1]||m[2])+"裁板機";
+ if((m=n.match(/^Nesting(10|20)號(?:機|X1&X2)?$/i)))return "Nesting"+m[1]+"號機";
+ if((m=n.match(/^(?:直線封邊機\(?([1-4])號(?:機)?\)?|封邊機([1-4])號機|([1-4])號(?:直邊|直線)?封邊機|南興直邊封邊機\(([1-4])號機\))$/))&&["E4","W8"].includes(d))return "直線封邊機"+(m[1]||m[2]||m[3]||m[4])+"號";
+ if(d==="E3"&&/^(?:南興)?(?:直邊|直線)封邊機$/.test(n))return "直線封邊機";
+ if((m=n.match(/^(?:六面鑽工作站|工作站|工作站單機|六面工作站)\(?([1-4])號(?:機)?\)?$/))){if(d==="E4")return "工作站單機"+m[1]+"號";if(d==="W8")return "六面工作站"+m[1]+"號";}
+ if(/^(?:ABD側孔機|ABD鑽孔機)$/.test(n)&&["E4","W8"].includes(d))return "ABD鑽孔機";
+ return n;
+}
+function machineKey(dept,name){return JSON.stringify([String(dept||"").trim(),machineName(name,dept)])}
+function sameMachine(o){return !state.machine||machineKey(o.dept,o.machine)===state.machine}
+function machineOptions(){
+ const map=new Map();
+ function add(dept,name,count){const d=String(dept||"").trim(),n=machineName(name,d);if(!n||n===SPECIAL||!sameDept({dept:d}))return;
+ const key=machineKey(d,name),item=map.get(key)||{key,dept:d,name:n,count:0};item.count+=count;map.set(key,item);}
+ if(typeof DATA!=="undefined")for(const [dept,entry] of Object.entries(DATA))for(const group of Object.values(entry.areas||{}))for(const name of group)add(dept,name,0);
+ for(const o of state.orders)if(o&&!isSpecial(o)&&!CLOSED.has(String(o.status||"").trim()))add(o.dept,o.machine,1);
+ return [...map.values()].sort((a,b)=>a.dept.localeCompare(b.dept,"zh-Hant")||a.name.localeCompare(b.name,"zh-Hant",{numeric:true}));
+}
+function repairParts(o){const result=[],seen=new Set();
+ for(const [label,raw] of [["維修內容",o.content],["備註",o.note]])for(const line of String(raw||"").split(/[\n\r；;。]+/).map(s=>s.trim()).filter(Boolean)){
+ if(/更換|換新|換上|換掉|換下|換裝|替換|拆換|換料|備品|零件|料號|請購|待料|耗材/.test(line)&&!seen.has(line)){seen.add(line);result.push(label+"："+line);}}
+ return result;
+}
+function machineHistory(){return state.machine?state.orders.filter(o=>!isSpecial(o)&&!CLOSED.has(String(o.status||"").trim())&&sameDept(o)&&sameMachine(o)&&(state.machinePeriod==="all"||orderMonth(o)===state.month)).sort((a,b)=>orderMonth(b).localeCompare(orderMonth(a))||recordDate(b).localeCompare(recordDate(a))||String(b.no).localeCompare(String(a.no))):[]}
 function workHours(o){
  if(o._history)return typeof o.historyHours==="number"&&Number.isFinite(o.historyHours)&&o.historyHours>=0?o.historyHours:0;
  const s=String(o.work||"").trim();
@@ -58,7 +86,7 @@ function overdue(o){
 }
 function dateShort(s){return s?s.slice(5).replace("-","/"):"—"}
 function getScoped(){
- const active=state.orders.filter(o=>!CLOSED.has(String(o.status||"").trim())&&sameDept(o));
+ const active=state.orders.filter(o=>!CLOSED.has(String(o.status||"").trim())&&sameDept(o)&&sameMachine(o));
  const regular=active.filter(o=>!isSpecial(o));
  const monthly=regular.filter(o=>orderMonth(o)===state.month);
  const special=active.filter(o=>isSpecial(o)&&orderMonth(o)===state.month);
@@ -79,7 +107,7 @@ function status(o){
 }
 function baseRows(items,type){
  return items.map((o,i)=>{
-  const title=esc(o.issue||o.content||"未填寫");
+  const title=esc((type==="done"?o.content||o.issue:o.issue||o.content)||"未填寫");
   const date=dateShort(recordDate(o));
   if(type==="special"){
    return '<tr><td class="mr-cell">'+esc(o.no)+'</td><td>'+date+'</td><td>'+title+'</td><td>'+esc(o.person||"—")+'</td><td>'+esc(o.dept||"—")+'</td><td>'+status(o)+'</td></tr>';
@@ -142,8 +170,23 @@ function panelTrend(items){
   pts.map((p,i)=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4" fill="#1475d8"/><text x="'+p[0]+'" y="'+(p[1]-9)+'" text-anchor="middle" font-size="12" fill="#1b4e89">'+value[i]+'</text>').join("")+'</svg>'+
   '<div class="mr-chart-labels">'+months.map(m=>'<span>'+Number(m.slice(5))+'月</span>').join("")+'</div>';
 }
+function renderMachineHistory(){
+ const select=$("mrMachine"),period=$("mrMachinePeriod"),panel=$("mrMachineHistory"),choices=machineOptions();
+ if(state.machine&&!choices.some(x=>x.key===state.machine)){state.machine="";state.machinePage=0;}
+ const options='<option value="">全部機台</option>'+choices.map(x=>'<option value="'+esc(x.key)+'">'+esc((state.dept==="全部"?(x.dept||"未明示")+"｜":"")+x.name+"（"+x.count+"筆）")+'</option>').join("");
+ if(select.innerHTML!==options)select.innerHTML=options;select.value=state.machine;period.value=state.machinePeriod;period.disabled=!state.machine;
+ if(!state.machine){panel.hidden=true;panel.innerHTML="";return;}panel.hidden=false;
+ const selected=choices.find(x=>x.key===state.machine),items=machineHistory(),done=items.filter(isDone).length,parts=items.filter(o=>repairParts(o).length).length,perPage=20,pages=Math.max(1,Math.ceil(items.length/perPage));
+ state.machinePage=Math.min(state.machinePage,pages-1);
+ const rows=items.slice(state.machinePage*perPage,(state.machinePage+1)*perPage).map(o=>{
+  const related=repairParts(o),rawNote=String(o.note||"").trim(),hours=o._history?(o.historyHours==null?"未登錄":workHours(o).toFixed(2)+" 小時"):(String(o.work||"").trim()?workHours(o).toFixed(2)+" 小時":"未登錄");
+  return '<tr><td class="mr-cell">'+esc(o.no)+'<small>'+esc(recordDate(o)||orderMonth(o))+'</small><small>'+esc(o.machine||"未明示")+'</small></td><td>'+status(o)+'<small>'+esc(o.type||"未分類")+'</small><small>'+esc(o.classification||"")+'</small></td><td class="mr-wrap">'+esc(o.issue||"未登錄")+'</td><td class="mr-wrap">'+esc(o.content||"未登錄")+'</td><td class="mr-wrap">'+(related.length?related.map(x=>'<div>'+esc(x)+'</div>').join(""):'<span class="mr-muted">未見明確零件文字</span>')+(rawNote?'<small class="mr-wrap">原始備註：'+esc(rawNote)+'</small>':'')+'</td><td>'+esc(o.technician||"未登錄")+'<small>'+esc(hours)+'</small></td></tr>';
+ }).join("");
+ panel.innerHTML='<div class="mr-listhead"><h3>'+esc((selected?.dept||"未明示")+"｜"+(selected?.name||"機台")+" 維修履歷")+'</h3><span class="mr-muted">'+esc(state.machinePeriod==="all"?"全部歷史月份":state.month)+'</span></div><div class="mr-machine-summary"><span>維修紀錄 <b>'+items.length+'</b> 件</span><span>已完成 <b>'+done+'</b> 件</span><span>含零件相關文字 <b>'+parts+'</b> 件</span></div>'+(items.length?'<div class="mr-tablescroll"><table class="mr-history-table"><thead><tr>'+["工單／日期","狀態／類型","故障描述","實際維修內容","更換零件／相關紀錄","處理人／工時"].map(x=>'<th>'+esc(x)+'</th>').join("")+'</tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="mr-empty">目前查詢範圍沒有該機台的維修紀錄。</div>')+(pages>1?'<div class="mr-pager"><button type="button" data-machine-page="-1" '+(state.machinePage===0?"disabled":"")+'>上一頁</button><span>第 '+(state.machinePage+1)+'／'+pages+' 頁，共 '+items.length+' 筆</span><button type="button" data-machine-page="1" '+(state.machinePage>=pages-1?"disabled":"")+'>下一頁</button></div>':'')+'<div class="mr-data-note">月報依上方月份統計，履歷預設顯示全部月份。零件欄摘錄維修內容與可取得的備註原文，可能包含請購、待更換或建議，非確認已更換清冊。無法辨識的歷史名稱不強制合併。</div>';
+}
 function render(){
  if(!root)return;
+ renderMachineHistory();
  const {regular,monthly,special,open,done}=getScoped();
  const historyPending=monthly.filter(o=>o._history&&!isDone(o));
  const unknownHours=monthly.filter(o=>o._history&&o.historyHours==null).length;
@@ -178,12 +221,15 @@ function make(){
  if(initialised)return;
  root=$("monthlyReportRoot");if(!root)return;
  root.innerHTML='<div class="mr-title"><div><h2>' + mrSvgIcon("wrench") + '維修月報</h2><p>設備維修統計與'+esc(SPECIAL)+'</p></div><span class="mr-last">資料來源：正式機修維修單及歷史維修資料</span></div>'+
- '<div class="mr-control"><label for="mrMonth">月份</label><div class="mr-month"><button type="button" id="mrMonthPrev" aria-label="上一個月" title="上一個月"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><input id="mrMonth" type="month"><button type="button" id="mrMonthNext" aria-label="下一個月" title="下一個月"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div><label>廠區</label><div id="mrDepts" class="mr-dept">'+["全部","E3","E4","E5","W8","W8整修&組立","空壓機室"].map(n=>'<button type="button" data-dept="'+esc(n)+'">'+esc(n)+'</button>').join("")+'</div><button class="mr-reload" type="button" id="mrReload">↻ 更新資料</button></div>'+
- '<div class="mr-notice" id="mrFetchStatus">正在準備月報資料…</div><div class="mr-kpis" id="mrKpis"></div><div class="mr-panels" id="mrPanels"></div><div class="mr-lists" id="mrLists"></div>';
- $("mrMonthPrev").onclick=()=>{state.month=monthAdd(state.month,-1);state.page={done:0,open:0,special:0};render()};
- $("mrMonthNext").onclick=()=>{state.month=monthAdd(state.month,1);state.page={done:0,open:0,special:0};render()};
- $("mrMonth").onchange=e=>{if(monthRx.test(e.target.value)){state.month=e.target.value;state.page={done:0,open:0,special:0};render()}};
- $("mrDepts").onclick=e=>{const btn=e.target.closest("button[data-dept]");if(btn){state.dept=btn.dataset.dept;state.page={done:0,open:0,special:0};render()}};
+ '<div class="mr-control"><label for="mrMonth">月份</label><div class="mr-month"><button type="button" id="mrMonthPrev" aria-label="上一個月" title="上一個月"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><input id="mrMonth" type="month"><button type="button" id="mrMonthNext" aria-label="下一個月" title="下一個月"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div><label>廠區</label><div id="mrDepts" class="mr-dept">'+["全部","E3","E4","E5","W8","W8整修&組立","空壓機室"].map(n=>'<button type="button" data-dept="'+esc(n)+'">'+esc(n)+'</button>').join("")+'</div><button class="mr-reload" type="button" id="mrReload">↻ 更新資料</button><div class="mr-machine-control"><label for="mrMachine">機台</label><select id="mrMachine"><option value="">全部機台</option></select><label for="mrMachinePeriod">履歷範圍</label><select id="mrMachinePeriod"><option value="all">全部歷史月份</option><option value="month">所選月份</option></select></div></div>'+
+ '<div class="mr-notice" id="mrFetchStatus">正在準備月報資料…</div><div class="mr-kpis" id="mrKpis"></div><div class="mr-panels" id="mrPanels"></div><article class="mr-list mr-machine-history" id="mrMachineHistory" hidden></article><div class="mr-lists" id="mrLists"></div>';
+ $("mrMonthPrev").onclick=()=>{state.month=monthAdd(state.month,-1);state.machinePage=0;state.page={done:0,open:0,special:0};render()};
+ $("mrMonthNext").onclick=()=>{state.month=monthAdd(state.month,1);state.machinePage=0;state.page={done:0,open:0,special:0};render()};
+ $("mrMonth").onchange=e=>{if(monthRx.test(e.target.value)){state.month=e.target.value;state.machinePage=0;state.page={done:0,open:0,special:0};render()}};
+ $("mrDepts").onclick=e=>{const btn=e.target.closest("button[data-dept]");if(btn){state.dept=btn.dataset.dept;state.machine="";state.machinePage=0;state.page={done:0,open:0,special:0};render()}};
+ $("mrMachine").onchange=e=>{state.machine=e.target.value;state.machinePage=0;state.page={done:0,open:0,special:0};render()};
+ $("mrMachinePeriod").onchange=e=>{state.machinePeriod=e.target.value==="month"?"month":"all";state.machinePage=0;render()};
+ $("mrMachineHistory").addEventListener("click",e=>{const b=e.target.closest("button[data-machine-page]");if(!b)return;state.machinePage=Math.max(0,state.machinePage+Number(b.dataset.machinePage));render()});
  $("mrReload").onclick=()=>reload();
  $("mrLists").addEventListener("click",e=>{
   const btn=e.target.closest("button[data-action]");if(!btn)return;
@@ -238,7 +284,7 @@ async function reload(){
  finally{state.busy=false;render();}
 }
 window.maintenanceReport={
- clear(){state.orders=[];state.loaded=false;state.error="";render();},
+ clear(){state.orders=[];state.machine="";state.machinePage=0;state.loaded=false;state.error="";render();},
  open(options){
   loader=options;make();
   state.orders=[];state.loaded=false;state.error="";render();
