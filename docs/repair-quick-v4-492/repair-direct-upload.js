@@ -89,7 +89,8 @@
   // Stay compatible with the existing 2 MiB receiver; larger chunks require explicit server advertisement.
   function negotiatedChunk_(health){const n=health?.maxChunkBytes;return n===8*MB?8*MB:n===4*MB?4*MB:CHUNK;}
   function receiptDelay_(poll){return poll===0?350:poll===1?650:950;}
-  let preflightCache=null,preflightCacheAt=0;
+  let preflightCache=null,preflightCacheAt=0,fastHealthAt=0,fastHealthRefresh=null;
+  let receiverFastCaps={intake:false,batch:false};
   // Keep receipts for this page so retry never sends verified files twice.
   const confirmedFiles=new WeakMap();
   // Android capture providers can return the same name, length and timestamp
@@ -216,6 +217,17 @@
       document.head.appendChild(tag);
     });
   }
+  async function refreshFastHealth_(access){
+    if(!publicGuest||Date.now()-fastHealthAt<15000)return access;
+    if(!fastHealthRefresh){
+      fastHealthRefresh=fastNewReady_().then(cloud=>{
+        const refreshed={...access,fastIntakeReady:receiverFastCaps.intake&&cloud.ready,fastBatchV2:receiverFastCaps.batch&&cloud.ready&&cloud.batch};
+        if(preflightCache===access)preflightCache=refreshed;
+        fastHealthAt=Date.now();return refreshed;
+      }).finally(()=>{fastHealthRefresh=null});
+    }
+    return fastHealthRefresh;
+  }
   async function preflight() {
     if(!VALID)throw new Error('V4 免登入附件接收器尚未設定，不能宣稱附件已備份');
     // Avoid repeating health and guest-auth network roundtrips when a page
@@ -247,8 +259,10 @@
       });
     }).then(async result=>{
       const cloudHealth=await fastHealth;
-      result.fastIntakeReady=result.fastIntakeReady===true&&cloudHealth.ready;
-      result.fastBatchV2=result.fastBatchV2===true&&cloudHealth.batch;
+      receiverFastCaps={intake:result.fastIntakeReady===true,batch:result.fastBatchV2===true};
+      result.fastIntakeReady=receiverFastCaps.intake&&cloudHealth.ready;
+      result.fastBatchV2=receiverFastCaps.batch&&cloudHealth.ready&&cloudHealth.batch;
+      fastHealthAt=Date.now();
       preflightCache=result;
       preflightCacheAt=Date.now();
       return result;
@@ -635,7 +649,8 @@
     if(uploading)throw new Error('附件正在上傳，請勿重複操作');
     uploading=true;
     try{
-      const access=await preflight();
+      let access=await preflight();
+      if(allowFast)access=await refreshFastHealth_(access);
       if(!qaMode&&!access.productionAllowed)
         throw new Error('公開附件接收器沒有確認上傳權限');
       const list=[...(selected||[])],results=[],failures=[];
