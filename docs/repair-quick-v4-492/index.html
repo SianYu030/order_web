@@ -2511,7 +2511,12 @@ el("submitBtn").onclick=async()=>{
   if(window.__mrRelayGateChecked!==true){alert("正在確認正式後端版本，請重新整理或稍後再送出。");return;}
   const lineReady=el("lineNotify").checked;
   const reportPhotos=[...reportPhotoFiles];
-  const reportMediaFiles=window.repairDrive?.enabled?[...reportPhotos,...window.repairDrive.videoFiles("report")]:reportPhotos;
+  const selectedVideo=window.repairVideoTestBridge?.getFile("report");
+  const driveReady=window.repairDrive?.enabled===true;
+  const reportMediaFiles=driveReady?[...reportPhotos,...window.repairDrive.videoFiles("report")]:reportPhotos;
+  // Never silently omit a selected video or fall back to split LINE delivery.
+  if(selectedVideo&&!driveReady){alert("影片接收器尚未就緒，附件仍保留，請稍後再送出。");return;}
+  if(lineReady&&reportMediaFiles.length&&(!driveReady||!relayEnabled_())){alert("整批 LINE 附件通道尚未就緒，附件仍保留，請稍後再送出；不會拆開發送。");return;}
   const btn=el("submitBtn");
   const oldText=btn.textContent;
   btn.disabled=true;
@@ -2573,6 +2578,7 @@ el("submitBtn").onclick=async()=>{
     el("retryReportMediaBtn").hidden=true;
     el("retryReportMediaStatus").hidden=true;
     el("retryReportMediaLater").hidden=true;
+    el("retryReportMediaLater").textContent="稍後補傳到同一筆 MR（不重建工單）";
     el("successTitle").textContent="工單已建立，附件處理中";
     el("successHomeBtn").disabled=true;
     el("againBtn").disabled=true;
@@ -2685,7 +2691,7 @@ el("submitBtn").onclick=async()=>{
           lineResult.message="｜LINE 已排入整批派送（待確認）";
         }catch(err){
           stage.line="排程未確認";lineResult.message="｜⚠️ LINE 排程未確認："+err.message;
-          if(data.lineRelayEventId){pendingReportMediaRetry={files:[],receipts:relayReceipts,orderNo:data.orderNo,photoEpoch:data.photoEpoch,mediaLayout:data.mediaLayout===2?2:1,relayEventId:data.lineRelayEventId,createRequestId:state.requestId,lineMsg:""};el("retryReportMediaBtn").textContent="🔄 確認原 LINE 通知（不重傳附件）";el("retryReportMediaBtn").hidden=false;el("retryReportMediaStatus").hidden=false;el("retryReportMediaStatus").textContent="附件已保存，LINE 通知結果尚未確認，不要重建工單或重傳附件。";}
+          if(data.lineRelayEventId){pendingReportMediaRetry={files:[],receipts:relayReceipts,orderNo:data.orderNo,photoEpoch:data.photoEpoch,mediaLayout:data.mediaLayout===2?2:1,relayEventId:data.lineRelayEventId,createRequestId:state.requestId,lineMsg:""};el("retryReportMediaBtn").textContent="🔄 確認原 LINE 通知（不重傳附件）";el("retryReportMediaBtn").hidden=false;el("retryReportMediaStatus").hidden=false;el("retryReportMediaStatus").textContent="附件已保存，LINE 通知結果尚未確認，不要重建工單或重傳附件。";const later=el("retryReportMediaLater");if(recoveryIntent&&recoveryV1.load(data.orderNo,data.photoEpoch)?.receipts){later.href="./media-retry.html?mr="+encodeURIComponent(data.orderNo)+"&epoch="+encodeURIComponent(data.photoEpoch||"");later.textContent="稍後確認原 LINE 通知（不重傳附件）";later.hidden=false;}}
         }finally{lineResult.ms=Math.round(performance.now()-relayBegan);}
       }
       renderReportStages_();
