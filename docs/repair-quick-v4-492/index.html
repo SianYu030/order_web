@@ -747,7 +747,7 @@ body #progress{display:none!important}
               <input id="reportVideoFile" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.3gpp,.webm,.mkv">
             </label>
           </div>
-          <div class="photo-note video-hint" role="status" aria-live="polite">iPhone 優先使用全螢幕高畫質錄影；網頁相機無法啟動時，可使用手機相機或從相簿選取原檔。影片上限 100 MB。</div>
+          <div class="photo-note video-hint" role="status" aria-live="polite">相機錄影直接使用手機相機功能；畫質優先可先用手機相機 App 錄製，再從相簿選取原檔。影片上限 100 MB。</div>
           <div class="video-preview-wrap" id="reportVideoSelected" hidden>
             <div class="video-pilot-detail" id="reportVideoDetails" role="status"></div>
             <div id="reportVideoPreview"></div>
@@ -1010,7 +1010,7 @@ body #progress{display:none!important}
               <input id="repairVideoFile" type="file" accept="video/*,.mov,.mp4,.m4v,.3gp,.3gpp,.webm,.mkv">
             </label>
           </div>
-          <div class="photo-note video-hint" role="status" aria-live="polite">iPhone 優先使用全螢幕高畫質錄影；網頁相機無法啟動時，可使用手機相機或從相簿選取原檔。影片上限 100 MB。</div>
+          <div class="photo-note video-hint" role="status" aria-live="polite">相機錄影直接使用手機相機功能；畫質優先可先用手機相機 App 錄製，再從相簿選取原檔。影片上限 100 MB。</div>
           <div class="video-preview-wrap" id="repairVideoSelected" hidden>
             <div class="video-pilot-detail" id="repairVideoDetails" role="status"></div>
             <div id="repairVideoPreview"></div>
@@ -2898,7 +2898,7 @@ window.repairVideoTestBridge={
       if(!pilot)return;
       pilot.hidden=false;
       var hint=pilot.querySelector(".video-hint");
-      if(hint)hint.textContent="iPhone 優先使用全螢幕高畫質錄影；網頁相機無法啟動時，可使用手機相機或從相簿選取原檔。影片上限 100 MB。";
+      if(hint)hint.textContent="相機錄影直接使用手機相機功能；畫質優先可先用手機相機 App 錄製，再從相簿選取原檔。影片上限 100 MB。";
       var selected=items[prefix];
       if(selected&&selected.file)
         el(prefix+"VideoDetails").textContent="已選取："+selected.file.name+
@@ -2926,7 +2926,7 @@ document.addEventListener("click",function(ev){
 <script src="./repair-fast-intake-client.js?v=20261128-warm-hash-v1" defer></script>
 <script src="./repair-direct-upload.js?v=20261128-heartbeat-recheck-v1" defer></script>
 <script src="./maintenance-report.js?v=20261127-machine-picker-v4" defer></script>
-<script src="./camera-bridge-formal.js?v=20261128-ios-abort-fallback-v1" defer></script>
+<script src="./camera-bridge-formal.js?v=20261128-ios-native-v1" defer></script>
 
 
 </body>
