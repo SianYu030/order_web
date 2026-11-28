@@ -148,7 +148,8 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
         headers:{"Content-Type":"text/plain;charset=utf-8"},
         body:JSON.stringify({action:"timerAction",orderNo:id,timerEvent:event,
           operationId:pending.operationId,expectedLastOperationId:pending.expectedLastOperationId,photoEpoch:order.photoEpoch||"",
-          technician:currentRepairUser,sessionToken,detail,nextDate,...extra,...(pending.relaySelection||{})})}).catch(()=>null);
+          technician:currentRepairUser,sessionToken,detail,nextDate,...extra,...(pending.relaySelection||{}),
+          ...(event==="close"?{lineMode:"",lineNotify:"0",linePhotoCount:"0",lineVideoCount:"0"}:{})})}).catch(()=>null);
       await Promise.race([writeRequest,wait(900)]);
       // Bound a failed synchronization to ~30s, not 15 * 20s per read.
       // Late/uncertain responses keep their pending operation ID for safe retry.
@@ -181,7 +182,7 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
           }
           confirmed=true;
           console.info("[V10 timer]",event,"回讀已確認",Date.now()-clickedAt,"ms");
-          return {...state,relayEventId:pending.relaySelection?pending.operationId:""};
+          return {...state,relayEventId:event!=="close"&&pending.relaySelection?pending.operationId:""};
         }
         if(state.lastOperationId&&state.lastOperationId!==pending.expectedLastOperationId){
           throw Error("工單已被其他人更新，請重新整理");
@@ -289,8 +290,8 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
     try{
       await relayEnsureOrderIdentity_(repairState.order);
       const order=repairState.order,photos=[...repairPhotoFiles],media=window.repairDrive?.enabled?[...photos,...window.repairDrive.videoFiles("repair")]:photos;
-      const relay=relaySelection_(photos,media,byId("repairLineNotify")?.checked,order.photoEpoch);
-      const closed=await op("close","","",{...relay,repairType:byId("repairTypeSelect").value,
+      // Completion is a record update only. Maintenance media is archived, never sent as a close notification.
+      await op("close","","",{lineMode:"",lineNotify:"0",repairType:byId("repairTypeSelect").value,
         classification:byId("repairClassSelect").value,
         content:byId("repairContent").value.trim(),note:byId("repairNote").value.trim()});
       byId("saveRepairMsg").classList.remove("hidden");
@@ -298,8 +299,8 @@ V10 工時同步候選前端；僅供 GitHub 審查分支使用。
       // Keep the original V4.4.52 NAS photo pipeline, but only AFTER verified close.
       // If photo upload fails, the completed order is not silently marked as unclosed.
       if(relayEnabled_()){
-        try{await relayRepairMedia_(order,photos,media,closed.relayEventId||"");}
-        catch(mediaError){byId("saveRepairMsg").textContent="⚠️ 結案已確認，但附件／LINE 通知未確認："+mediaError.message;}
+        try{await relayRepairMedia_(order,photos,media,"");}
+        catch(mediaError){byId("saveRepairMsg").textContent="⚠️ 結案已確認，但附件歸檔未確認："+mediaError.message;}
         return;
       }
       if(media.length){
