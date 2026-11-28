@@ -31,7 +31,20 @@ async function upload(file,context,api,opt={}){
  if(opt.deferCommit)return {pendingVerification:true,sessionId:c.sessionId};
  return assertReceipt(await api('commit',{...c,sha256:hash}));
 }
-async function hashFile(file){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await file.arrayBuffer())),x=>x.toString(16).padStart(2,'0')).join('')}
+// Hash the immutable File object once, with a single bounded lane across warmup and upload.
+const fileHashes=new WeakMap();let hashQueue=Promise.resolve();
+function hashFile(file){
+ const cached=fileHashes.get(file);if(cached)return cached;
+ const task=hashQueue.then(async()=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await file.arrayBuffer())),x=>x.toString(16).padStart(2,'0')).join(''));
+ fileHashes.set(file,task);hashQueue=task.catch(()=>undefined);
+ task.catch(()=>{if(fileHashes.get(file)===task)fileHashes.delete(file)});
+ return task;
+}
+function warmHashes(files){
+ if(!Array.isArray(files)||files.length<1||files.length>13||!files.every(f=>f&&typeof f.arrayBuffer==='function'&&Number.isSafeInteger(f.size)&&f.size>0&&f.size<=MAX)||files.reduce((n,f)=>n+f.size,0)>300*1024*1024)return;
+ // No upload, authorization, or UI blocking: warmup failure is retried by normal upload.
+ for(const file of files)void hashFile(file).catch(()=>undefined);
+}
 async function uploadBatch(entries,orderNo,epoch,api,opt={}){
  need(Array.isArray(entries)&&entries.length>=2&&entries.length<=13&&uuid(epoch)&&/^MR20[0-9]{8}$/.test(orderNo),'BATCH_CONTEXT_INVALID');
  const ids=entries.map(x=>x.sessionId);need(new Set(ids).size===ids.length&&ids.every(uuid)&&entries.every(x=>x.file?.size>0&&x.file.size<=MAX),'BATCH_FILE_INVALID');
@@ -60,5 +73,5 @@ async function uploadBatch(entries,orderNo,epoch,api,opt={}){
  }
  return out;
 }
-root.repairFastIntakeV1=Object.freeze({upload,uploadBatch,version:'batch-v2-20261127'});
+root.repairFastIntakeV1=Object.freeze({upload,uploadBatch,warmHashes,version:'batch-v2-warm-hash-20261128'});
 })(globalThis);
