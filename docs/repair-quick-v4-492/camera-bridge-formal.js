@@ -1,16 +1,14 @@
-/* iOS fullscreen HD web camera. Existing report/repair attachment hook only. */
-(function installHDRecorder(){
+/* iOS native camera: leave the trusted file-input activation to the browser/OS.
+ * No getUserMedia, custom camera overlay or MediaRecorder in embedded browsers.
+ * Both report and repair still use the existing attachment/preview/upload handler.
+ */
+(function installNativeCamera(){
 "use strict";
 const w=window,d=document,hook=w.repairVideoTestBridge;
 const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 if(!ios||!hook)return;
-const MAX=100*1024*1024, LIMIT=92*1024*1024;
-let active=null;
-const nativeContexts=new Map();
-const fallbackKinds=new Set();
-const stamp=()=>w.performance?.now?.()??Date.now();
-function timing(s,key){s.timings[key]=Math.round(stamp()-s.openedAt);w.__repairCameraTiming={...s.timings};}
-function get(id){return d.getElementById(id)}
+const pending=new Map();
+const get=id=>d.getElementById(id);
 function context(kind){
  const mode=get(kind==="report"?"reportMode":"repairMode");
  if(!mode||mode.classList.contains("hidden"))return "";
@@ -21,183 +19,26 @@ function context(kind){
  }
  return JSON.stringify([cameraContextRevision_,state.dept,state.person,state.machine,state.requestId]);
 }
-function same(s){return active===s&&context(s.kind)===s.context&&hook.getFile(s.kind)===s.previous}
-function release(s){clearTimeout(s.timer);clearInterval(s.clockTimer);s.cancelStream?.();s.cancelPreview?.();if(s.stream){s.stream.getTracks().forEach(t=>{try{t.stop()}catch(_){}});s.stream=null} s.preview.srcObject=null}
-function close(s,message){
- if(active!==s)return;
- s.cancelled=true;active=null;release(s);
- if(s.recorder&&s.recorder.state!=="inactive"){try{s.recorder.stop()}catch(_){}}
- s.overlay.remove();
- d.documentElement.style.overflow=s.oldHtmlOverflow;d.body.style.overflow=s.oldBodyOverflow;
- if(message)alert(message);
-}
-function elem(tag,txt,style){const e=d.createElement(tag);if(txt)e.textContent=txt;Object.assign(e.style,style||{});return e}
-function readMetadata(file,poster){
- return new Promise((resolve,reject)=>{
-  const v=d.createElement("video"),url=URL.createObjectURL(file);
-  let done=false,disposed=false;
-  function dispose(){if(disposed)return;disposed=true;v.removeAttribute("src");v.load();URL.revokeObjectURL(url)}
-  function finish(error){if(done)return;done=true;clearTimeout(timer);v.onloadedmetadata=null;v.onerror=null;if(error){dispose();reject(error)}else resolve({file,video:v,url,width:v.videoWidth,height:v.videoHeight,duration:v.duration,dispose})}
-  const timer=setTimeout(()=>finish(Error("無法確認錄影解析度")),10000);
-  v.preload="metadata";v.playsInline=true;v.controls=true;
-  if(typeof poster==="string"&&poster.startsWith("data:image/jpeg;base64,")&&poster.length<300000)v.poster=poster;
-  v.onloadedmetadata=()=>finish();
-  v.onerror=()=>finish(Error("無法讀取錄影檔案"));
-  v.src=url;
- });
-}
-function fullHD(width,height){return Math.min(width,height)>=1080&&Math.max(width,height)>=1920}
-function nativeOpen(kind){
- const input=get(kind+"VideoCapture"),ctx=context(kind);
- if(!input||!ctx)return;
- if(active)close(active);
- nativeContexts.set(kind,{context:ctx,previous:hook.getFile(kind)});
- // Must be invoked directly by a user click, not after an asynchronous camera failure.
- input.click();
-}
-function cameraFailure(s,message){
- if(active!==s)return;
- const kind=s.kind;
- close(s);fallbackKinds.add(kind);
- const note=get(kind+"CameraFallbackNote");
- if(note){note.hidden=false;note.textContent=message+"。請按「手機相機錄影」或「選取影片」；原影片仍保留。";}
- const label=get(kind+"VideoRecordStart");
- if(label)label.title="上次網頁相機未能啟動；再按一次使用手機相機";
-}
-function cameraStream(s){
- return new Promise((resolve,reject)=>{
-  let settled=false;
-  const timer=setTimeout(()=>{settled=true;reject(Error("相機啟動逾時"))},12000);
-  const stop=()=>{if(settled)return;settled=true;clearTimeout(timer);reject(Error("相機已關閉"))};
-  s.cancelStream=stop;
-  const clear=()=>{clearTimeout(timer);s.cancelStream=null};
-  try{
-   Promise.resolve(navigator.mediaDevices.getUserMedia({audio:true,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30,max:30}}})).then(stream=>{
-    if(settled||!same(s)){stream.getTracks().forEach(t=>{try{t.stop()}catch(_){}});clear();if(!settled){settled=true;reject(Error("相機已關閉"))}return}
-    settled=true;clear();resolve(stream);
-   },error=>{if(!settled){settled=true;clear();reject(error)}else clear()});
-  }catch(error){if(!settled){settled=true;clear();reject(error)}}
- });
-}
-function previewReady(s){
- return new Promise((resolve,reject)=>{
-  const v=s.preview;let done=false,timeout,interval,lastError=null;
-  function finish(error){if(done)return;done=true;clearTimeout(timeout);clearInterval(interval);for(const name of ["loadedmetadata","loadeddata","canplay","playing","resize"])v.removeEventListener(name,check);s.cancelPreview=null;error?reject(error):resolve();}
-  function check(){if(!same(s)){finish(Error("相機已關閉"));return}if(v.videoWidth>0&&v.videoHeight>0&&v.readyState>=2&&!v.paused)finish();}
-  for(const name of ["loadedmetadata","loadeddata","canplay","playing","resize"])v.addEventListener(name,check);
-  s.cancelPreview=()=>finish(Error("相機已關閉"));
-  timeout=setTimeout(()=>finish(lastError||Error("相機預覽未就緒")),7000);
-  interval=setInterval(check,150);
-  // WebKit may reject play() with AbortError while the stream is still starting.
-  // Autoplay/metadata events may subsequently make the preview usable.
-  try{Promise.resolve(v.play()).then(check,error=>{lastError=error;check()})}catch(error){lastError=error}
-  check();
- });
-}
-function setStatus(s,message){if(active===s)s.status.textContent=message}
-function requestStop(s){
- if(active!==s||!s.recorder||s.recorder.state!=="recording")return;
- timing(s,"stopRequestedMs");s.record.disabled=true;clearInterval(s.clockTimer);setStatus(s,"正在確認影片畫質…");clearTimeout(s.timer);
- try{s.recorder.stop()}catch(_){close(s,"停止錄影失敗，原影片保留。")}
-}
-async function finish(s){
- if(!same(s)){close(s);return}
- let verified=null,handedOff=false;
- try{
-  timing(s,"recorderStoppedMs");
-  const type=(s.recorder.mimeType||s.mime).split(";")[0];
-  if(type!=="video/mp4")throw Error("錄影格式不是 MP4");
-  if(!s.bytes||s.bytes>MAX)throw Error("影片空白或超過 100 MB");
-  const file=new File(s.chunks,"camera_"+Date.now()+".mp4",{type});
-  if(!file.size||file.size>MAX)throw Error("影片空白或超過 100 MB");
-  s.chunks=[];
-  release(s);
-  verified=await readMetadata(file,s.poster);
-  timing(s,"metadataReadyMs");
-  if(!same(s)){close(s);return}
-  if(!fullHD(verified.width,verified.height))throw Error("實際影片未達 1080p，未替換原影片");
-  if(!hook.acceptCameraFile(s.kind,file,s.poster,verified))throw Error("原頁面未接收影片");
-  handedOff=true;timing(s,"attachedMs");close(s);
- }catch(e){close(s,String(e.message||e)+"。原影片保留。")}
- finally{if(verified&&!handedOff)verified.dispose()}
-}
-function capturePoster(s){try{const v=s.preview,w=v.videoWidth,h=v.videoHeight;if(!w||!h)return '';const c=d.createElement('canvas'),scale=Math.min(1,480/Math.max(w,h));c.width=Math.max(1,Math.round(w*scale));c.height=Math.max(1,Math.round(h*scale));const ctx=c.getContext('2d');if(!ctx)return '';ctx.drawImage(v,0,0,c.width,c.height);return c.toDataURL('image/jpeg',0.82)}catch(_){return ''}}
-function start(s){
- if(!same(s)){close(s);return}
- if(!s.stream||s.recorder)return;
- try{
-  const options={mimeType:s.mime,videoBitsPerSecond:8000000,audioBitsPerSecond:128000};
-  const r=new MediaRecorder(s.stream,options);
-  s.recorder=r;s.chunks=[];s.bytes=0;
-  r.ondataavailable=e=>{if(active!==s||s.cancelled||!e.data?.size)return;s.chunks.push(e.data);s.bytes+=e.data.size;if(s.bytes>=LIMIT)requestStop(s)};
-  r.onerror=()=>cameraFailure(s,"網頁錄影中斷");
-  r.onstop=()=>{if(active===s&&!s.cancelled)void finish(s)};
-  r.start(1000);timing(s,"recordStartedMs");
-  s.poster=capturePoster(s);
-  s.record.setAttribute('aria-label','停止錄影');s.record.title='停止錄影';s.recordMark.style.borderRadius='6px';s.recordMark.style.transform='scale(.62)';s.record.onclick=()=>requestStop(s);
-  const started=Date.now();const tick=()=>{const sec=Math.floor((Date.now()-started)/1000);s.clock.textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')};tick();s.clock.style.background='#c5222b';s.clockTimer=setInterval(tick,1000);
-  setStatus(s,"錄影中｜1080p");
-  s.timer=setTimeout(()=>requestStop(s),90000);
- }catch(e){cameraFailure(s,"無法啟動網頁高畫質錄影（"+String(e.name||"CameraError")+"）")}
-}
-async function open(kind){
- if(active)return;
- const openedAt=stamp();const ctx=context(kind);if(!ctx){alert("請先確認目前報修或維修頁面。");return}
- if(!w.isSecureContext||!navigator.mediaDevices?.getUserMedia||!w.MediaRecorder){nativeOpen(kind);return}
- const mime=["video/mp4;codecs=avc1.42001f,mp4a.40.2","video/mp4"].find(t=>MediaRecorder.isTypeSupported(t));
- if(!mime){nativeOpen(kind);return}
- const overlay=elem("div",null,{position:"fixed",inset:"0",zIndex:"2147483646",background:"#000",color:"#fff",overflow:"hidden",overscrollBehavior:"contain",touchAction:"manipulation",isolation:"isolate"});
- overlay.style.height="100vh";if(w.CSS?.supports("height","100dvh"))overlay.style.height="100dvh";
- overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");overlay.setAttribute("aria-label","全螢幕相機錄影");
- const preview=elem("video",null,{position:"absolute",inset:"0",display:"block",width:"100%",height:"100%",maxWidth:"none",maxHeight:"none",objectFit:"cover",objectPosition:"center",background:"#000",borderRadius:"0",margin:"0",pointerEvents:"none"});preview.muted=true;preview.autoplay=true;preview.playsInline=true;preview.setAttribute("playsinline","");
- const top=elem("div",null,{position:"absolute",top:"0",left:"0",right:"0",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"8px",padding:"12px 16px 24px",background:"linear-gradient(to bottom,rgba(0,0,0,.65),transparent)",zIndex:"1",pointerEvents:"none"});
- top.style.paddingTop="calc(env(safe-area-inset-top, 0px) + 12px)";top.style.paddingLeft="calc(env(safe-area-inset-left, 0px) + 16px)";top.style.paddingRight="calc(env(safe-area-inset-right, 0px) + 16px)";
- const status=elem("div","正在開啟後置相機…",{fontSize:"13px",fontWeight:"600",textShadow:"0 1px 4px #000",flex:"1",color:"#fff"});status.setAttribute("role","status");
- const clock=elem("div","00:00",{background:"rgba(0,0,0,.55)",borderRadius:"6px",padding:"5px 10px",fontVariantNumeric:"tabular-nums",fontSize:"16px",fontWeight:"600",color:"#fff"});top.append(status,clock);
- const controls=elem("div",null,{position:"absolute",bottom:"0",left:"0",right:"0",display:"grid",gridTemplateColumns:"1fr 84px 1fr",alignItems:"center",gap:"8px",padding:"22px 16px 16px",background:"linear-gradient(to top,rgba(0,0,0,.8),transparent)",zIndex:"2"});
- controls.style.paddingBottom="calc(env(safe-area-inset-bottom, 0px) + 16px)";controls.style.paddingLeft="calc(env(safe-area-inset-left, 0px) + 16px)";controls.style.paddingRight="calc(env(safe-area-inset-right, 0px) + 16px)";
- const cancel=elem("button","取消",{justifySelf:"start",padding:"12px 8px",background:"transparent",color:"#fff",border:"0",fontSize:"16px",minWidth:"48px",minHeight:"48px",margin:"0",textShadow:"0 1px 4px #000"});cancel.type="button";
- const record=elem("button",null,{boxSizing:"border-box",display:"grid",placeItems:"center",justifySelf:"center",width:"76px",height:"76px",minWidth:"76px",minHeight:"76px",padding:"5px",background:"transparent",color:"#fff",border:"4px solid #fff",borderRadius:"50%",margin:"0",boxShadow:"0 2px 10px rgba(0,0,0,.4)",opacity:".45",touchAction:"manipulation"});record.type="button";record.disabled=true;record.title="開始錄影";record.setAttribute("aria-label","開始錄影");
- const recordMark=elem("span",null,{display:"block",width:"100%",height:"100%",background:"#ff343b",borderRadius:"50%",transition:"transform .15s,border-radius .15s",pointerEvents:"none"});record.append(recordMark);
- const quality=elem("div","HD · 30",{justifySelf:"end",color:"#fff",fontWeight:"650",fontSize:"13px",textShadow:"0 1px 4px #000"});
- controls.append(cancel,record,quality);overlay.append(preview,top,controls);
- const oldHtmlOverflow=d.documentElement.style.overflow,oldBodyOverflow=d.body.style.overflow;
- d.documentElement.style.overflow="hidden";d.body.style.overflow="hidden";d.body.append(overlay);
- const s={kind,context:ctx,previous:hook.getFile(kind),overlay,preview,status,clock,record,recordMark,mime,cancelled:false,stream:null,recorder:null,timer:null,clockTimer:null,oldHtmlOverflow,oldBodyOverflow,openedAt,timings:{}};
- active=s;record.onclick=()=>start(s);cancel.onclick=()=>close(s);
- try{
-  const stream=await cameraStream(s);
-
-  if(!same(s)){stream.getTracks().forEach(t=>t.stop());close(s);return}
-  s.stream=stream;timing(s,"streamReadyMs");
-  const track=stream.getVideoTracks()[0];if(!track)throw Error("找不到相機影像");
-  const settings=track.getSettings();
-  if(settings.facingMode==="user")throw Error("無法取得後置相機");
-  if(settings.width&&settings.height&&!fullHD(settings.width,settings.height))throw Error("相機未提供 1080p");
-  stream.getTracks().forEach(t=>t.addEventListener("ended",()=>{if(active===s&&s.recorder?.state==="recording")close(s,"相機或麥克風已中斷，原影片保留。")}));
-  preview.srcObject=stream;await previewReady(s);
-  if(!same(s)){close(s);return}
-  if(!fullHD(preview.videoWidth,preview.videoHeight))throw Error("實際相機畫面未達 1080p");
-  setStatus(s,"高畫質相機就緒｜"+preview.videoWidth+" × "+preview.videoHeight);
-  record.disabled=false;record.style.opacity='1';timing(s,"previewReadyMs");
- }catch(e){cameraFailure(s,"網頁高畫質相機未能啟動（"+String(e.name||"CameraError")+"）")}
-}
 for(const kind of ["report","repair"]){
- const label=get(kind+"VideoRecordStart");if(!label)continue;
- const native=get(kind+"VideoCapture"),pilot=get(kind+"VideoPilot");
- if(!native||!pilot)continue;
- const button=elem("button","手機相機錄影",{marginTop:"6px",width:"100%",padding:"10px",fontSize:"14px",border:"1px solid #b7c6d7",borderRadius:"8px",background:"#fff",color:"#24476c"});button.type="button";
- button.addEventListener("click",()=>nativeOpen(kind));
- const note=elem("div","",{fontSize:"13px",color:"#a04a12",marginTop:"6px"});note.id=kind+"CameraFallbackNote";note.hidden=true;note.setAttribute("role","status");
- const actions=label.parentElement;actions.insertAdjacentElement("afterend",button);button.insertAdjacentElement("afterend",note);
- native.addEventListener("change",event=>{
-  const saved=nativeContexts.get(kind);nativeContexts.delete(kind);
-  if(saved&&(context(kind)!==saved.context||hook.getFile(kind)!==saved.previous)){event.stopImmediatePropagation();native.value="";return}
-  if(native.files?.length){fallbackKinds.delete(kind);note.hidden=true;}
+ const label=get(kind+"VideoRecordStart"),input=get(kind+"VideoCapture");
+ if(!label||!input)continue;
+ // Use the original label and input default action. No synthetic picker click.
+ label.title="直接使用手機相機錄影";
+ label.setAttribute("aria-label","手機相機錄影");
+ input.addEventListener("click",event=>{
+  const ctx=context(kind);
+  if(!ctx){event.preventDefault();pending.delete(kind);return;}
+  pending.set(kind,{context:ctx,previous:hook.getFile(kind)});
  },true);
- label.addEventListener("click",event=>{if(event.target===native)return;event.preventDefault();event.stopImmediatePropagation();if(fallbackKinds.has(kind)){nativeOpen(kind);return}void open(kind)},true);
+ input.addEventListener("cancel",()=>pending.delete(kind));
+ input.addEventListener("change",event=>{
+  const prior=pending.get(kind);pending.delete(kind);
+  if(prior&&(context(kind)!==prior.context||hook.getFile(kind)!==prior.previous)){
+   event.stopImmediatePropagation();input.value="";return;
+  }
+  // The existing change listener validates size/type and preserves old files
+  // if the new capture is empty, invalid or cancelled.
+ },true);
 }
-d.addEventListener("visibilitychange",()=>{if(d.hidden&&active)close(active)});
-w.addEventListener("pagehide",()=>{if(active)close(active)});
-d.addEventListener("click",event=>{if(active&&event.target?.closest?.("#submitBtn,#saveRepairBtn,#completeRepairBtn")){event.preventDefault();event.stopImmediatePropagation()}},true);
+w.__repairCameraMode="native-ios-v1";
 })();
