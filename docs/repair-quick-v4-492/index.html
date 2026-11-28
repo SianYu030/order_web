@@ -2531,7 +2531,7 @@ el("submitBtn").onclick=async()=>{
     // 業務關鍵流程：先建立並驗證 MR，照片接收器只影響附件。
     // 不得因 Google Drive 尚未授權就阻斷報修或 LINE 文字通知。
     const relaySelection=relaySelection_(reportPhotos,reportMediaFiles,lineReady,"");
-    const data=await jsonp_("createMobileReportTest",{
+    const orderRequest=jsonp_("createMobileReportTest",{
       dept:state.dept,
       person:state.person,
       machine:state.machine,
@@ -2542,6 +2542,11 @@ el("submitBtn").onclick=async()=>{
       ...relaySelection,
       requestId:state.requestId
     },35000);
+    // Begin local file integrity work while the verified order is being created.
+    if(relaySelection.lineMode==="relay-v2"&&reportMediaFiles.length){
+      try{window.repairFastIntakeV1?.warmHashes?.(reportMediaFiles);}catch(_){/* Normal upload still verifies every byte. */}
+    }
+    const data=await orderRequest;
 
     if(!data || !data.orderNo)throw new Error("沒有取得工單編號");
     if(!data.verified || data.spreadsheetId!==EXPECTED_SPREADSHEET_ID){
@@ -2918,7 +2923,7 @@ document.addEventListener("click",function(ev){
 </script>
 <script src="./v10_version_gate.js?v=20261128-close-no-line-v1" defer></script>
 <script src="./repair-drive-bridge.js?v=20261111-v4-isolated" defer></script>
-<script src="./repair-fast-intake-client.js?v=20261127-batch-v2" defer></script>
+<script src="./repair-fast-intake-client.js?v=20261128-warm-hash-v1" defer></script>
 <script src="./repair-direct-upload.js?v=20261128-heartbeat-recheck-v1" defer></script>
 <script src="./maintenance-report.js?v=20261127-machine-picker-v4" defer></script>
 <script src="./camera-bridge-formal.js?v=20261126-fullscreen-hd-04-fast" defer></script>
