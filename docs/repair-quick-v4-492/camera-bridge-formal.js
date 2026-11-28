@@ -6,6 +6,8 @@ const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==="
 if(!ios||!hook)return;
 const MAX=100*1024*1024, LIMIT=92*1024*1024;
 let active=null;
+const nativeContexts=new Map();
+const fallbackKinds=new Set();
 const stamp=()=>w.performance?.now?.()??Date.now();
 function timing(s,key){s.timings[key]=Math.round(stamp()-s.openedAt);w.__repairCameraTiming={...s.timings};}
 function get(id){return d.getElementById(id)}
@@ -20,7 +22,7 @@ function context(kind){
  return JSON.stringify([cameraContextRevision_,state.dept,state.person,state.machine,state.requestId]);
 }
 function same(s){return active===s&&context(s.kind)===s.context&&hook.getFile(s.kind)===s.previous}
-function release(s){clearTimeout(s.timer);clearInterval(s.clockTimer);if(s.stream){s.stream.getTracks().forEach(t=>t.stop());s.stream=null} s.preview.srcObject=null}
+function release(s){clearTimeout(s.timer);clearInterval(s.clockTimer);s.cancelPreview?.();if(s.stream){s.stream.getTracks().forEach(t=>{try{t.stop()}catch(_){}});s.stream=null} s.preview.srcObject=null}
 function close(s,message){
  if(active!==s)return;
  s.cancelled=true;active=null;release(s);
@@ -45,6 +47,38 @@ function readMetadata(file,poster){
  });
 }
 function fullHD(width,height){return Math.min(width,height)>=1080&&Math.max(width,height)>=1920}
+function nativeOpen(kind){
+ const input=get(kind+"VideoCapture"),ctx=context(kind);
+ if(!input||!ctx)return;
+ if(active)close(active);
+ nativeContexts.set(kind,{context:ctx,previous:hook.getFile(kind)});
+ // Must be invoked directly by a user click, not after an asynchronous camera failure.
+ input.click();
+}
+function cameraFailure(s,message){
+ if(active!==s)return;
+ const kind=s.kind;
+ close(s);fallbackKinds.add(kind);
+ const note=get(kind+"CameraFallbackNote");
+ if(note){note.hidden=false;note.textContent=message+"。請按「手機相機錄影」或「選取影片」；原影片仍保留。";}
+ const label=get(kind+"VideoRecordStart");
+ if(label)label.title="上次網頁相機未能啟動；再按一次使用手機相機";
+}
+function previewReady(s){
+ return new Promise((resolve,reject)=>{
+  const v=s.preview;let done=false,timeout,interval,lastError=null;
+  function finish(error){if(done)return;done=true;clearTimeout(timeout);clearInterval(interval);for(const name of ["loadedmetadata","loadeddata","canplay","playing","resize"])v.removeEventListener(name,check);s.cancelPreview=null;error?reject(error):resolve();}
+  function check(){if(!same(s)){finish(Error("相機已關閉"));return}if(v.videoWidth>0&&v.videoHeight>0&&v.readyState>=2&&!v.paused)finish();}
+  for(const name of ["loadedmetadata","loadeddata","canplay","playing","resize"])v.addEventListener(name,check);
+  s.cancelPreview=()=>finish(Error("相機已關閉"));
+  timeout=setTimeout(()=>finish(lastError||Error("相機預覽未就緒")),7000);
+  interval=setInterval(check,150);
+  // WebKit may reject play() with AbortError while the stream is still starting.
+  // Autoplay/metadata events may subsequently make the preview usable.
+  try{Promise.resolve(v.play()).then(check,error=>{lastError=error;check()})}catch(error){lastError=error}
+  check();
+ });
+}
 function setStatus(s,message){if(active===s)s.status.textContent=message}
 function requestStop(s){
  if(active!==s||!s.recorder||s.recorder.state!=="recording")return;
@@ -81,7 +115,7 @@ function start(s){
   const r=new MediaRecorder(s.stream,options);
   s.recorder=r;s.chunks=[];s.bytes=0;
   r.ondataavailable=e=>{if(active!==s||s.cancelled||!e.data?.size)return;s.chunks.push(e.data);s.bytes+=e.data.size;if(s.bytes>=LIMIT)requestStop(s)};
-  r.onerror=()=>close(s,"錄影發生錯誤，原影片保留。");
+  r.onerror=()=>cameraFailure(s,"網頁錄影中斷");
   r.onstop=()=>{if(active===s&&!s.cancelled)void finish(s)};
   r.start(1000);timing(s,"recordStartedMs");
   s.poster=capturePoster(s);
@@ -89,14 +123,14 @@ function start(s){
   const started=Date.now();const tick=()=>{const sec=Math.floor((Date.now()-started)/1000);s.clock.textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')};tick();s.clock.style.background='#c5222b';s.clockTimer=setInterval(tick,1000);
   setStatus(s,"錄影中｜1080p");
   s.timer=setTimeout(()=>requestStop(s),90000);
- }catch(e){close(s,"無法啟動高畫質錄影："+String(e.message||e))}
+ }catch(e){cameraFailure(s,"無法啟動網頁高畫質錄影（"+String(e.name||"CameraError")+"）")}
 }
 async function open(kind){
  if(active)return;
  const openedAt=stamp();const ctx=context(kind);if(!ctx){alert("請先確認目前報修或維修頁面。");return}
- if(!w.isSecureContext||!navigator.mediaDevices?.getUserMedia||!w.MediaRecorder){alert("此瀏覽器無法使用網頁高畫質錄影，未啟動低畫質錄影。");return}
+ if(!w.isSecureContext||!navigator.mediaDevices?.getUserMedia||!w.MediaRecorder){nativeOpen(kind);return}
  const mime=["video/mp4;codecs=avc1.42001f,mp4a.40.2","video/mp4"].find(t=>MediaRecorder.isTypeSupported(t));
- if(!mime){alert("此瀏覽器未提供 MP4 錄影功能。");return}
+ if(!mime){nativeOpen(kind);return}
  const overlay=elem("div",null,{position:"fixed",inset:"0",zIndex:"2147483646",background:"#000",color:"#fff",overflow:"hidden",overscrollBehavior:"contain",touchAction:"manipulation",isolation:"isolate"});
  overlay.style.height="100vh";if(w.CSS?.supports("height","100dvh"))overlay.style.height="100dvh";
  overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");overlay.setAttribute("aria-label","全螢幕相機錄影");
@@ -125,16 +159,27 @@ async function open(kind){
   if(settings.facingMode==="user")throw Error("無法取得後置相機");
   if(settings.width&&settings.height&&!fullHD(settings.width,settings.height))throw Error("相機未提供 1080p");
   stream.getTracks().forEach(t=>t.addEventListener("ended",()=>{if(active===s&&s.recorder?.state==="recording")close(s,"相機或麥克風已中斷，原影片保留。")}));
-  preview.srcObject=stream;await preview.play();
+  preview.srcObject=stream;await previewReady(s);
   if(!same(s)){close(s);return}
   if(!fullHD(preview.videoWidth,preview.videoHeight))throw Error("實際相機畫面未達 1080p");
   setStatus(s,"高畫質相機就緒｜"+preview.videoWidth+" × "+preview.videoHeight);
   record.disabled=false;record.style.opacity='1';timing(s,"previewReadyMs");
- }catch(e){close(s,"無法開啟 1080p 錄影："+String(e.message||e)+"。原影片保留。")}
+ }catch(e){cameraFailure(s,"網頁高畫質相機未能啟動（"+String(e.name||"CameraError")+"）")}
 }
 for(const kind of ["report","repair"]){
  const label=get(kind+"VideoRecordStart");if(!label)continue;
- label.addEventListener("click",event=>{event.preventDefault();event.stopImmediatePropagation();void open(kind)},true);
+ const native=get(kind+"VideoCapture"),pilot=get(kind+"VideoPilot");
+ if(!native||!pilot)continue;
+ const button=elem("button","手機相機錄影",{marginTop:"6px",width:"100%",padding:"10px",fontSize:"14px",border:"1px solid #b7c6d7",borderRadius:"8px",background:"#fff",color:"#24476c"});button.type="button";
+ button.addEventListener("click",()=>nativeOpen(kind));
+ const note=elem("div","",{fontSize:"13px",color:"#a04a12",marginTop:"6px"});note.id=kind+"CameraFallbackNote";note.hidden=true;note.setAttribute("role","status");
+ const actions=label.parentElement;actions.insertAdjacentElement("afterend",button);button.insertAdjacentElement("afterend",note);
+ native.addEventListener("change",event=>{
+  const saved=nativeContexts.get(kind);nativeContexts.delete(kind);
+  if(saved&&(context(kind)!==saved.context||hook.getFile(kind)!==saved.previous)){event.stopImmediatePropagation();native.value="";return}
+  if(native.files?.length){fallbackKinds.delete(kind);note.hidden=true;}
+ },true);
+ label.addEventListener("click",event=>{event.preventDefault();event.stopImmediatePropagation();if(fallbackKinds.has(kind)){nativeOpen(kind);return}void open(kind)},true);
 }
 d.addEventListener("visibilitychange",()=>{if(d.hidden&&active)close(active)});
 w.addEventListener("pagehide",()=>{if(active)close(active)});
